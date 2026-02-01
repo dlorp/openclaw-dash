@@ -5,6 +5,14 @@ from textual.containers import Container
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+from openclaw_dash.widgets.alerts import AlertsPanel
+from openclaw_dash.widgets.ascii_art import (
+    STATUS_SYMBOLS,
+    mini_bar,
+    progress_bar,
+    separator,
+    status_indicator,
+)
 from openclaw_dash.widgets.channels import ChannelsPanel
 
 
@@ -19,11 +27,19 @@ class GatewayPanel(Static):
         content = self.query_one("#gw-content", Static)
         if data.get("healthy"):
             ctx = data.get("context_pct", 0)
+            ctx_bar = progress_bar(ctx / 100, width=12, show_percent=False, style="smooth")
             content.update(
-                f"[green]✓ ONLINE[/]\nContext: {ctx:.0f}%\nUptime: {data.get('uptime', '?')}"
+                f"{status_indicator('ok', 'ONLINE')}\n"
+                f"{separator(18, 'dotted')}\n"
+                f"Context: {ctx:.0f}%\n{ctx_bar}\n"
+                f"Uptime: {data.get('uptime', '?')}"
             )
         else:
-            content.update(f"[red]✗ OFFLINE[/]\n{data.get('error', '')}")
+            content.update(
+                f"{status_indicator('error', 'OFFLINE')}\n"
+                f"{separator(18, 'dotted')}\n"
+                f"{data.get('error', '')}"
+            )
 
 
 class CurrentTaskPanel(Static):
@@ -36,9 +52,11 @@ class CurrentTaskPanel(Static):
         data = activity.collect()
         content = self.query_one("#task-content", Static)
         if data.get("current_task"):
-            content.update(f"[bold cyan]{data['current_task']}[/]")
+            content.update(
+                f"{STATUS_SYMBOLS['triangle_right']} [bold cyan]{data['current_task']}[/]"
+            )
         else:
-            content.update("[dim]No active task[/]")
+            content.update(f"{STATUS_SYMBOLS['circle_empty']} [dim]No active task[/]")
 
 
 class ActivityPanel(Static):
@@ -52,8 +70,14 @@ class ActivityPanel(Static):
         content = self.query_one("#activity-content", Static)
         lines = []
         for item in data.get("recent", [])[-8:]:
-            lines.append(f"[dim]{item.get('time', '?')}[/] {item.get('action', '?')}")
-        content.update("\n".join(lines) if lines else "[dim]No recent activity[/]")
+            lines.append(
+                f"{STATUS_SYMBOLS['bullet']} [dim]{item.get('time', '?')}[/] {item.get('action', '?')}"
+            )
+        content.update(
+            "\n".join(lines)
+            if lines
+            else f"{STATUS_SYMBOLS['circle_empty']} [dim]No recent activity[/]"
+        )
 
 
 class ReposPanel(Static):
@@ -86,11 +110,23 @@ class CronPanel(Static):
     def refresh_data(self) -> None:
         data = cron.collect()
         content = self.query_one("#cron-content", Static)
-        lines = [f"[bold]{data.get('enabled', 0)}[/]/{data.get('total', 0)} enabled"]
+        enabled = data.get("enabled", 0)
+        total = data.get("total", 0)
+        ratio = enabled / total if total > 0 else 0
+        bar = mini_bar(ratio, width=8)
+
+        lines = [f"[bold]{enabled}[/]/{total} enabled {bar}"]
+        lines.append(separator(22, "dotted"))
         for job in data.get("jobs", [])[:5]:
-            icon = "▸" if job.get("enabled") else "▹"
-            name = job.get("name", "?")[:20]
-            lines.append(f"  {icon} {name}")
+            icon = (
+                STATUS_SYMBOLS["triangle_right"]
+                if job.get("enabled")
+                else STATUS_SYMBOLS["circle_empty"]
+            )
+            color = "" if job.get("enabled") else "[dim]"
+            end_color = "[/]" if not job.get("enabled") else ""
+            name = job.get("name", "?")[:18]
+            lines.append(f"  {color}{icon} {name}{end_color}")
         content.update("\n".join(lines))
 
 
@@ -103,12 +139,22 @@ class SessionsPanel(Static):
     def refresh_data(self) -> None:
         data = sessions.collect()
         content = self.query_one("#sessions-content", Static)
-        lines = [f"[bold]{data.get('active', 0)}[/]/{data.get('total', 0)} active"]
+        active = data.get("active", 0)
+        total = data.get("total", 0)
+        ratio = active / total if total > 0 else 0
+        bar = mini_bar(ratio, width=8)
+
+        lines = [f"[bold]{active}[/]/{total} active {bar}"]
+        lines.append(separator(25, "dotted"))
         for s in data.get("sessions", [])[:6]:
-            icon = "[green]●[/]" if s.get("active") else "[dim]○[/]"
-            key = s.get("key", "?")[:15]
+            if s.get("active"):
+                icon = f"[green]{STATUS_SYMBOLS['circle_full']}[/]"
+            else:
+                icon = f"[dim]{STATUS_SYMBOLS['circle_empty']}[/]"
+            key = s.get("key", "?")[:12]
             ctx = s.get("context_pct", 0)
-            lines.append(f"  {icon} {key} [{ctx:.0f}%]")
+            ctx_bar = mini_bar(ctx / 100, width=5)
+            lines.append(f"  {icon} {key} {ctx_bar}")
         content.update("\n".join(lines))
 
 
@@ -118,7 +164,7 @@ class DashboardApp(App):
     CSS = """
     Screen {
         layout: grid;
-        grid-size: 3 3;
+        grid-size: 3 4;
         grid-gutter: 1;
         padding: 1;
     }
@@ -130,6 +176,7 @@ class DashboardApp(App):
 
     #gateway-panel { row-span: 1; }
     #task-panel { column-span: 2; }
+    #alerts-panel { column-span: 2; row-span: 1; }
     #repos-panel { column-span: 2; row-span: 1; }
     #activity-panel { row-span: 2; }
     #cron-panel { }
@@ -153,6 +200,10 @@ class DashboardApp(App):
         with Container(id="task-panel", classes="panel"):
             yield Static("[bold]Current Task[/]")
             yield CurrentTaskPanel()
+
+        with Container(id="alerts-panel", classes="panel"):
+            yield Static("[bold]⚠️ Alerts[/]")
+            yield AlertsPanel()
 
         with Container(id="repos-panel", classes="panel"):
             yield Static("[bold]Repositories[/]")
@@ -184,6 +235,7 @@ class DashboardApp(App):
         for panel_cls in [
             GatewayPanel,
             CurrentTaskPanel,
+            AlertsPanel,
             ActivityPanel,
             ReposPanel,
             CronPanel,
