@@ -575,6 +575,26 @@ class DashboardApp(App):
         self._mounted = True  # Enable notifications after initial load
         self.set_interval(self.refresh_interval, self._auto_refresh)
 
+    def _apply_responsive_layout(self, width: int, height: int) -> None:
+        """Apply responsive layout based on terminal size."""
+        # Hide less critical panels when terminal is narrow
+        hide_threshold = 100  # Minimum width for full layout
+        panels_to_hide = ["channels-panel", "security-panel", "metrics-panel"]
+        
+        for panel_id in panels_to_hide:
+            try:
+                panel = self.query_one(f"#{panel_id}")
+                if width < hide_threshold:
+                    panel.add_class("hidden")
+                else:
+                    panel.remove_class("hidden")
+            except Exception:
+                pass
+
+    def on_resize(self, event) -> None:
+        """Handle terminal resize."""
+        self._apply_responsive_layout(event.size.width, event.size.height)
+
     def _auto_refresh(self) -> None:
         """Auto-refresh without notification (for timer-based refresh)."""
         # Refresh metric boxes bar
