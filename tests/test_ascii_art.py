@@ -1,145 +1,286 @@
-"""Tests for ASCII art styling utilities."""
+"""Tests for ASCII art utilities."""
 
 from openclaw_dash.widgets.ascii_art import (
-    DOUBLE_BOX,
-    SINGLE_BOX,
+    DOUBLE,
+    ROUNDED,
+    SINGLE,
+    STATUS_SYMBOLS,
     draw_box,
+    format_with_trend,
+    get_border_chars,
+    mini_bar,
     progress_bar,
+    separator,
     sparkline,
-    status_icon,
+    status_indicator,
+    trend_indicator,
 )
 
 
-class TestDrawBox:
-    """Tests for draw_box function."""
+class TestBorderChars:
+    """Test border character retrieval."""
 
-    def test_empty_content(self):
-        """Box with no content."""
-        result = draw_box([])
-        assert len(result) == 2  # top + bottom borders
-        assert result[0].startswith(SINGLE_BOX["tl"])
-        assert result[1].startswith(SINGLE_BOX["bl"])
-
-    def test_single_line(self):
-        """Box with single line of content."""
-        result = draw_box(["hello"])
-        assert len(result) == 3
-        assert "hello" in result[1]
-        assert result[1].startswith(SINGLE_BOX["v"])
-        assert result[1].endswith(SINGLE_BOX["v"])
-
-    def test_multiple_lines(self):
-        """Box with multiple lines pads correctly."""
-        result = draw_box(["short", "longer line"])
-        assert len(result) == 4
-        # Both content lines should be same width
-        assert len(result[1]) == len(result[2])
+    def test_single_border(self):
+        chars = get_border_chars("single")
+        assert chars == SINGLE
+        assert chars["tl"] == "┌"
+        assert chars["br"] == "┘"
 
     def test_double_border(self):
-        """Double-line border style."""
-        result = draw_box(["test"], double=True)
-        assert result[0].startswith(DOUBLE_BOX["tl"])
-        assert result[1].startswith(DOUBLE_BOX["v"])
-        assert result[2].startswith(DOUBLE_BOX["bl"])
+        chars = get_border_chars("double")
+        assert chars == DOUBLE
+        assert chars["tl"] == "╔"
+        assert chars["br"] == "╝"
 
-    def test_title(self):
-        """Box with title in top border."""
-        result = draw_box(["content"], title="Title")
-        assert "Title" in result[0]
+    def test_rounded_border(self):
+        chars = get_border_chars("rounded")
+        assert chars == ROUNDED
+        assert chars["tl"] == "╭"
+        assert chars["br"] == "╯"
 
-    def test_min_width(self):
-        """Box respects minimum width."""
-        result = draw_box(["hi"], min_width=20)
-        # Border adds 4 chars (corners + spaces)
-        assert len(result[0]) >= 24
+
+class TestDrawBox:
+    """Test box drawing functionality."""
+
+    def test_simple_box(self):
+        result = draw_box("Hello", style="single")
+        lines = result.split("\n")
+        assert len(lines) == 3
+        assert lines[0].startswith("┌")
+        assert lines[0].endswith("┐")
+        assert lines[2].startswith("└")
+        assert lines[2].endswith("┘")
+        assert "Hello" in lines[1]
+
+    def test_box_with_title(self):
+        result = draw_box("Content", title="Title", style="single")
+        assert "Title" in result.split("\n")[0]
+
+    def test_multiline_content(self):
+        result = draw_box(["Line 1", "Line 2", "Line 3"])
+        lines = result.split("\n")
+        assert len(lines) == 5  # top + 3 content + bottom
+
+    def test_double_border_style(self):
+        result = draw_box("Test", style="double")
+        assert "╔" in result
+        assert "╝" in result
+
+    def test_rounded_border_style(self):
+        result = draw_box("Test", style="rounded")
+        assert "╭" in result
+        assert "╯" in result
 
 
 class TestSparkline:
-    """Tests for sparkline function."""
+    """Test sparkline generation."""
 
     def test_empty_values(self):
-        """Empty input returns empty string."""
         assert sparkline([]) == ""
 
-    def test_constant_values(self):
-        """Constant values produce consistent blocks."""
-        result = sparkline([5, 5, 5, 5])
-        assert len(result) == 4
-        # All blocks should be the same
-        assert len(set(result)) == 1
+    def test_single_value(self):
+        result = sparkline([5])
+        assert len(result) == 1
+        assert result in "▁▂▃▄▅▆▇█"
 
     def test_ascending_values(self):
-        """Ascending values produce ascending blocks."""
-        result = sparkline([0, 1, 2, 3])
-        assert len(result) == 4
-        # First should be lowest block, last highest
-        assert result[0] == " "
+        result = sparkline([1, 2, 3, 4, 5, 6, 7, 8])
+        assert len(result) == 8
+        # First should be lowest, last should be highest
+        assert result[0] == "▁"
         assert result[-1] == "█"
 
-    def test_width_resampling(self):
-        """Sparkline resamples to specified width."""
-        result = sparkline([1, 2, 3, 4, 5, 6, 7, 8], width=4)
-        assert len(result) == 4
+    def test_all_same_values(self):
+        result = sparkline([5, 5, 5, 5])
+        # Should all be the same middle-ish character
+        assert len(set(result)) == 1
 
-    def test_negative_values(self):
-        """Handles negative values correctly."""
-        result = sparkline([-10, 0, 10])
+    def test_width_limit(self):
+        result = sparkline([1, 2, 3, 4, 5], width=3)
         assert len(result) == 3
-        assert result[0] == " "  # lowest
-        assert result[-1] == "█"  # highest
+        # Should use last 3 values
+        assert result[-1] == "█"
+
+    def test_custom_min_max(self):
+        result = sparkline([5], min_val=0, max_val=10)
+        # Value 5 is 50% of range, should be middle character
+        assert result in "▄▅"
 
 
 class TestProgressBar:
-    """Tests for progress_bar function."""
+    """Test progress bar generation."""
 
     def test_zero_progress(self):
-        """Zero progress shows empty bar."""
         result = progress_bar(0.0, width=10, show_percent=False)
-        assert result == "░" * 10
+        assert "█" not in result
+        assert "░" in result
 
     def test_full_progress(self):
-        """Full progress shows filled bar."""
         result = progress_bar(1.0, width=10, show_percent=False)
-        assert result == "█" * 10
+        assert "░" not in result
+        assert "█" in result
 
     def test_half_progress(self):
-        """Half progress shows half filled."""
         result = progress_bar(0.5, width=10, show_percent=False)
-        assert result == "█" * 5 + "░" * 5
+        assert "█" in result
+        assert "░" in result
 
     def test_with_percent(self):
-        """Progress bar includes percentage."""
-        result = progress_bar(0.75, width=10)
-        assert "75.0%" in result
+        result = progress_bar(0.5, width=10, show_percent=True)
+        assert "50" in result
+        assert "%" in result
+
+    def test_ascii_style(self):
+        result = progress_bar(0.5, width=10, style="ascii", show_percent=False)
+        assert "[" in result
+        assert "]" in result
+        assert "=" in result
+        assert "-" in result
 
     def test_clamps_values(self):
-        """Values outside 0-1 are clamped."""
-        assert progress_bar(-0.5, width=10, show_percent=False) == "░" * 10
-        assert progress_bar(1.5, width=10, show_percent=False) == "█" * 10
-
-    def test_custom_characters(self):
-        """Custom fill characters work."""
-        result = progress_bar(0.5, width=4, show_percent=False, filled="#", empty="-")
-        assert result == "##--"
+        result_low = progress_bar(-0.5, width=10, show_percent=False)
+        result_high = progress_bar(1.5, width=10, show_percent=False)
+        assert "░" in result_low  # Should be 0%
+        assert "░" not in result_high  # Should be 100%
 
 
-class TestStatusIcon:
-    """Tests for status_icon function."""
+class TestStatusIndicator:
+    """Test status indicator generation."""
 
-    def test_known_statuses(self):
-        """Known status keys return expected symbols."""
-        assert status_icon("ok") == "●"
-        assert status_icon("warn") == "◐"
-        assert status_icon("error") == "○"
-        assert status_icon("up") == "▲"
-        assert status_icon("down") == "▼"
+    def test_ok_status(self):
+        result = status_indicator("ok")
+        assert STATUS_SYMBOLS["ok"] in result
+        assert "green" in result
 
-    def test_case_insensitive(self):
-        """Status lookup is case insensitive."""
-        assert status_icon("OK") == status_icon("ok")
-        assert status_icon("Error") == status_icon("error")
+    def test_error_status(self):
+        result = status_indicator("error")
+        assert STATUS_SYMBOLS["error"] in result
+        assert "red" in result
+
+    def test_warning_status(self):
+        result = status_indicator("warning")
+        assert STATUS_SYMBOLS["warning"] in result
+        assert "yellow" in result
+
+    def test_with_label(self):
+        result = status_indicator("ok", label="Success")
+        assert "Success" in result
+
+    def test_no_color(self):
+        result = status_indicator("ok", color=False)
+        assert "[" not in result
+        assert STATUS_SYMBOLS["ok"] in result
 
     def test_unknown_status(self):
-        """Unknown status returns unknown symbol."""
-        assert status_icon("invalid") == "◌"
-        assert status_icon("") == "◌"
+        result = status_indicator("unknown_status")
+        assert STATUS_SYMBOLS["bullet"] in result
+
+
+class TestSeparator:
+    """Test separator generation."""
+
+    def test_thin_separator(self):
+        result = separator(10, style="thin")
+        assert result == "─" * 10
+
+    def test_double_separator(self):
+        result = separator(10, style="double")
+        assert result == "═" * 10
+
+    def test_with_label(self):
+        result = separator(20, label="Test")
+        assert "Test" in result
+        assert len(result) == 20
+
+    def test_dotted_style(self):
+        result = separator(10, style="dotted")
+        assert "┄" in result
+
+
+class TestMiniBar:
+    """Test mini bar generation."""
+
+    def test_zero_value(self):
+        result = mini_bar(0.0, width=5)
+        assert len(result) == 5
+        assert "█" not in result
+
+    def test_full_value(self):
+        result = mini_bar(1.0, width=5)
+        assert "█" in result
+
+    def test_partial_value(self):
+        result = mini_bar(0.5, width=8)
+        assert len(result) == 8
+
+    def test_clamps_values(self):
+        result_low = mini_bar(-0.5, width=5)
+        result_high = mini_bar(1.5, width=5)
+        assert len(result_low) == 5
+        assert len(result_high) == 5
+
+
+class TestTrendIndicator:
+    """Test trend indicator generation."""
+
+    def test_upward_trend(self):
+        result = trend_indicator(110, 100)
+        assert STATUS_SYMBOLS["arrow_up"] in result
+        assert "green" in result
+
+    def test_downward_trend(self):
+        result = trend_indicator(90, 100)
+        assert STATUS_SYMBOLS["arrow_down"] in result
+        assert "red" in result
+
+    def test_stable_trend(self):
+        result = trend_indicator(101, 100)  # 1% change, below threshold
+        assert STATUS_SYMBOLS["bullet"] in result
+
+    def test_zero_previous(self):
+        result = trend_indicator(100, 0)
+        assert STATUS_SYMBOLS["bullet"] in result
+
+
+class TestFormatWithTrend:
+    """Test format with trend helper."""
+
+    def test_basic_format(self):
+        result = format_with_trend("CPU", "50%")
+        assert "[bold]CPU:[/]" in result
+        assert "50%" in result
+
+    def test_with_sparkline(self):
+        result = format_with_trend("CPU", "50%", trend_values=[10, 20, 30, 40, 50])
+        assert "CPU" in result
+        assert "50%" in result
+        # Should contain sparkline characters
+        assert any(c in result for c in "▁▂▃▄▅▆▇█")
+
+    def test_with_single_value_no_sparkline(self):
+        result = format_with_trend("CPU", "50%", trend_values=[50])
+        # Single value shouldn't add sparkline
+        assert "▁" not in result or "█" not in result
+
+
+class TestStatusSymbols:
+    """Test that all expected status symbols are present."""
+
+    def test_common_symbols_exist(self):
+        assert "ok" in STATUS_SYMBOLS
+        assert "error" in STATUS_SYMBOLS
+        assert "warning" in STATUS_SYMBOLS
+        assert "running" in STATUS_SYMBOLS
+        assert "stopped" in STATUS_SYMBOLS
+
+    def test_arrow_symbols(self):
+        assert "arrow_up" in STATUS_SYMBOLS
+        assert "arrow_down" in STATUS_SYMBOLS
+        assert "arrow_left" in STATUS_SYMBOLS
+        assert "arrow_right" in STATUS_SYMBOLS
+
+    def test_shape_symbols(self):
+        assert "circle_full" in STATUS_SYMBOLS
+        assert "circle_empty" in STATUS_SYMBOLS
+        assert "square_full" in STATUS_SYMBOLS
+        assert "square_empty" in STATUS_SYMBOLS

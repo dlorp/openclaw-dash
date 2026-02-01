@@ -4,6 +4,8 @@ Provides box drawing, sparklines, progress bars, and status indicators
 using Unicode box-drawing characters and symbols.
 """
 
+from __future__ import annotations
+
 from typing import Literal
 
 # Box drawing characters
@@ -154,7 +156,9 @@ def draw_box(
         remaining = inner_width - len(title_part)
         left_pad = remaining // 2
         right_pad = remaining - left_pad
-        top = chars["tl"] + chars["h"] * left_pad + title_part + chars["h"] * right_pad + chars["tr"]
+        top = (
+            chars["tl"] + chars["h"] * left_pad + title_part + chars["h"] * right_pad + chars["tr"]
+        )
     else:
         top = chars["tl"] + chars["h"] * inner_width + chars["tr"]
     result.append(top)
