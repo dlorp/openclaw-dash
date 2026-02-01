@@ -15,6 +15,17 @@ from openclaw_dash.widgets.ascii_art import (
     trend_indicator,
 )
 from openclaw_dash.widgets.help_panel import HelpScreen
+from openclaw_dash.widgets.notifications import (
+    NotificationLevel,
+    notify,
+    notify_error,
+    notify_info,
+    notify_panel_error,
+    notify_refresh,
+    notify_success,
+    notify_theme_change,
+    notify_warning,
+)
 from openclaw_dash.widgets.security import (
     DepsPanel,
     DepsSummaryPanel,
@@ -40,4 +51,14 @@ __all__ = [
     "SecuritySummaryPanel",
     "DepsPanel",
     "DepsSummaryPanel",
+    # Notifications
+    "NotificationLevel",
+    "notify",
+    "notify_info",
+    "notify_success",
+    "notify_warning",
+    "notify_error",
+    "notify_refresh",
+    "notify_theme_change",
+    "notify_panel_error",
 ]

@@ -5,6 +5,7 @@ from textual.containers import Container
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+from openclaw_dash.commands import DashboardCommands
 from openclaw_dash.config import Config, load_config
 from openclaw_dash.themes import THEMES, next_theme
 from openclaw_dash.widgets.alerts import AlertsPanel
@@ -18,6 +19,10 @@ from openclaw_dash.widgets.ascii_art import (
 from openclaw_dash.widgets.channels import ChannelsPanel
 from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.metrics import MetricsPanel
+from openclaw_dash.widgets.notifications import (
+    notify_panel_error,
+    notify_refresh,
+)
 from openclaw_dash.widgets.security import SecurityPanel
 
 
@@ -166,6 +171,8 @@ class SessionsPanel(Static):
 class DashboardApp(App):
     """Lorp's system dashboard."""
 
+    COMMANDS = {DashboardCommands}
+
     config: Config
 
     CSS = """
@@ -207,6 +214,8 @@ class DashboardApp(App):
         ("c", "focus_panel('cron-panel')", "Cron"),
         ("p", "focus_panel('repos-panel')", "Repos"),
     ]
+
+    _mounted: bool = False  # Track if initial mount is complete (for notifications)
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -265,15 +274,11 @@ class DashboardApp(App):
         self.theme = self.config.theme
 
         self.action_refresh()
-        self.set_interval(self.config.refresh_interval, self.action_refresh)
+        self._mounted = True  # Enable notifications after initial load
+        self.set_interval(self.config.refresh_interval, self._auto_refresh)
 
-    def action_cycle_theme(self) -> None:
-        """Cycle through available themes and save preference."""
-        self.theme = next_theme(self.theme)
-        self.config.update(theme=self.theme)
-        self.notify(f"Theme: {self.theme}", timeout=1.5)
-
-    def action_refresh(self) -> None:
+    def _auto_refresh(self) -> None:
+        """Auto-refresh without notification (for timer-based refresh)."""
         for panel_cls in [
             GatewayPanel,
             CurrentTaskPanel,
@@ -291,6 +296,44 @@ class DashboardApp(App):
                 panel.refresh_data()
             except Exception:
                 pass
+
+    def action_cycle_theme(self) -> None:
+        """Cycle through available themes and save preference."""
+        self.theme = next_theme(self.theme)
+        self.config.update(theme=self.theme)
+        self.notify(f"Theme: {self.theme}", timeout=1.5)
+
+    def action_refresh(self) -> None:
+        """Refresh all panels and show notification."""
+        panels = [
+            GatewayPanel,
+            CurrentTaskPanel,
+            AlertsPanel,
+            ActivityPanel,
+            ReposPanel,
+            CronPanel,
+            SessionsPanel,
+            ChannelsPanel,
+            MetricsPanel,
+            SecurityPanel,
+        ]
+        refreshed = 0
+        errors = []
+        for panel_cls in panels:
+            try:
+                panel = self.query_one(panel_cls)
+                panel.refresh_data()
+                refreshed += 1
+            except Exception as e:
+                errors.append((panel_cls.__name__, str(e)))
+
+        # Show notification for manual refresh (not auto-refresh on mount)
+        if self._mounted:
+            if errors:
+                for panel_name, error in errors[:2]:  # Limit error notifications
+                    notify_panel_error(self, panel_name, error)
+            else:
+                notify_refresh(self, refreshed)
 
     def action_help(self) -> None:
         """Show the help panel with keyboard shortcuts."""
