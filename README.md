@@ -40,6 +40,7 @@ TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/opencla
 - **Channels** — Connected messaging channels and status
 - **Security Audit** — Config scanning, dependency vulnerabilities
 - **Metrics** — Cost tracking, performance stats
+- **System Resources** — CPU, memory, disk, and network I/O monitoring (toggleable)
 
 ## Installation
 

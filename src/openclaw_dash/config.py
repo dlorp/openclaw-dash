@@ -29,6 +29,7 @@ class Config:
     theme: str = "dark"
     refresh_interval: int = 30
     show_notifications: bool = True
+    show_resources: bool = True  # System resource monitoring panel
 
     # File path for this config (not persisted)
     _path: Path = field(default=DEFAULT_CONFIG_PATH, repr=False, compare=False)
@@ -39,6 +40,7 @@ class Config:
             "theme": self.theme,
             "refresh_interval": self.refresh_interval,
             "show_notifications": self.show_notifications,
+            "show_resources": self.show_resources,
         }
 
     @classmethod
@@ -48,6 +50,7 @@ class Config:
             theme=data.get("theme", "dark"),
             refresh_interval=data.get("refresh_interval", 30),
             show_notifications=data.get("show_notifications", True),
+            show_resources=data.get("show_resources", True),
             _path=path or DEFAULT_CONFIG_PATH,
         )
 

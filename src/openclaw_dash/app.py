@@ -23,6 +23,7 @@ from openclaw_dash.widgets.notifications import (
     notify_panel_error,
     notify_refresh,
 )
+from openclaw_dash.widgets.resources import ResourcesPanel
 from openclaw_dash.widgets.security import SecurityPanel
 
 
@@ -178,7 +179,7 @@ class DashboardApp(App):
     CSS = """
     Screen {
         layout: grid;
-        grid-size: 3 5;
+        grid-size: 3 6;
         grid-gutter: 1;
         padding: 1;
     }
@@ -197,6 +198,8 @@ class DashboardApp(App):
     #sessions-panel { }
     #metrics-panel { column-span: 2; }
     #security-panel { column-span: 2; row-span: 1; }
+    #resources-panel { column-span: 3; row-span: 1; }
+    #resources-panel.hidden { display: none; }
 
     DataTable { height: auto; }
     """
@@ -213,6 +216,7 @@ class DashboardApp(App):
         ("a", "focus_panel('alerts-panel')", "Alerts"),
         ("c", "focus_panel('cron-panel')", "Cron"),
         ("p", "focus_panel('repos-panel')", "Repos"),
+        ("x", "toggle_resources", "Resources"),
     ]
 
     _mounted: bool = False  # Track if initial mount is complete (for notifications)
@@ -260,6 +264,10 @@ class DashboardApp(App):
             yield Static("[bold]🔒 Security[/]")
             yield SecurityPanel()
 
+        with Container(id="resources-panel", classes="panel"):
+            yield Static("[bold]📊 Resources[/]")
+            yield ResourcesPanel()
+
         yield Footer()
 
     def on_mount(self) -> None:
@@ -272,6 +280,14 @@ class DashboardApp(App):
 
         # Apply saved theme (or default)
         self.theme = self.config.theme
+
+        # Apply resources panel visibility
+        if not self.config.show_resources:
+            try:
+                panel = self.query_one("#resources-panel")
+                panel.add_class("hidden")
+            except Exception:
+                pass
 
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
@@ -290,8 +306,12 @@ class DashboardApp(App):
             ChannelsPanel,
             MetricsPanel,
             SecurityPanel,
+            ResourcesPanel,
         ]:
             try:
+                # Skip resources panel if disabled
+                if panel_cls == ResourcesPanel and not self.config.show_resources:
+                    continue
                 panel = self.query_one(panel_cls)
                 panel.refresh_data()
             except Exception:
@@ -316,11 +336,15 @@ class DashboardApp(App):
             ChannelsPanel,
             MetricsPanel,
             SecurityPanel,
+            ResourcesPanel,
         ]
         refreshed = 0
         errors = []
         for panel_cls in panels:
             try:
+                # Skip resources panel if disabled
+                if panel_cls == ResourcesPanel and not self.config.show_resources:
+                    continue
                 panel = self.query_one(panel_cls)
                 panel.refresh_data()
                 refreshed += 1
@@ -344,5 +368,27 @@ class DashboardApp(App):
         try:
             panel = self.query_one(f"#{panel_id}")
             panel.focus()
+        except Exception:
+            pass
+
+    def action_toggle_resources(self) -> None:
+        """Toggle the resources panel visibility and save preference."""
+        try:
+            panel = self.query_one("#resources-panel")
+            self.config.show_resources = not self.config.show_resources
+            self.config.save()
+
+            if self.config.show_resources:
+                panel.remove_class("hidden")
+                # Refresh the panel when shown
+                try:
+                    resources_widget = self.query_one(ResourcesPanel)
+                    resources_widget.refresh_data()
+                except Exception:
+                    pass
+                self.notify("Resources panel: ON", timeout=1.5)
+            else:
+                panel.add_class("hidden")
+                self.notify("Resources panel: OFF", timeout=1.5)
         except Exception:
             pass
