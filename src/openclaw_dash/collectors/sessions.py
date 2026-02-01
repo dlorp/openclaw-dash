@@ -5,9 +5,15 @@ import subprocess
 from datetime import datetime
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode, mock_sessions
+
 
 def collect() -> dict[str, Any]:
     """Collect session information."""
+    # Return mock data in demo mode
+    if is_demo_mode():
+        return {"sessions": mock_sessions(), "collected_at": datetime.now().isoformat()}
+
     try:
         result = subprocess.run(
             ["openclaw", "sessions", "list", "--json"],

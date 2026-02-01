@@ -5,9 +5,15 @@ import subprocess
 from datetime import datetime
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode, mock_cron_jobs
+
 
 def collect() -> dict[str, Any]:
     """Collect cron job information."""
+    # Return mock data in demo mode
+    if is_demo_mode():
+        return {"jobs": mock_cron_jobs(), "collected_at": datetime.now().isoformat()}
+
     try:
         result = subprocess.run(
             ["openclaw", "cron", "list", "--json"],

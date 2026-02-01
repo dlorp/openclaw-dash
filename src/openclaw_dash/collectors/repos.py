@@ -8,12 +8,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode, mock_repos
+
 DEFAULT_REPOS = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
 REPO_BASE = Path.home() / "repos"
 
 
 def collect(repos: list[str] | None = None) -> dict[str, Any]:
     """Collect repository health metrics."""
+    # Return mock data in demo mode
+    if is_demo_mode():
+        return {"repos": mock_repos(), "collected_at": datetime.now().isoformat()}
+
     repos = repos or DEFAULT_REPOS
     results = []
 
