@@ -18,9 +18,21 @@ STATIC_SHORTCUTS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Navigation",
         [
+            ("Tab", "Focus next panel"),
+            ("Shift+Tab", "Focus previous panel"),
+            ("g", "Focus Gateway panel"),
+            ("s", "Focus Security panel"),
+            ("m", "Focus Metrics panel"),
+            ("a", "Focus Alerts panel"),
+            ("c", "Focus Cron panel"),
+            ("p", "Focus Repositories panel"),
+            ("l", "Focus Logs panel"),
+        ],
+    ),
+    (
+        "Scrolling",
+        [
             ("↑/↓", "Scroll focused panel"),
-            ("Tab", "Move focus to next panel"),
-            ("Shift+Tab", "Move focus to previous panel"),
         ],
     ),
 ]
