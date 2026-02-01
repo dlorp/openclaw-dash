@@ -13,6 +13,7 @@ from openclaw_dash.widgets.ascii_art import (
     separator,
     status_indicator,
 )
+from openclaw_dash.widgets.channels import ChannelsPanel
 
 
 class GatewayPanel(Static):
@@ -220,6 +221,10 @@ class DashboardApp(App):
             yield Static("[bold]Sessions[/]")
             yield SessionsPanel()
 
+        with Container(id="channels-panel", classes="panel"):
+            yield Static("[bold]Channels[/]")
+            yield ChannelsPanel()
+
         yield Footer()
 
     def on_mount(self) -> None:
@@ -235,6 +240,7 @@ class DashboardApp(App):
             ReposPanel,
             CronPanel,
             SessionsPanel,
+            ChannelsPanel,
         ]:
             try:
                 panel = self.query_one(panel_cls)
