@@ -30,6 +30,7 @@ TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/opencla
 
 ## Features
 
+### Panels
 - **Gateway Status** — Health, context usage, uptime
 - **Current Task** — Track what your agent is working on
 - **Repository Health** — PRs, CI status, TODO counts
@@ -39,8 +40,36 @@ TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/opencla
 - **Alerts** — Color-coded severity alerts from all sources
 - **Channels** — Connected messaging channels and status
 - **Security Audit** — Config scanning, dependency vulnerabilities
-- **Metrics** — Cost tracking, performance stats
-- **System Resources** — CPU, memory, disk, and network I/O monitoring (toggleable)
+- **Metrics** — Cost tracking, performance stats, GitHub streak
+- **System Resources** — CPU, memory, disk, and network I/O (toggleable with `x`)
+- **Logs** — Real-time gateway log viewer
+
+### UI Features
+- **Metric Boxes** — Compact KPI bar showing gateway status, cost, error rate, and streak
+- **Collapsible Panels** — Collapse/expand any panel with `Enter`, or all with `Ctrl+[`/`Ctrl+]`
+- **Jump Mode** — Press `f` to show letter labels, then press a letter to jump to that panel
+- **Vim Navigation** — `j`/`k` to scroll, `G` for end, `Home` for top
+- **Command Palette** — `Ctrl+P` for quick access to all commands
+- **Themes** — Cycle through dark/light/hacker themes with `t`
+- **Responsive Layout** — Adapts to terminal size, hides less-critical panels when narrow
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `r` | Refresh all panels |
+| `t` | Cycle theme |
+| `h` / `?` | Help panel |
+| `Ctrl+P` | Command palette |
+| `j` / `k` | Scroll down/up |
+| `G` / `Home` | Jump to end/top |
+| `Tab` / `Shift+Tab` | Next/previous panel |
+| `f` / `/` | Enter jump mode |
+| `Enter` | Toggle panel collapse |
+| `Ctrl+[` / `Ctrl+]` | Collapse/expand all |
+| `x` | Toggle resources panel |
+| `g` `s` `m` `a` `c` `p` `l` | Focus specific panels |
 
 ## Installation
 
@@ -101,7 +130,15 @@ The dashboard auto-discovers:
 - Repositories in `~/repos/`
 - Workspace at `~/.openclaw/workspace/`
 
-Custom config coming soon.
+User preferences are saved to `~/.config/openclaw-dash/config.toml`:
+
+```toml
+theme = "dark"              # dark, light, or hacker
+refresh_interval = 30       # seconds between auto-refresh
+show_resources = true       # show system resources panel
+show_notifications = true   # show toast notifications
+collapsed_panels = []       # panels to start collapsed
+```
 
 ## Contributing
 
