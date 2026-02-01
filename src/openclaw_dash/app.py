@@ -28,6 +28,10 @@ from openclaw_dash.widgets.notifications import (
 )
 from openclaw_dash.widgets.resources import ResourcesPanel
 from openclaw_dash.widgets.security import SecurityPanel
+from openclaw_dash.widgets.tabbed_groups import (  # noqa: F401 - exported for external use
+    CodeTabGroup,
+    RuntimeTabGroup,
+)
 
 # Responsive breakpoints (width thresholds)
 COMPACT_WIDTH = 100  # Hide less-critical panels below this
@@ -258,6 +262,8 @@ class DashboardApp(App):
         "security-panel",
         "logs-panel",
         "resources-panel",
+        "runtime-group",
+        "code-group",
         "cron-panel",
         "sessions-panel",
         "channels-panel",
@@ -267,6 +273,12 @@ class DashboardApp(App):
 
     # Less critical panels to hide in compact mode
     COLLAPSIBLE_PANELS = ["channels-panel", "activity-panel"]
+
+    # Tab groups mapping group ID to contained panel IDs
+    TAB_GROUPS = {
+        "runtime-group": ["sessions-panel", "cron-panel", "channels-panel"],
+        "code-group": ["repos-panel", "activity-panel"],
+    }
 
     config: Config
     refresh_interval: int
@@ -393,6 +405,11 @@ class DashboardApp(App):
         ("enter", "toggle_focused_collapse", "Toggle"),
         ("ctrl+left_square_bracket", "collapse_all", "Collapse All"),
         ("ctrl+right_square_bracket", "expand_all", "Expand All"),
+        # Tab group navigation
+        ("1", "focus_tab_group('runtime-group')", "Runtime"),
+        ("2", "focus_tab_group('code-group')", "Code"),
+        ("bracketleft", "prev_tab_in_group", "["),
+        ("bracketright", "next_tab_in_group", "]"),
     ]
 
     _mounted: bool = False  # Track if initial mount is complete (for notifications)
@@ -793,6 +810,64 @@ class DashboardApp(App):
         if collapsible.id and collapsible.id.endswith("-collapsible"):
             panel_id = collapsible.id.replace("-collapsible", "")
             self._save_collapsed_state(panel_id, False)
+
+    def action_focus_tab_group(self, group_id: str) -> None:
+        """Focus a specific tab group by ID."""
+        try:
+            group = self.query_one(f"#{group_id}")
+            group.focus()
+        except Exception:
+            pass
+
+    def action_next_tab_in_group(self) -> None:
+        """Switch to the next tab in the focused tab group."""
+        try:
+            from textual.widgets import TabbedContent
+
+            focused = self.focused
+            if focused:
+                # Find parent TabbedContent
+                parent = focused.parent
+                while parent and not isinstance(parent, TabbedContent):
+                    parent = parent.parent
+                if parent and isinstance(parent, TabbedContent):
+                    # Get current tab index and switch to next
+                    tabs = list(parent.query("TabPane"))
+                    if tabs:
+                        current_idx = 0
+                        for i, tab in enumerate(tabs):
+                            if tab.has_focus or tab.has_focus_within:
+                                current_idx = i
+                                break
+                        next_idx = (current_idx + 1) % len(tabs)
+                        parent.active = tabs[next_idx].id or ""
+        except Exception:
+            pass
+
+    def action_prev_tab_in_group(self) -> None:
+        """Switch to the previous tab in the focused tab group."""
+        try:
+            from textual.widgets import TabbedContent
+
+            focused = self.focused
+            if focused:
+                # Find parent TabbedContent
+                parent = focused.parent
+                while parent and not isinstance(parent, TabbedContent):
+                    parent = parent.parent
+                if parent and isinstance(parent, TabbedContent):
+                    # Get current tab index and switch to previous
+                    tabs = list(parent.query("TabPane"))
+                    if tabs:
+                        current_idx = 0
+                        for i, tab in enumerate(tabs):
+                            if tab.has_focus or tab.has_focus_within:
+                                current_idx = i
+                                break
+                        prev_idx = (current_idx - 1) % len(tabs)
+                        parent.active = tabs[prev_idx].id or ""
+        except Exception:
+            pass
 
     def action_enter_jump_mode(self) -> None:
         """Enter jump mode for quick panel navigation."""

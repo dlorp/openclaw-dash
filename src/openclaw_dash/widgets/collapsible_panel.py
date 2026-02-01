@@ -58,6 +58,7 @@ class CollapsiblePanel(Container):
 
     class Collapsed(Message):
         """Posted when panel is collapsed."""
+
         def __init__(self, panel_id: str, collapsed: bool) -> None:
             super().__init__()
             self.panel_id = panel_id

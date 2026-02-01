@@ -12,12 +12,13 @@ from textual.theme import Theme
 # These are the canonical brand colors used throughout the dashboard.
 # Reference these constants instead of hardcoding hex values.
 
+
 class BrandColors:
     """dlorp brand color palette."""
 
-    GRANITE_GRAY = "#636764"      # Borders, muted elements
-    DARK_ORANGE = "#FB8B24"       # Warnings, important actions
-    TITANIUM_YELLOW = "#F4E409"   # Highlights, focus states
+    GRANITE_GRAY = "#636764"  # Borders, muted elements
+    DARK_ORANGE = "#FB8B24"  # Warnings, important actions
+    TITANIUM_YELLOW = "#F4E409"  # Highlights, focus states
     MEDIUM_TURQUOISE = "#50D8D7"  # Success, online status
     ROYAL_BLUE_LIGHT = "#3B60E4"  # Primary, links
 
