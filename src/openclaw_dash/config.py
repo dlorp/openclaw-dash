@@ -11,7 +11,12 @@ from typing import Any
 
 # tomli-w for writing (tomllib is read-only)
 import tomli_w
-import tomllib
+
+# tomllib is stdlib in 3.11+, use tomli as fallback for 3.10
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
 
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "openclaw-dash"
 DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / "config.toml"
