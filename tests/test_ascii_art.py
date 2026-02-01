@@ -1,7 +1,5 @@
 """Tests for ASCII art utilities."""
 
-import pytest
-
 from openclaw_dash.widgets.ascii_art import (
     DOUBLE,
     ROUNDED,

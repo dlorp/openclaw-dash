@@ -6,7 +6,6 @@ from textual.widgets import Static
 from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
 from openclaw_dash.widgets.ascii_art import (
     STATUS_SYMBOLS,
-    format_with_trend,
     mini_bar,
     progress_bar,
     separator,
@@ -43,12 +42,18 @@ class CostsPanel(Static):
         else:
             lines.append(f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${today_cost:.4f}")
 
-        lines.append(f"  {STATUS_SYMBOLS['arrow_right']} Input: {today.get('input_tokens', 0):,} tokens")
-        lines.append(f"  {STATUS_SYMBOLS['arrow_right']} Output: {today.get('output_tokens', 0):,} tokens")
+        lines.append(
+            f"  {STATUS_SYMBOLS['arrow_right']} Input: {today.get('input_tokens', 0):,} tokens"
+        )
+        lines.append(
+            f"  {STATUS_SYMBOLS['arrow_right']} Output: {today.get('output_tokens', 0):,} tokens"
+        )
 
         lines.append(separator(30, style="dotted"))
 
-        lines.append(f"[bold]{STATUS_SYMBOLS['star']} All time:[/] ${summary.get('total_cost', 0):.2f}")
+        lines.append(
+            f"[bold]{STATUS_SYMBOLS['star']} All time:[/] ${summary.get('total_cost', 0):.2f}"
+        )
         lines.append(f"  Avg daily: ${summary.get('avg_daily_cost', 0):.2f}")
 
         # Model breakdown with mini bars
@@ -83,7 +88,9 @@ class PerformancePanel(Static):
         latency_history = data.get("latency_history", [])
 
         # Build sparkline from latency history
-        latency_values = [d.get("avg_ms", 0) for d in latency_history[-12:]] if latency_history else []
+        latency_values = (
+            [d.get("avg_ms", 0) for d in latency_history[-12:]] if latency_history else []
+        )
 
         lines = []
 
@@ -104,7 +111,9 @@ class PerformancePanel(Static):
         avg_latency = summary.get("avg_latency_ms", 0)
         if latency_values:
             spark = sparkline(latency_values, width=10)
-            lines.append(f"{STATUS_SYMBOLS['lightning']} [bold]Latency:[/] {avg_latency:.0f}ms  {spark}")
+            lines.append(
+                f"{STATUS_SYMBOLS['lightning']} [bold]Latency:[/] {avg_latency:.0f}ms  {spark}"
+            )
         else:
             lines.append(f"{STATUS_SYMBOLS['lightning']} [bold]Latency:[/] {avg_latency:.0f}ms")
 
@@ -150,7 +159,9 @@ class GitHubPanel(Static):
         # Streak display with fire emoji based on length
         streak_days = streak.get("streak_days", 0)
         if streak_days >= 30:
-            streak_icon = f"{STATUS_SYMBOLS['fire']}{STATUS_SYMBOLS['fire']}{STATUS_SYMBOLS['fire']}"
+            streak_icon = (
+                f"{STATUS_SYMBOLS['fire']}{STATUS_SYMBOLS['fire']}{STATUS_SYMBOLS['fire']}"
+            )
         elif streak_days >= 7:
             streak_icon = f"{STATUS_SYMBOLS['fire']}{STATUS_SYMBOLS['fire']}"
         elif streak_days > 0:
@@ -161,13 +172,19 @@ class GitHubPanel(Static):
         lines = []
 
         # Streak with sparkline of commit activity
-        commit_counts = [d.get("commits", 0) for d in commit_history[-14:]] if commit_history else []
+        commit_counts = (
+            [d.get("commits", 0) for d in commit_history[-14:]] if commit_history else []
+        )
         if commit_counts:
             spark = sparkline(commit_counts, width=14)
-            lines.append(f"[bold]{STATUS_SYMBOLS['star']} Streak:[/] {streak_days} days {streak_icon}")
+            lines.append(
+                f"[bold]{STATUS_SYMBOLS['star']} Streak:[/] {streak_days} days {streak_icon}"
+            )
             lines.append(f"  {spark}")
         else:
-            lines.append(f"[bold]{STATUS_SYMBOLS['star']} Streak:[/] {streak_days} days {streak_icon}")
+            lines.append(
+                f"[bold]{STATUS_SYMBOLS['star']} Streak:[/] {streak_days} days {streak_icon}"
+            )
 
         if streak.get("username"):
             lines.append(f"  [dim]@{streak['username']}[/]")
@@ -184,7 +201,7 @@ class GitHubPanel(Static):
         # Visual bar showing PR cycle range
         if slowest > 0:
             fast_ratio = fastest / slowest
-            avg_ratio = avg_cycle / slowest
+            avg_cycle / slowest
             lines.append(
                 f"  {STATUS_SYMBOLS['triangle_right']} Fastest: {fastest:.1f}h {mini_bar(fast_ratio, 6)}"
             )
@@ -246,7 +263,9 @@ class MetricsPanel(Static):
             error_bar = progress_bar(error_rate / 100, width=8, show_percent=False, style="block")
 
             latency_history = perf.get("latency_history", [])
-            latency_values = [d.get("avg_ms", 0) for d in latency_history[-8:]] if latency_history else []
+            latency_values = (
+                [d.get("avg_ms", 0) for d in latency_history[-8:]] if latency_history else []
+            )
 
             perf_line = (
                 f"[bold]{STATUS_SYMBOLS['lightning']} Perf:[/] {summary.get('total_calls', 0)} calls, "
@@ -269,7 +288,9 @@ class MetricsPanel(Static):
             streak_icon = STATUS_SYMBOLS["fire"] if streak > 0 else STATUS_SYMBOLS["snowflake"]
 
             commit_history = gh.get("commit_history", [])
-            commit_values = [d.get("commits", 0) for d in commit_history[-10:]] if commit_history else []
+            commit_values = (
+                [d.get("commits", 0) for d in commit_history[-10:]] if commit_history else []
+            )
 
             gh_line = f"[bold]{STATUS_SYMBOLS['star']} GitHub:[/] {streak}d streak {streak_icon}, {cycle:.1f}h PR cycle"
             if commit_values:

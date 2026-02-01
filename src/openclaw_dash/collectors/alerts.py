@@ -13,8 +13,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class Severity(IntEnum):
@@ -36,7 +35,7 @@ class Alert:
     source: str
     description: str = ""
     timestamp: datetime = field(default_factory=datetime.now)
-    url: Optional[str] = None
+    url: str | None = None
     metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

@@ -3,10 +3,14 @@
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from openclaw_dash.collectors import alerts
-from openclaw_dash.collectors.alerts import Alert, Severity, collect, get_severity_color, get_severity_icon
+from openclaw_dash.collectors.alerts import (
+    Alert,
+    Severity,
+    collect,
+    get_severity_color,
+    get_severity_icon,
+)
 
 
 class TestAlert:
@@ -126,19 +130,18 @@ class TestCollect:
 
     @patch("openclaw_dash.collectors.alerts.collect_ci_failures")
     def test_collect_excludes_ci_when_disabled(self, mock_ci):
-        result = collect(include_ci=False, include_security=False, include_context=False)
+        collect(include_ci=False, include_security=False, include_context=False)
         mock_ci.assert_not_called()
 
     def test_alerts_sorted_by_severity(self):
         """Verify that alerts are sorted by severity (critical first)."""
-        with patch("openclaw_dash.collectors.alerts.collect_ci_failures") as mock_ci, \
-             patch("openclaw_dash.collectors.alerts.collect_security_vulnerabilities") as mock_sec, \
-             patch("openclaw_dash.collectors.alerts.collect_context_warnings") as mock_ctx:
-
+        with (
+            patch("openclaw_dash.collectors.alerts.collect_ci_failures") as mock_ci,
+            patch("openclaw_dash.collectors.alerts.collect_security_vulnerabilities") as mock_sec,
+            patch("openclaw_dash.collectors.alerts.collect_context_warnings") as mock_ctx,
+        ):
             # Return alerts in wrong order
-            mock_ci.return_value = [
-                Alert(severity=Severity.LOW, title="Low priority", source="ci")
-            ]
+            mock_ci.return_value = [Alert(severity=Severity.LOW, title="Low priority", source="ci")]
             mock_sec.return_value = [
                 Alert(severity=Severity.CRITICAL, title="Critical!", source="security")
             ]
@@ -167,6 +170,7 @@ class TestCollectCIFailures:
     @patch("subprocess.run")
     def test_parses_github_response(self, mock_run):
         import json
+
         now = datetime.now()
         mock_response = [
             {
@@ -194,6 +198,7 @@ class TestCollectContextWarnings:
     @patch("subprocess.run")
     def test_no_warning_under_threshold(self, mock_run):
         import json
+
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout=json.dumps({"contextUsage": 0.5}),
@@ -204,6 +209,7 @@ class TestCollectContextWarnings:
     @patch("subprocess.run")
     def test_warning_at_high_usage(self, mock_run):
         import json
+
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout=json.dumps({"contextUsage": 0.80}),  # 80%
@@ -215,6 +221,7 @@ class TestCollectContextWarnings:
     @patch("subprocess.run")
     def test_critical_at_very_high_usage(self, mock_run):
         import json
+
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout=json.dumps({"contextUsage": 0.95}),  # 95%
