@@ -1,6 +1,6 @@
 """Tests for data collectors."""
 
-from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+from openclaw_dash.collectors import activity, channels, cron, gateway, repos, sessions
 
 
 class TestGatewayCollector:
@@ -52,3 +52,25 @@ class TestActivityCollector:
         assert isinstance(result, dict)
         assert "current_task" in result
         assert "recent" in result
+
+
+class TestChannelsCollector:
+    def test_collect_returns_dict(self):
+        result = channels.collect()
+        assert isinstance(result, dict)
+        assert "channels" in result
+        assert "connected" in result
+        assert "total" in result
+
+    def test_channels_is_list(self):
+        result = channels.collect()
+        assert isinstance(result["channels"], list)
+
+    def test_get_channel_icon(self):
+        assert channels.get_channel_icon("discord") == "🎮"
+        assert channels.get_channel_icon("telegram") == "✈️"
+        assert channels.get_channel_icon("unknown") == "📱"
+
+    def test_get_status_icon(self):
+        assert channels.get_status_icon("connected") == "✓"
+        assert channels.get_status_icon("disabled") == "—"
