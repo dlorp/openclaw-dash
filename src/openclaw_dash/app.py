@@ -17,6 +17,7 @@ from openclaw_dash.widgets.ascii_art import (
 )
 from openclaw_dash.widgets.channels import ChannelsPanel
 from openclaw_dash.widgets.help_panel import HelpScreen
+from openclaw_dash.widgets.logs import LogsPanel
 from openclaw_dash.widgets.metrics import MetricsPanel
 from openclaw_dash.widgets.notifications import (
     notify_panel_error,
@@ -175,7 +176,7 @@ class DashboardApp(App):
     CSS = """
     Screen {
         layout: grid;
-        grid-size: 3 5;
+        grid-size: 3 6;
         grid-gutter: 1;
         padding: 1;
     }
@@ -194,6 +195,7 @@ class DashboardApp(App):
     #sessions-panel { }
     #metrics-panel { column-span: 2; }
     #security-panel { column-span: 2; row-span: 1; }
+    #logs-panel { column-span: 3; row-span: 1; }
 
     DataTable { height: auto; }
     """
@@ -210,6 +212,7 @@ class DashboardApp(App):
         ("a", "focus_panel('alerts-panel')", "Alerts"),
         ("c", "focus_panel('cron-panel')", "Cron"),
         ("p", "focus_panel('repos-panel')", "Repos"),
+        ("l", "focus_panel('logs-panel')", "Logs"),
     ]
 
     _mounted: bool = False  # Track if initial mount is complete (for notifications)
@@ -257,6 +260,10 @@ class DashboardApp(App):
             yield Static("[bold]🔒 Security[/]")
             yield SecurityPanel()
 
+        with Container(id="logs-panel", classes="panel"):
+            yield Static("[bold]📜 Logs[/]")
+            yield LogsPanel(n_lines=12)
+
         yield Footer()
 
     def on_mount(self) -> None:
@@ -282,6 +289,7 @@ class DashboardApp(App):
             ChannelsPanel,
             MetricsPanel,
             SecurityPanel,
+            LogsPanel,
         ]:
             try:
                 panel = self.query_one(panel_cls)

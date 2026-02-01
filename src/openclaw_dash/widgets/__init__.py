@@ -15,6 +15,7 @@ from openclaw_dash.widgets.ascii_art import (
     trend_indicator,
 )
 from openclaw_dash.widgets.help_panel import HelpScreen
+from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
 from openclaw_dash.widgets.notifications import (
     NotificationLevel,
     notify,
@@ -47,6 +48,8 @@ __all__ = [
     "trend_indicator",
     "format_with_trend",
     "HelpScreen",
+    "LogsPanel",
+    "LogsSummaryPanel",
     "SecurityPanel",
     "SecuritySummaryPanel",
     "DepsPanel",
