@@ -1,54 +1,58 @@
 """Backup verification: check memory files and workspace sync."""
 
-import json
 import subprocess
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
 class BackupConfig:
     """Configuration for backup verification."""
+
     workspace_path: Path = field(default_factory=lambda: Path.home() / ".openclaw" / "workspace")
     memory_subdir: str = "memory"
     max_age_hours: int = 48  # Memory files older than this are considered stale
-    required_files: list[str] = field(default_factory=lambda: [
-        "AGENTS.md",
-        "SOUL.md",
-        "USER.md",
-        "MEMORY.md",
-    ])
+    required_files: list[str] = field(
+        default_factory=lambda: [
+            "AGENTS.md",
+            "SOUL.md",
+            "USER.md",
+            "MEMORY.md",
+        ]
+    )
 
 
 @dataclass
 class FileCheck:
     """Result of checking a single file."""
+
     path: str
     exists: bool
     size_bytes: int
-    last_modified: Optional[datetime]
-    age_hours: Optional[float]
+    last_modified: datetime | None
+    age_hours: float | None
     status: str  # ok, missing, stale, empty
 
 
 @dataclass
 class SyncCheck:
     """Result of checking workspace sync status."""
+
     is_git_repo: bool
     has_remote: bool
     branch: str
     ahead: int
     behind: int
     uncommitted: int
-    last_commit_date: Optional[datetime]
+    last_commit_date: datetime | None
     status: str  # synced, ahead, behind, dirty, not-a-repo
 
 
 @dataclass
 class BackupReport:
     """Complete backup verification report."""
+
     timestamp: datetime
     workspace_path: str
     file_checks: list[FileCheck]
@@ -58,7 +62,7 @@ class BackupReport:
     issues: list[str]
 
 
-def run(cmd: str, cwd: Optional[Path] = None, timeout: int = 30) -> tuple[int, str, str]:
+def run(cmd: str, cwd: Path | None = None, timeout: int = 30) -> tuple[int, str, str]:
     """Run a shell command and return (returncode, stdout, stderr)."""
     try:
         result = subprocess.run(
@@ -74,10 +78,10 @@ def run(cmd: str, cwd: Optional[Path] = None, timeout: int = 30) -> tuple[int, s
 class BackupVerifier:
     """Verify backup status of workspace and memory files."""
 
-    def __init__(self, config: Optional[BackupConfig] = None):
+    def __init__(self, config: BackupConfig | None = None):
         self.config = config or BackupConfig()
 
-    def check_file(self, path: Path, max_age_hours: Optional[int] = None) -> FileCheck:
+    def check_file(self, path: Path, max_age_hours: int | None = None) -> FileCheck:
         """Check status of a single file."""
         if not path.exists():
             return FileCheck(
@@ -88,18 +92,18 @@ class BackupVerifier:
                 age_hours=None,
                 status="missing",
             )
-        
+
         stat = path.stat()
         mtime = datetime.fromtimestamp(stat.st_mtime)
         age_hours = (datetime.now() - mtime).total_seconds() / 3600
-        
+
         if stat.st_size == 0:
             status = "empty"
         elif max_age_hours and age_hours > max_age_hours:
             status = "stale"
         else:
             status = "ok"
-        
+
         return FileCheck(
             path=str(path),
             exists=True,
@@ -121,36 +125,38 @@ class BackupVerifier:
         """Check recent memory files."""
         memory_dir = self.config.workspace_path / self.config.memory_subdir
         checks = []
-        
+
         if not memory_dir.exists():
-            return [FileCheck(
-                path=str(memory_dir),
-                exists=False,
-                size_bytes=0,
-                last_modified=None,
-                age_hours=None,
-                status="missing",
-            )]
-        
+            return [
+                FileCheck(
+                    path=str(memory_dir),
+                    exists=False,
+                    size_bytes=0,
+                    last_modified=None,
+                    age_hours=None,
+                    status="missing",
+                )
+            ]
+
         # Check for today's and yesterday's memory files
         today = datetime.now().strftime("%Y-%m-%d")
         yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-        
+
         for date_str in [today, yesterday]:
             path = memory_dir / f"{date_str}.md"
             checks.append(self.check_file(path, max_age_hours=self.config.max_age_hours))
-        
+
         # Also check any other recent files
         for path in sorted(memory_dir.glob("*.md"), reverse=True)[:5]:
             if path.name not in [f"{today}.md", f"{yesterday}.md"]:
                 checks.append(self.check_file(path, max_age_hours=self.config.max_age_hours * 2))
-        
+
         return checks
 
     def check_sync_status(self) -> SyncCheck:
         """Check git sync status of workspace."""
         workspace = self.config.workspace_path
-        
+
         # Check if it's a git repo
         code, _, _ = run("git rev-parse --is-inside-work-tree", cwd=workspace)
         if code != 0:
@@ -164,36 +170,41 @@ class BackupVerifier:
                 last_commit_date=None,
                 status="not-a-repo",
             )
-        
+
         # Get current branch
         _, branch, _ = run("git branch --show-current", cwd=workspace)
-        
+
         # Check for remote
         code, remotes, _ = run("git remote", cwd=workspace)
         has_remote = bool(remotes.strip())
-        
+
         # Get ahead/behind counts
         ahead, behind = 0, 0
         if has_remote:
-            _, status, _ = run(f"git rev-list --left-right --count origin/{branch}...HEAD 2>/dev/null", cwd=workspace)
+            _, status, _ = run(
+                f"git rev-list --left-right --count origin/{branch}...HEAD 2>/dev/null",
+                cwd=workspace,
+            )
             parts = status.split()
             if len(parts) == 2:
                 try:
                     behind, ahead = int(parts[0]), int(parts[1])
                 except ValueError:
                     pass
-        
+
         # Check uncommitted changes
         _, diff_output, _ = run("git status --porcelain", cwd=workspace)
-        uncommitted = len([l for l in diff_output.split("\n") if l.strip()])
-        
+        uncommitted = len([line for line in diff_output.split("\n") if line.strip()])
+
         # Get last commit date
         _, commit_date_str, _ = run("git log -1 --format=%ci", cwd=workspace)
         try:
-            last_commit_date = datetime.fromisoformat(commit_date_str.replace(" ", "T").split("+")[0])
+            last_commit_date = datetime.fromisoformat(
+                commit_date_str.replace(" ", "T").split("+")[0]
+            )
         except ValueError:
             last_commit_date = None
-        
+
         # Determine status
         if uncommitted > 0:
             status = "dirty"
@@ -203,7 +214,7 @@ class BackupVerifier:
             status = "ahead"
         else:
             status = "synced"
-        
+
         return SyncCheck(
             is_git_repo=True,
             has_remote=has_remote,
@@ -220,25 +231,27 @@ class BackupVerifier:
         file_checks = self.check_required_files()
         memory_checks = self.check_memory_files()
         sync_check = self.check_sync_status()
-        
+
         issues = []
-        
+
         # Check required files
         for check in file_checks:
             if check.status == "missing":
                 issues.append(f"Missing required file: {Path(check.path).name}")
             elif check.status == "empty":
                 issues.append(f"Empty required file: {Path(check.path).name}")
-        
+
         # Check memory files
-        today_check = next((c for c in memory_checks if datetime.now().strftime("%Y-%m-%d") in c.path), None)
+        today_check = next(
+            (c for c in memory_checks if datetime.now().strftime("%Y-%m-%d") in c.path), None
+        )
         if today_check and today_check.status == "missing":
             issues.append("No memory file for today")
-        
+
         stale_memory = [c for c in memory_checks if c.status == "stale"]
         if stale_memory:
             issues.append(f"{len(stale_memory)} stale memory file(s)")
-        
+
         # Check sync status
         if sync_check.status == "dirty":
             issues.append(f"{sync_check.uncommitted} uncommitted changes in workspace")
@@ -246,18 +259,18 @@ class BackupVerifier:
             issues.append(f"Workspace is {sync_check.behind} commits behind remote")
         elif sync_check.status == "not-a-repo":
             issues.append("Workspace is not a git repository")
-        
+
         # Determine overall status
         critical_issues = [i for i in issues if "Missing required" in i or "not a git" in i]
         warning_issues = [i for i in issues if i not in critical_issues]
-        
+
         if critical_issues:
             overall_status = "critical"
         elif warning_issues:
             overall_status = "warning"
         else:
             overall_status = "healthy"
-        
+
         return BackupReport(
             timestamp=datetime.now(),
             workspace_path=str(self.config.workspace_path),
@@ -276,14 +289,14 @@ def format_backup_report(report: BackupReport) -> str:
         "warning": "⚠️",
         "critical": "🚨",
     }
-    
+
     file_emoji = {
         "ok": "✅",
         "missing": "❌",
         "stale": "⏰",
         "empty": "📭",
     }
-    
+
     sync_emoji = {
         "synced": "✅",
         "ahead": "⬆️",
@@ -291,23 +304,23 @@ def format_backup_report(report: BackupReport) -> str:
         "dirty": "📝",
         "not-a-repo": "❌",
     }
-    
+
     lines = [
-        f"## 💾 Backup Verification Report",
+        "## 💾 Backup Verification Report",
         "",
         f"**Status:** {status_emoji.get(report.overall_status, '❓')} {report.overall_status.upper()}",
         f"**Workspace:** `{report.workspace_path}`",
         f"**Checked:** {report.timestamp.strftime('%Y-%m-%d %H:%M')}",
         "",
     ]
-    
+
     # Issues
     if report.issues:
         lines.append("### ⚠️ Issues Found")
         for issue in report.issues:
             lines.append(f"- {issue}")
         lines.append("")
-    
+
     # Required files
     lines.append("### 📄 Required Files")
     for check in report.file_checks:
@@ -320,7 +333,7 @@ def format_backup_report(report: BackupReport) -> str:
         else:
             lines.append(f"- {emoji} **{name}** — not found")
     lines.append("")
-    
+
     # Memory files
     lines.append("### 🧠 Memory Files")
     for check in report.memory_checks:
@@ -333,12 +346,12 @@ def format_backup_report(report: BackupReport) -> str:
         else:
             lines.append(f"- {emoji} **{name}** — not found")
     lines.append("")
-    
+
     # Sync status
     sync = report.sync_check
     lines.append("### 🔄 Sync Status")
     lines.append(f"- **Status:** {sync_emoji.get(sync.status, '❓')} {sync.status}")
-    
+
     if sync.is_git_repo:
         lines.append(f"- **Branch:** {sync.branch}")
         if sync.has_remote:
@@ -347,7 +360,7 @@ def format_backup_report(report: BackupReport) -> str:
             lines.append(f"- **Uncommitted:** {sync.uncommitted} files")
         if sync.last_commit_date:
             lines.append(f"- **Last commit:** {sync.last_commit_date.strftime('%Y-%m-%d %H:%M')}")
-    
+
     return "\n".join(lines)
 
 
@@ -358,9 +371,9 @@ def format_backup_summary(report: BackupReport) -> str:
         "warning": "⚠️",
         "critical": "🚨",
     }
-    
+
     emoji = status_emoji.get(report.overall_status, "❓")
-    
+
     if report.overall_status == "healthy":
         return f"{emoji} Backup status: **healthy** — all files present, workspace synced"
     else:

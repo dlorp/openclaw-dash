@@ -8,7 +8,7 @@ from typing import Any
 
 def get_status() -> dict[str, Any]:
     """Collect current status from all sources."""
-    from openclaw_dash.collectors import gateway, sessions, cron, repos, activity
+    from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 
     return {
         "gateway": gateway.collect(),
@@ -21,7 +21,7 @@ def get_status() -> dict[str, Any]:
 
 def get_metrics() -> dict[str, Any]:
     """Collect all metrics."""
-    from openclaw_dash.metrics import CostTracker, PerformanceMetrics, GitHubMetrics
+    from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
 
     return {
         "costs": CostTracker().collect(),
@@ -32,10 +32,10 @@ def get_metrics() -> dict[str, Any]:
 
 def print_metrics_text(metrics: dict[str, Any]) -> None:
     """Print metrics in human-readable format."""
+    from rich import box
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich import box
 
     console = Console()
 
@@ -95,10 +95,10 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
 
 def print_status_text(status: dict[str, Any]) -> None:
     """Print status in human-readable format."""
+    from rich import box
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich import box
 
     console = Console()
 
@@ -106,22 +106,26 @@ def print_status_text(status: dict[str, Any]) -> None:
     gw = status["gateway"]
     gw_icon = "✓" if gw.get("healthy") else "✗"
     gw_color = "green" if gw.get("healthy") else "red"
-    console.print(Panel(
-        f"[{gw_color}]{gw_icon} {'ONLINE' if gw.get('healthy') else 'OFFLINE'}[/]\n"
-        f"Context: {gw.get('context_pct', '?')}%\n"
-        f"Uptime: {gw.get('uptime', 'unknown')}",
-        title="Gateway",
-        box=box.ROUNDED,
-    ))
+    console.print(
+        Panel(
+            f"[{gw_color}]{gw_icon} {'ONLINE' if gw.get('healthy') else 'OFFLINE'}[/]\n"
+            f"Context: {gw.get('context_pct', '?')}%\n"
+            f"Uptime: {gw.get('uptime', 'unknown')}",
+            title="Gateway",
+            box=box.ROUNDED,
+        )
+    )
 
     # Current task / activity
     act = status.get("activity", {})
     if act.get("current_task"):
-        console.print(Panel(
-            f"[bold]{act['current_task']}[/]",
-            title="Current Task",
-            box=box.ROUNDED,
-        ))
+        console.print(
+            Panel(
+                f"[bold]{act['current_task']}[/]",
+                title="Current Task",
+                box=box.ROUNDED,
+            )
+        )
 
     # Recent activity
     if act.get("recent"):
@@ -144,6 +148,7 @@ def print_status_text(status: dict[str, Any]) -> None:
 def run_tui() -> None:
     """Launch the TUI dashboard."""
     from openclaw_dash.app import DashboardApp
+
     app = DashboardApp()
     app.run()
 
@@ -156,14 +161,20 @@ def main() -> int:
     )
     parser.add_argument("--status", action="store_true", help="Quick text status")
     parser.add_argument("--json", action="store_true", help="JSON output")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__import__('openclaw_dash').__version__}")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__import__('openclaw_dash').__version__}"
+    )
 
     # Subparsers for commands
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Metrics subcommand
-    metrics_parser = subparsers.add_parser("metrics", help="Show metrics (costs, performance, github)")
-    metrics_parser.add_argument("--json", dest="metrics_json", action="store_true", help="JSON output")
+    metrics_parser = subparsers.add_parser(
+        "metrics", help="Show metrics (costs, performance, github)"
+    )
+    metrics_parser.add_argument(
+        "--json", dest="metrics_json", action="store_true", help="JSON output"
+    )
     metrics_parser.add_argument("--costs", action="store_true", help="Show only costs")
     metrics_parser.add_argument("--performance", action="store_true", help="Show only performance")
     metrics_parser.add_argument("--github", action="store_true", help="Show only GitHub metrics")
