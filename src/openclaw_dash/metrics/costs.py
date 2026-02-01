@@ -2,8 +2,8 @@
 
 import json
 import subprocess
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, date
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +27,7 @@ DEFAULT_METRICS_DIR = Path.home() / ".openclaw" / "workspace" / "metrics"
 @dataclass
 class SessionCost:
     """Cost data for a single session."""
+
     session_key: str
     model: str
     input_tokens: int
@@ -41,6 +42,7 @@ class SessionCost:
 @dataclass
 class DailyCosts:
     """Aggregated costs for a day."""
+
     date: str
     total_input_tokens: int = 0
     total_output_tokens: int = 0
@@ -62,7 +64,7 @@ class CostTracker:
         if self.costs_file.exists():
             try:
                 return json.loads(self.costs_file.read_text())
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 pass
         return {"daily": {}, "sessions": {}}
 
@@ -71,12 +73,16 @@ class CostTracker:
         self.costs_file.write_text(json.dumps(data, indent=2, default=str))
 
     @staticmethod
-    def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> tuple[float, float, float]:
+    def calculate_cost(
+        model: str, input_tokens: int, output_tokens: int
+    ) -> tuple[float, float, float]:
         """Calculate costs for given token counts.
-        
+
         Returns: (input_cost, output_cost, total_cost) in USD
         """
-        pricing = MODEL_PRICING.get(model, MODEL_PRICING.get("claude-sonnet-4", {"input": 3.0, "output": 15.0}))
+        pricing = MODEL_PRICING.get(
+            model, MODEL_PRICING.get("claude-sonnet-4", {"input": 3.0, "output": 15.0})
+        )
         input_cost = (input_tokens / 1_000_000) * pricing["input"]
         output_cost = (output_tokens / 1_000_000) * pricing["output"]
         return input_cost, output_cost, input_cost + output_cost
@@ -95,14 +101,14 @@ class CostTracker:
                 return data.get("sessions", [])
         except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
             pass
-        
+
         # Fallback: try reading sessions file directly
         sessions_file = Path.home() / ".openclaw" / "agents" / "main" / "sessions" / "sessions.json"
         if sessions_file.exists():
             try:
                 data = json.loads(sessions_file.read_text())
                 return data.get("sessions", [])
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 pass
         return []
 
@@ -111,57 +117,56 @@ class CostTracker:
         sessions = self.get_sessions_data()
         history = self._load_history()
         today = date.today().isoformat()
-        
+
         # Initialize today's data if needed
         if today not in history["daily"]:
             history["daily"][today] = asdict(DailyCosts(date=today))
-        
+
         today_data = history["daily"][today]
-        updated = False
-        
+
         for session in sessions:
             key = session.get("key", session.get("sessionKey", ""))
             if not key:
                 continue
-                
+
             model = session.get("model", "unknown")
             input_tokens = session.get("inputTokens", 0) or 0
             output_tokens = session.get("outputTokens", 0) or 0
             total_tokens = session.get("totalTokens", 0) or 0
-            
+
             # Skip if no tokens used
             if total_tokens == 0:
                 continue
-            
+
             # Check if we've already recorded this session state
             session_record = history["sessions"].get(key, {})
             if session_record.get("total_tokens", 0) >= total_tokens:
                 continue  # No new tokens
-            
+
             # Calculate incremental tokens
             prev_input = session_record.get("input_tokens", 0)
             prev_output = session_record.get("output_tokens", 0)
             new_input = max(0, input_tokens - prev_input)
             new_output = max(0, output_tokens - prev_output)
-            
+
             if new_input == 0 and new_output == 0:
                 continue
-            
+
             input_cost, output_cost, total_cost = self.calculate_cost(model, new_input, new_output)
-            
+
             # Update today's totals
             today_data["total_input_tokens"] += new_input
             today_data["total_output_tokens"] += new_output
             today_data["total_cost"] += total_cost
             today_data["session_count"] += 1
-            
+
             # Update model breakdown
             if model not in today_data["by_model"]:
                 today_data["by_model"][model] = {"input_tokens": 0, "output_tokens": 0, "cost": 0.0}
             today_data["by_model"][model]["input_tokens"] += new_input
             today_data["by_model"][model]["output_tokens"] += new_output
             today_data["by_model"][model]["cost"] += total_cost
-            
+
             # Update session record
             history["sessions"][key] = {
                 "input_tokens": input_tokens,
@@ -170,20 +175,19 @@ class CostTracker:
                 "model": model,
                 "last_updated": datetime.now().isoformat(),
             }
-            updated = True
-        
+
         # Always save to ensure daily entry exists
         self._save_history(history)
-        
+
         # Calculate summary stats
         total_all_time = sum(d.get("total_cost", 0) for d in history["daily"].values())
         days_tracked = len(history["daily"])
         avg_daily = total_all_time / days_tracked if days_tracked > 0 else 0
-        
+
         # Get last 7 days trend
         recent_dates = sorted(history["daily"].keys(), reverse=True)[:7]
         recent_costs = [history["daily"][d].get("total_cost", 0) for d in recent_dates]
-        
+
         return {
             "today": {
                 "date": today,

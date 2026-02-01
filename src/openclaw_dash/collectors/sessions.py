@@ -1,9 +1,9 @@
 """Sessions collector."""
 
-import subprocess
 import json
-from typing import Any
+import subprocess
 from datetime import datetime
+from typing import Any
 
 
 def collect() -> dict[str, Any]:
@@ -19,12 +19,16 @@ def collect() -> dict[str, Any]:
             data = json.loads(result.stdout)
             sessions = []
             for s in data.get("sessions", []):
-                sessions.append({
-                    "key": s.get("key", s.get("sessionKey", "?")),
-                    "kind": s.get("kind", "unknown"),
-                    "active": s.get("active", False),
-                    "context_pct": s.get("contextUsage", 0) * 100 if s.get("contextUsage") else 0,
-                })
+                sessions.append(
+                    {
+                        "key": s.get("key", s.get("sessionKey", "?")),
+                        "kind": s.get("kind", "unknown"),
+                        "active": s.get("active", False),
+                        "context_pct": s.get("contextUsage", 0) * 100
+                        if s.get("contextUsage")
+                        else 0,
+                    }
+                )
             return {
                 "sessions": sessions,
                 "total": len(sessions),

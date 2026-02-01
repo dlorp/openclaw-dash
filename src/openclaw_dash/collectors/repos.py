@@ -1,10 +1,10 @@
 """Repository health collector."""
 
-import subprocess
 import json
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Any
-from datetime import datetime
 
 DEFAULT_REPOS = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
 REPO_BASE = Path.home() / "repos"
