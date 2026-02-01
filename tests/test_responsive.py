@@ -1,7 +1,5 @@
 """Tests for responsive layout features."""
 
-import pytest
-
 from openclaw_dash.app import (
     COMPACT_WIDTH,
     MINIMUM_WIDTH,
