@@ -247,6 +247,7 @@ class DashboardApp(App):
     """
 
     BINDINGS = [
+        ("ctrl+p", "command_palette", "Commands"),
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("t", "cycle_theme", "Theme"),
