@@ -14,6 +14,7 @@ from openclaw_dash.widgets.ascii_art import (
     status_indicator,
 )
 from openclaw_dash.widgets.channels import ChannelsPanel
+from openclaw_dash.widgets.metrics import MetricsPanel
 
 
 class GatewayPanel(Static):
@@ -181,6 +182,7 @@ class DashboardApp(App):
     #activity-panel { row-span: 2; }
     #cron-panel { }
     #sessions-panel { }
+    #metrics-panel { column-span: 2; }
 
     DataTable { height: auto; }
     """
@@ -225,6 +227,10 @@ class DashboardApp(App):
             yield Static("[bold]Channels[/]")
             yield ChannelsPanel()
 
+        with Container(id="metrics-panel", classes="panel"):
+            yield Static("[bold]📊 Metrics[/]")
+            yield MetricsPanel()
+
         yield Footer()
 
     def on_mount(self) -> None:
@@ -241,6 +247,7 @@ class DashboardApp(App):
             CronPanel,
             SessionsPanel,
             ChannelsPanel,
+            MetricsPanel,
         ]:
             try:
                 panel = self.query_one(panel_cls)
