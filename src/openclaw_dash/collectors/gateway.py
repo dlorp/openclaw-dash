@@ -5,9 +5,15 @@ import subprocess
 from datetime import datetime
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode, mock_gateway_status
+
 
 def collect() -> dict[str, Any]:
     """Collect gateway status."""
+    # Return mock data in demo mode
+    if is_demo_mode():
+        return mock_gateway_status()
+
     try:
         result = subprocess.run(
             ["openclaw", "gateway", "status", "--json"],

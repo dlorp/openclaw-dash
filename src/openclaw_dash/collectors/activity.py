@@ -9,12 +9,26 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode, mock_activity
+
 WORKSPACE = Path.home() / ".openclaw" / "workspace"
 ACTIVITY_LOG = WORKSPACE / "memory" / "activity.json"
 
 
 def collect() -> dict[str, Any]:
     """Collect current task and recent activity."""
+    # Return mock data in demo mode
+    if is_demo_mode():
+        activity = mock_activity()
+        return {
+            "current_task": "Building new feature for project-x",
+            "recent": [
+                {"time": a["time"].isoformat(), "action": a["action"], "type": a["type"]}
+                for a in activity
+            ],
+            "collected_at": datetime.now().isoformat(),
+        }
+
     result = {
         "current_task": None,
         "recent": [],

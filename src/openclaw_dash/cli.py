@@ -393,6 +393,11 @@ def main() -> int:
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__import__('openclaw_dash').__version__}"
     )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Run with mock data (no gateway connection required)",
+    )
 
     # Subparsers for commands
     subparsers = parser.add_subparsers(dest="command", help="Commands")
@@ -510,6 +515,12 @@ def main() -> int:
         else:
             print_status_text(status)
         return 0
+
+    # Enable demo mode if requested
+    if args.demo:
+        from openclaw_dash.demo import enable_demo_mode
+
+        enable_demo_mode()
 
     # Watch mode uses 5s refresh interval
     refresh_interval = 5 if args.watch else None
