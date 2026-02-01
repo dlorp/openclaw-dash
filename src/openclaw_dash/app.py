@@ -2,7 +2,6 @@
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
-from textual.events import Resize
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
@@ -26,11 +25,8 @@ from openclaw_dash.widgets.notifications import (
     notify_panel_error,
     notify_refresh,
 )
+from openclaw_dash.widgets.resources import ResourcesPanel
 from openclaw_dash.widgets.security import SecurityPanel
-
-# Responsive breakpoints (width thresholds)
-COMPACT_WIDTH = 100  # Hide less-critical panels below this
-MINIMUM_WIDTH = 80   # Minimum supported terminal width
 
 
 class GatewayPanel(Static):
@@ -175,56 +171,24 @@ class SessionsPanel(Static):
         content.update("\n".join(lines))
 
 
-class StatusFooter(Static):
-    """Footer widget showing focused panel, mode, and version info."""
+class VersionFooter(Static):
+    """Footer widget showing version info."""
 
     DEFAULT_CSS = """
-    StatusFooter {
+    VersionFooter {
         dock: bottom;
         height: 1;
         background: $surface;
         color: $text-muted;
+        text-align: right;
         padding: 0 1;
     }
     """
 
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self._focused_panel: str = ""
-        self._mode: str = "normal"
-
     def on_mount(self) -> None:
-        """Update with initial status on mount."""
-        self._update_display()
-
-    def set_focused_panel(self, panel_name: str) -> None:
-        """Update the focused panel display."""
-        self._focused_panel = panel_name
-        self._update_display()
-
-    def set_mode(self, mode: str) -> None:
-        """Update the current mode display."""
-        self._mode = mode
-        self._update_display()
-
-    def _update_display(self) -> None:
-        """Rebuild the status display."""
+        """Update with version info on mount."""
         info = get_version_info()
-        parts = []
-
-        if self._focused_panel:
-            parts.append(f"[bold $primary]{self._focused_panel}[/]")
-
-        if self._mode and self._mode != "normal":
-            parts.append(f"[dim]({self._mode})[/]")
-
-        left_side = " │ ".join(parts) if parts else ""
-        right_side = f"[dim]{info.format_short()}[/]"
-
-        if left_side:
-            self.update(f"{left_side}  [dim]│[/]  {right_side}")
-        else:
-            self.update(right_side)
+        self.update(f"[dim]{info.format_short()}[/]")
 
 
 class DashboardApp(App):
@@ -235,27 +199,8 @@ class DashboardApp(App):
     DEFAULT_REFRESH_INTERVAL = 30
     WATCH_REFRESH_INTERVAL = 5
 
-    # Panel IDs in tab-cycling order (most important first)
-    PANEL_ORDER = [
-        "gateway-panel",
-        "alerts-panel",
-        "repos-panel",
-        "metrics-panel",
-        "security-panel",
-        "logs-panel",
-        "cron-panel",
-        "sessions-panel",
-        "channels-panel",
-        "activity-panel",
-        "task-panel",
-    ]
-
-    # Less critical panels to hide in compact mode
-    COLLAPSIBLE_PANELS = ["channels-panel", "activity-panel"]
-
     config: Config
     refresh_interval: int
-    _compact_mode: bool = False
 
     def __init__(self, refresh_interval: int | None = None, watch_mode: bool = False) -> None:
         """Initialize the dashboard app.
@@ -285,14 +230,6 @@ class DashboardApp(App):
         padding: 1;
     }
 
-    .panel:focus-within {
-        border: round $accent;
-    }
-
-    .panel.collapsed {
-        display: none;
-    }
-
     #gateway-panel { row-span: 1; }
     #task-panel { column-span: 2; }
     #alerts-panel { column-span: 2; row-span: 1; }
@@ -303,18 +240,19 @@ class DashboardApp(App):
     #metrics-panel { column-span: 2; }
     #security-panel { column-span: 2; row-span: 1; }
     #logs-panel { column-span: 3; row-span: 1; }
+    #resources-panel { column-span: 3; row-span: 1; }
+    #resources-panel.hidden { display: none; }
 
     DataTable { height: auto; }
     """
 
     BINDINGS = [
+        ("ctrl+p", "command_palette", "Commands"),
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("t", "cycle_theme", "Theme"),
         ("h", "help", "Help"),
         ("question_mark", "help", "Help"),
-        ("tab", "focus_next_panel", "Next"),
-        ("shift+tab", "focus_prev_panel", "Prev"),
         ("g", "focus_panel('gateway-panel')", "Gateway"),
         ("s", "focus_panel('security-panel')", "Security"),
         ("m", "focus_panel('metrics-panel')", "Metrics"),
@@ -322,6 +260,7 @@ class DashboardApp(App):
         ("c", "focus_panel('cron-panel')", "Cron"),
         ("p", "focus_panel('repos-panel')", "Repos"),
         ("l", "focus_panel('logs-panel')", "Logs"),
+        ("x", "toggle_resources", "Resources"),
     ]
 
     _mounted: bool = False  # Track if initial mount is complete (for notifications)
@@ -373,8 +312,12 @@ class DashboardApp(App):
             yield Static("[bold]📜 Logs[/]")
             yield LogsPanel(n_lines=12)
 
+        with Container(id="resources-panel", classes="panel"):
+            yield Static("[bold]📊 Resources[/]")
+            yield ResourcesPanel()
+
         yield Footer()
-        yield StatusFooter(id="status-footer")
+        yield VersionFooter()
 
     def on_mount(self) -> None:
         # Load user config
@@ -387,8 +330,13 @@ class DashboardApp(App):
         # Apply saved theme (or default)
         self.theme = self.config.theme
 
-        # Apply initial responsive layout
-        self._apply_responsive_layout(self.size.width, self.size.height)
+        # Apply resources panel visibility
+        if not self.config.show_resources:
+            try:
+                panel = self.query_one("#resources-panel")
+                panel.add_class("hidden")
+            except Exception:
+                pass
 
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
@@ -408,8 +356,12 @@ class DashboardApp(App):
             MetricsPanel,
             SecurityPanel,
             LogsPanel,
+            ResourcesPanel,
         ]:
             try:
+                # Skip resources panel if disabled
+                if panel_cls == ResourcesPanel and not self.config.show_resources:
+                    continue
                 panel = self.query_one(panel_cls)
                 panel.refresh_data()
             except Exception:
@@ -435,11 +387,15 @@ class DashboardApp(App):
             MetricsPanel,
             SecurityPanel,
             LogsPanel,
+            ResourcesPanel,
         ]
         refreshed = 0
         errors = []
         for panel_cls in panels:
             try:
+                # Skip resources panel if disabled
+                if panel_cls == ResourcesPanel and not self.config.show_resources:
+                    continue
                 panel = self.query_one(panel_cls)
                 panel.refresh_data()
                 refreshed += 1
@@ -463,100 +419,27 @@ class DashboardApp(App):
         try:
             panel = self.query_one(f"#{panel_id}")
             panel.focus()
-            self._update_status_footer(panel_id)
         except Exception:
             pass
 
-    def action_focus_next_panel(self) -> None:
-        """Focus the next panel in tab order."""
-        visible = self._get_visible_panels()
-        if not visible:
-            return
-
-        current = self._get_current_panel_id()
+    def action_toggle_resources(self) -> None:
+        """Toggle the resources panel visibility and save preference."""
         try:
-            idx = visible.index(current)
-            next_idx = (idx + 1) % len(visible)
-        except ValueError:
-            next_idx = 0
+            panel = self.query_one("#resources-panel")
+            self.config.show_resources = not self.config.show_resources
+            self.config.save()
 
-        self.action_focus_panel(visible[next_idx])
-
-    def action_focus_prev_panel(self) -> None:
-        """Focus the previous panel in tab order."""
-        visible = self._get_visible_panels()
-        if not visible:
-            return
-
-        current = self._get_current_panel_id()
-        try:
-            idx = visible.index(current)
-            prev_idx = (idx - 1) % len(visible)
-        except ValueError:
-            prev_idx = len(visible) - 1
-
-        self.action_focus_panel(visible[prev_idx])
-
-    def _get_visible_panels(self) -> list[str]:
-        """Get list of visible panel IDs in order."""
-        visible = []
-        for panel_id in self.PANEL_ORDER:
-            try:
-                panel = self.query_one(f"#{panel_id}")
-                if not panel.has_class("collapsed"):
-                    visible.append(panel_id)
-            except Exception:
-                pass
-        return visible
-
-    def _get_current_panel_id(self) -> str:
-        """Get the ID of the currently focused panel."""
-        focused = self.focused
-        if focused is None:
-            return ""
-
-        # Walk up to find parent panel container
-        widget = focused
-        while widget is not None:
-            if hasattr(widget, "id") and widget.id and widget.id.endswith("-panel"):
-                return widget.id
-            widget = widget.parent
-        return ""
-
-    def _update_status_footer(self, panel_id: str) -> None:
-        """Update the status footer with the focused panel name."""
-        try:
-            footer = self.query_one("#status-footer", StatusFooter)
-            # Convert panel-id to display name
-            name = panel_id.replace("-panel", "").replace("-", " ").title()
-            footer.set_focused_panel(name)
-        except Exception:
-            pass
-
-    def on_resize(self, event: Resize) -> None:
-        """Handle terminal resize - apply responsive layout."""
-        self._apply_responsive_layout(event.size.width, event.size.height)
-
-    def _apply_responsive_layout(self, width: int, height: int) -> None:
-        """Apply responsive layout based on terminal dimensions."""
-        compact = width < COMPACT_WIDTH
-
-        if compact != self._compact_mode:
-            self._compact_mode = compact
-
-            for panel_id in self.COLLAPSIBLE_PANELS:
+            if self.config.show_resources:
+                panel.remove_class("hidden")
+                # Refresh the panel when shown
                 try:
-                    panel = self.query_one(f"#{panel_id}")
-                    if compact:
-                        panel.add_class("collapsed")
-                    else:
-                        panel.remove_class("collapsed")
+                    resources_widget = self.query_one(ResourcesPanel)
+                    resources_widget.refresh_data()
                 except Exception:
                     pass
-
-            # Update status footer mode indicator
-            try:
-                footer = self.query_one("#status-footer", StatusFooter)
-                footer.set_mode("compact" if compact else "normal")
-            except Exception:
-                pass
+                self.notify("Resources panel: ON", timeout=1.5)
+            else:
+                panel.add_class("hidden")
+                self.notify("Resources panel: OFF", timeout=1.5)
+        except Exception:
+            pass

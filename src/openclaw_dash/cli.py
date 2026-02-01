@@ -385,7 +385,10 @@ def main() -> int:
     parser.add_argument("--status", action="store_true", help="Quick text status")
     parser.add_argument("--json", action="store_true", help="JSON output")
     parser.add_argument(
-        "-w", "--watch", action="store_true", help="Watch mode: auto-refresh every 5s instead of 30s"
+        "-w",
+        "--watch",
+        action="store_true",
+        help="Watch mode: auto-refresh every 5s instead of 30s",
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__import__('openclaw_dash').__version__}"
@@ -448,7 +451,8 @@ def main() -> int:
         help="Output format (default: json)",
     )
     export_parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         metavar="FILE",
         help="Output file path (default: auto-generated)",
     )
