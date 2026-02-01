@@ -14,6 +14,7 @@ from openclaw_dash.widgets.ascii_art import (
     status_indicator,
     trend_indicator,
 )
+from openclaw_dash.widgets.security import SecurityPanel, SecuritySummaryPanel
 
 __all__ = [
     "SINGLE",
@@ -28,4 +29,6 @@ __all__ = [
     "mini_bar",
     "trend_indicator",
     "format_with_trend",
+    "SecurityPanel",
+    "SecuritySummaryPanel",
 ]
