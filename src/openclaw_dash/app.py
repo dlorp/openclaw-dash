@@ -2,7 +2,6 @@
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
-from textual.events import Resize
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
