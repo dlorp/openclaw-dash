@@ -251,21 +251,17 @@ class TestExportToFile:
             assert "# OpenClaw Dashboard Export" in content
             Path(f.name).unlink()
 
-    def test_auto_generates_filename_json(self, mock_collectors):
+    def test_auto_generates_filename_json(self, mock_collectors, monkeypatch):
         with tempfile.TemporaryDirectory() as tmpdir:
-            import os
-
-            os.chdir(tmpdir)
+            monkeypatch.chdir(tmpdir)
             filepath, _ = export_to_file(format="json")
             assert filepath.startswith("openclaw-export-")
             assert filepath.endswith(".json")
             Path(filepath).unlink()
 
-    def test_auto_generates_filename_md(self, mock_collectors):
+    def test_auto_generates_filename_md(self, mock_collectors, monkeypatch):
         with tempfile.TemporaryDirectory() as tmpdir:
-            import os
-
-            os.chdir(tmpdir)
+            monkeypatch.chdir(tmpdir)
             filepath, _ = export_to_file(format="md")
             assert filepath.startswith("openclaw-export-")
             assert filepath.endswith(".md")
