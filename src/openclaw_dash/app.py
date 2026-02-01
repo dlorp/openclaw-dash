@@ -14,7 +14,7 @@ from openclaw_dash.widgets.ascii_art import (
     status_indicator,
 )
 from openclaw_dash.widgets.channels import ChannelsPanel
-from openclaw_dash.widgets.security import SecurityPanel
+from openclaw_dash.widgets.metrics import MetricsPanel
 from openclaw_dash.widgets.security import SecurityPanel
 
 
@@ -183,6 +183,7 @@ class DashboardApp(App):
     #activity-panel { row-span: 2; }
     #cron-panel { }
     #sessions-panel { }
+    #metrics-panel { column-span: 2; }
     #security-panel { column-span: 2; row-span: 1; }
 
     DataTable { height: auto; }
@@ -228,6 +229,10 @@ class DashboardApp(App):
             yield Static("[bold]Channels[/]")
             yield ChannelsPanel()
 
+        with Container(id="metrics-panel", classes="panel"):
+            yield Static("[bold]📊 Metrics[/]")
+            yield MetricsPanel()
+
         with Container(id="security-panel", classes="panel"):
             yield Static("[bold]🔒 Security[/]")
             yield SecurityPanel()
@@ -248,6 +253,7 @@ class DashboardApp(App):
             CronPanel,
             SessionsPanel,
             ChannelsPanel,
+            MetricsPanel,
             SecurityPanel,
         ]:
             try:

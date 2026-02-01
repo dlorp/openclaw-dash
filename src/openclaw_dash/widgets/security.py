@@ -1,12 +1,10 @@
 """Security panel widget for the TUI dashboard."""
 
-from datetime import datetime
-
 from textual.app import ComposeResult
 from textual.widgets import Static
 
-from openclaw_dash.security.audit import Finding, run_audit
-from openclaw_dash.widgets.ascii_art import separator, STATUS_SYMBOLS
+from openclaw_dash.security.audit import run_audit
+from openclaw_dash.widgets.ascii_art import STATUS_SYMBOLS, separator
 
 
 def get_severity_color(severity: str) -> str:
