@@ -2,6 +2,7 @@
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
+from textual.events import Resize
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
@@ -26,6 +27,10 @@ from openclaw_dash.widgets.notifications import (
     notify_refresh,
 )
 from openclaw_dash.widgets.security import SecurityPanel
+
+# Responsive breakpoints (width thresholds)
+COMPACT_WIDTH = 100  # Hide less-critical panels below this
+MINIMUM_WIDTH = 80   # Minimum supported terminal width
 
 
 class GatewayPanel(Static):
@@ -170,24 +175,56 @@ class SessionsPanel(Static):
         content.update("\n".join(lines))
 
 
-class VersionFooter(Static):
-    """Footer widget showing version info."""
+class StatusFooter(Static):
+    """Footer widget showing focused panel, mode, and version info."""
 
     DEFAULT_CSS = """
-    VersionFooter {
+    StatusFooter {
         dock: bottom;
         height: 1;
         background: $surface;
         color: $text-muted;
-        text-align: right;
         padding: 0 1;
     }
     """
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._focused_panel: str = ""
+        self._mode: str = "normal"
+
     def on_mount(self) -> None:
-        """Update with version info on mount."""
+        """Update with initial status on mount."""
+        self._update_display()
+
+    def set_focused_panel(self, panel_name: str) -> None:
+        """Update the focused panel display."""
+        self._focused_panel = panel_name
+        self._update_display()
+
+    def set_mode(self, mode: str) -> None:
+        """Update the current mode display."""
+        self._mode = mode
+        self._update_display()
+
+    def _update_display(self) -> None:
+        """Rebuild the status display."""
         info = get_version_info()
-        self.update(f"[dim]{info.format_short()}[/]")
+        parts = []
+
+        if self._focused_panel:
+            parts.append(f"[bold $primary]{self._focused_panel}[/]")
+
+        if self._mode and self._mode != "normal":
+            parts.append(f"[dim]({self._mode})[/]")
+
+        left_side = " │ ".join(parts) if parts else ""
+        right_side = f"[dim]{info.format_short()}[/]"
+
+        if left_side:
+            self.update(f"{left_side}  [dim]│[/]  {right_side}")
+        else:
+            self.update(right_side)
 
 
 class DashboardApp(App):
@@ -198,8 +235,27 @@ class DashboardApp(App):
     DEFAULT_REFRESH_INTERVAL = 30
     WATCH_REFRESH_INTERVAL = 5
 
+    # Panel IDs in tab-cycling order (most important first)
+    PANEL_ORDER = [
+        "gateway-panel",
+        "alerts-panel",
+        "repos-panel",
+        "metrics-panel",
+        "security-panel",
+        "logs-panel",
+        "cron-panel",
+        "sessions-panel",
+        "channels-panel",
+        "activity-panel",
+        "task-panel",
+    ]
+
+    # Less critical panels to hide in compact mode
+    COLLAPSIBLE_PANELS = ["channels-panel", "activity-panel"]
+
     config: Config
     refresh_interval: int
+    _compact_mode: bool = False
 
     def __init__(self, refresh_interval: int | None = None, watch_mode: bool = False) -> None:
         """Initialize the dashboard app.
@@ -229,6 +285,14 @@ class DashboardApp(App):
         padding: 1;
     }
 
+    .panel:focus-within {
+        border: round $accent;
+    }
+
+    .panel.collapsed {
+        display: none;
+    }
+
     #gateway-panel { row-span: 1; }
     #task-panel { column-span: 2; }
     #alerts-panel { column-span: 2; row-span: 1; }
@@ -249,6 +313,8 @@ class DashboardApp(App):
         ("t", "cycle_theme", "Theme"),
         ("h", "help", "Help"),
         ("question_mark", "help", "Help"),
+        ("tab", "focus_next_panel", "Next"),
+        ("shift+tab", "focus_prev_panel", "Prev"),
         ("g", "focus_panel('gateway-panel')", "Gateway"),
         ("s", "focus_panel('security-panel')", "Security"),
         ("m", "focus_panel('metrics-panel')", "Metrics"),
@@ -308,7 +374,7 @@ class DashboardApp(App):
             yield LogsPanel(n_lines=12)
 
         yield Footer()
-        yield VersionFooter()
+        yield StatusFooter(id="status-footer")
 
     def on_mount(self) -> None:
         # Load user config
@@ -320,6 +386,9 @@ class DashboardApp(App):
 
         # Apply saved theme (or default)
         self.theme = self.config.theme
+
+        # Apply initial responsive layout
+        self._apply_responsive_layout(self.size.width, self.size.height)
 
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
@@ -394,5 +463,100 @@ class DashboardApp(App):
         try:
             panel = self.query_one(f"#{panel_id}")
             panel.focus()
+            self._update_status_footer(panel_id)
         except Exception:
             pass
+
+    def action_focus_next_panel(self) -> None:
+        """Focus the next panel in tab order."""
+        visible = self._get_visible_panels()
+        if not visible:
+            return
+
+        current = self._get_current_panel_id()
+        try:
+            idx = visible.index(current)
+            next_idx = (idx + 1) % len(visible)
+        except ValueError:
+            next_idx = 0
+
+        self.action_focus_panel(visible[next_idx])
+
+    def action_focus_prev_panel(self) -> None:
+        """Focus the previous panel in tab order."""
+        visible = self._get_visible_panels()
+        if not visible:
+            return
+
+        current = self._get_current_panel_id()
+        try:
+            idx = visible.index(current)
+            prev_idx = (idx - 1) % len(visible)
+        except ValueError:
+            prev_idx = len(visible) - 1
+
+        self.action_focus_panel(visible[prev_idx])
+
+    def _get_visible_panels(self) -> list[str]:
+        """Get list of visible panel IDs in order."""
+        visible = []
+        for panel_id in self.PANEL_ORDER:
+            try:
+                panel = self.query_one(f"#{panel_id}")
+                if not panel.has_class("collapsed"):
+                    visible.append(panel_id)
+            except Exception:
+                pass
+        return visible
+
+    def _get_current_panel_id(self) -> str:
+        """Get the ID of the currently focused panel."""
+        focused = self.focused
+        if focused is None:
+            return ""
+
+        # Walk up to find parent panel container
+        widget = focused
+        while widget is not None:
+            if hasattr(widget, "id") and widget.id and widget.id.endswith("-panel"):
+                return widget.id
+            widget = widget.parent
+        return ""
+
+    def _update_status_footer(self, panel_id: str) -> None:
+        """Update the status footer with the focused panel name."""
+        try:
+            footer = self.query_one("#status-footer", StatusFooter)
+            # Convert panel-id to display name
+            name = panel_id.replace("-panel", "").replace("-", " ").title()
+            footer.set_focused_panel(name)
+        except Exception:
+            pass
+
+    def on_resize(self, event: Resize) -> None:
+        """Handle terminal resize - apply responsive layout."""
+        self._apply_responsive_layout(event.size.width, event.size.height)
+
+    def _apply_responsive_layout(self, width: int, height: int) -> None:
+        """Apply responsive layout based on terminal dimensions."""
+        compact = width < COMPACT_WIDTH
+
+        if compact != self._compact_mode:
+            self._compact_mode = compact
+
+            for panel_id in self.COLLAPSIBLE_PANELS:
+                try:
+                    panel = self.query_one(f"#{panel_id}")
+                    if compact:
+                        panel.add_class("collapsed")
+                    else:
+                        panel.remove_class("collapsed")
+                except Exception:
+                    pass
+
+            # Update status footer mode indicator
+            try:
+                footer = self.query_one("#status-footer", StatusFooter)
+                footer.set_mode("compact" if compact else "normal")
+            except Exception:
+                pass
