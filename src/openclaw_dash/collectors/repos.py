@@ -1,5 +1,7 @@
 """Repository health collector."""
 
+from __future__ import annotations
+
 import json
 import subprocess
 from datetime import datetime

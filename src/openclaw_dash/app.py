@@ -5,6 +5,7 @@ from textual.containers import Container
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+from openclaw_dash.widgets.alerts import AlertsPanel
 
 
 class GatewayPanel(Static):
@@ -117,7 +118,7 @@ class DashboardApp(App):
     CSS = """
     Screen {
         layout: grid;
-        grid-size: 3 3;
+        grid-size: 3 4;
         grid-gutter: 1;
         padding: 1;
     }
@@ -129,6 +130,7 @@ class DashboardApp(App):
 
     #gateway-panel { row-span: 1; }
     #task-panel { column-span: 2; }
+    #alerts-panel { column-span: 2; row-span: 1; }
     #repos-panel { column-span: 2; row-span: 1; }
     #activity-panel { row-span: 2; }
     #cron-panel { }
@@ -152,6 +154,10 @@ class DashboardApp(App):
         with Container(id="task-panel", classes="panel"):
             yield Static("[bold]Current Task[/]")
             yield CurrentTaskPanel()
+
+        with Container(id="alerts-panel", classes="panel"):
+            yield Static("[bold]⚠️ Alerts[/]")
+            yield AlertsPanel()
 
         with Container(id="repos-panel", classes="panel"):
             yield Static("[bold]Repositories[/]")
@@ -179,6 +185,7 @@ class DashboardApp(App):
         for panel_cls in [
             GatewayPanel,
             CurrentTaskPanel,
+            AlertsPanel,
             ActivityPanel,
             ReposPanel,
             CronPanel,
