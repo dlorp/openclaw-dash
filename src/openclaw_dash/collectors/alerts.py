@@ -6,6 +6,8 @@ Collects and prioritizes alerts from multiple sources:
 - High context usage warnings from gateway
 """
 
+from __future__ import annotations
+
 import json
 import subprocess
 from dataclasses import dataclass, field
