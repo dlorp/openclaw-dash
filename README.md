@@ -106,4 +106,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+[PolyForm NonCommercial 1.0.0](LICENSE) — free for personal and non-commercial use
