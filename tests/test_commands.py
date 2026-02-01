@@ -99,6 +99,50 @@ class TestExportFunctionality:
         """Set theme method should be defined."""
         assert hasattr(DashboardCommands, "_set_theme")
 
+    def test_toggle_resources_method_exists(self):
+        """Toggle resources method should be defined."""
+        assert hasattr(DashboardCommands, "_toggle_resources")
+
+
+class TestCommandDiscovery:
+    """Test that all expected commands are discoverable."""
+
+    def test_logs_panel_in_commands(self):
+        """Logs panel should be in focus commands."""
+        import inspect
+
+        source = inspect.getsource(DashboardCommands)
+        assert "logs-panel" in source
+
+    def test_resources_panel_in_commands(self):
+        """Resources panel should be in focus commands."""
+        import inspect
+
+        source = inspect.getsource(DashboardCommands)
+        assert "resources-panel" in source
+
+    def test_quit_command_available(self):
+        """Quit command should be discoverable."""
+        import inspect
+
+        source = inspect.getsource(DashboardCommands)
+        assert "Quit" in source
+        assert "action_quit" in source
+
+    def test_toggle_help_available(self):
+        """Toggle help command should be discoverable."""
+        import inspect
+
+        source = inspect.getsource(DashboardCommands)
+        assert "Toggle Help" in source
+
+    def test_toggle_resources_available(self):
+        """Toggle resources command should be discoverable."""
+        import inspect
+
+        source = inspect.getsource(DashboardCommands)
+        assert "Toggle Resources" in source
+
 
 @pytest.mark.asyncio
 async def test_command_palette_bindings():

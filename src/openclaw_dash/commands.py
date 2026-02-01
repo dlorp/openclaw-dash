@@ -50,6 +50,21 @@ class DashboardCommands(Provider):
             self._export_data,
             help="Export dashboard data to JSON",
         )
+        yield DiscoveryHit(
+            "Toggle Help",
+            self.app.action_help,
+            help="Show/hide keyboard shortcuts (h/?)",
+        )
+        yield DiscoveryHit(
+            "Toggle Resources",
+            self._toggle_resources,
+            help="Show/hide resources panel (x)",
+        )
+        yield DiscoveryHit(
+            "Quit",
+            self.app.action_quit,
+            help="Exit the application (q)",
+        )
 
         # Theme selection
         for theme_name in THEME_NAMES:
@@ -67,6 +82,8 @@ class DashboardCommands(Provider):
             ("Alerts", "alerts-panel", "a"),
             ("Cron", "cron-panel", "c"),
             ("Repos", "repos-panel", "p"),
+            ("Logs", "logs-panel", "l"),
+            ("Resources", "resources-panel", "x"),
             ("Sessions", "sessions-panel", ""),
             ("Channels", "channels-panel", ""),
             ("Activity", "activity-panel", ""),
@@ -110,6 +127,12 @@ class DashboardCommands(Provider):
                     help=f"Switch to {theme_name} theme",
                 )
 
+        # Toggle resources command
+        toggle_res_name = "Toggle Resources Panel"
+        match = matcher.match(toggle_res_name)
+        if match > 0:
+            yield Hit(match, toggle_res_name, self._toggle_resources, help="Show/hide resources (x)")
+
         # Focus panel commands
         panels = [
             ("Gateway Panel", "gateway-panel"),
@@ -118,6 +141,8 @@ class DashboardCommands(Provider):
             ("Alerts Panel", "alerts-panel"),
             ("Cron Panel", "cron-panel"),
             ("Repos Panel", "repos-panel"),
+            ("Logs Panel", "logs-panel"),
+            ("Resources Panel", "resources-panel"),
             ("Sessions Panel", "sessions-panel"),
             ("Channels Panel", "channels-panel"),
             ("Activity Panel", "activity-panel"),
@@ -135,9 +160,14 @@ class DashboardCommands(Provider):
                 )
 
     def _set_theme(self, theme_name: str) -> None:
-        """Set a specific theme."""
+        """Set a specific theme and save preference."""
         self.app.theme = theme_name
+        self.app.config.update(theme=theme_name)
         self.app.notify(f"Theme: {theme_name}", timeout=1.5)
+
+    def _toggle_resources(self) -> None:
+        """Toggle the resources panel visibility."""
+        self.app.action_toggle_resources()
 
     def _export_data(self) -> None:
         """Export dashboard data to JSON."""
