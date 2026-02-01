@@ -19,16 +19,18 @@ from openclaw_dash.exporter import (
 @pytest.fixture
 def mock_collectors():
     """Mock all collectors to avoid network calls."""
-    with patch("openclaw_dash.collectors.gateway.collect") as gw, \
-         patch("openclaw_dash.collectors.sessions.collect") as sess, \
-         patch("openclaw_dash.collectors.cron.collect") as cr, \
-         patch("openclaw_dash.collectors.repos.collect") as rep, \
-         patch("openclaw_dash.collectors.activity.collect") as act, \
-         patch("openclaw_dash.collectors.channels.collect") as chan, \
-         patch("openclaw_dash.collectors.alerts.collect") as alerts, \
-         patch("openclaw_dash.metrics.CostTracker") as cost, \
-         patch("openclaw_dash.metrics.PerformanceMetrics") as perf, \
-         patch("openclaw_dash.metrics.GitHubMetrics") as gh:
+    with (
+        patch("openclaw_dash.collectors.gateway.collect") as gw,
+        patch("openclaw_dash.collectors.sessions.collect") as sess,
+        patch("openclaw_dash.collectors.cron.collect") as cr,
+        patch("openclaw_dash.collectors.repos.collect") as rep,
+        patch("openclaw_dash.collectors.activity.collect") as act,
+        patch("openclaw_dash.collectors.channels.collect") as chan,
+        patch("openclaw_dash.collectors.alerts.collect") as alerts,
+        patch("openclaw_dash.metrics.CostTracker") as cost,
+        patch("openclaw_dash.metrics.PerformanceMetrics") as perf,
+        patch("openclaw_dash.metrics.GitHubMetrics") as gh,
+    ):
         gw.return_value = {"healthy": True, "uptime": "1h"}
         sess.return_value = {"active": []}
         cr.return_value = {"jobs": []}
@@ -187,9 +189,7 @@ class TestExportMarkdown:
             "sessions": {"active": []},
             "cron": {"jobs": []},
             "repos": {
-                "repos": [
-                    {"name": "test-repo", "branch": "main", "open_prs": 2, "health": "good"}
-                ]
+                "repos": [{"name": "test-repo", "branch": "main", "open_prs": 2, "health": "good"}]
             },
             "activity": {},
             "alerts": {"alerts": []},
@@ -281,7 +281,9 @@ class TestCLIExport:
         from openclaw_dash.cli import main
 
         output_file = tmp_path / "test-export.json"
-        with patch("sys.argv", ["openclaw-dash", "export", "--format", "json", "-o", str(output_file)]):
+        with patch(
+            "sys.argv", ["openclaw-dash", "export", "--format", "json", "-o", str(output_file)]
+        ):
             result = main()
             assert result == 0
             assert output_file.exists()
@@ -293,7 +295,9 @@ class TestCLIExport:
         from openclaw_dash.cli import main
 
         output_file = tmp_path / "test-export.md"
-        with patch("sys.argv", ["openclaw-dash", "export", "--format", "md", "-o", str(output_file)]):
+        with patch(
+            "sys.argv", ["openclaw-dash", "export", "--format", "md", "-o", str(output_file)]
+        ):
             result = main()
             assert result == 0
             assert output_file.exists()
