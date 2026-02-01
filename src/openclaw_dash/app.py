@@ -172,6 +172,19 @@ class DashboardApp(App):
 
     COMMANDS = {DashboardCommands}
 
+    DEFAULT_REFRESH_INTERVAL = 30
+    WATCH_REFRESH_INTERVAL = 5
+
+    def __init__(self, refresh_interval: int | None = None) -> None:
+        """Initialize the dashboard app.
+
+        Args:
+            refresh_interval: Override refresh interval in seconds.
+                             If None, uses DEFAULT_REFRESH_INTERVAL (30s).
+        """
+        super().__init__()
+        self.refresh_interval = refresh_interval or self.DEFAULT_REFRESH_INTERVAL
+
     CSS = """
     Screen {
         layout: grid;
@@ -267,7 +280,7 @@ class DashboardApp(App):
 
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
-        self.set_interval(30, self._auto_refresh)
+        self.set_interval(self.refresh_interval, self._auto_refresh)
 
     def _auto_refresh(self) -> None:
         """Auto-refresh without notification (for timer-based refresh)."""
