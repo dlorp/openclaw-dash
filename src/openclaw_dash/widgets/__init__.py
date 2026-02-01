@@ -16,6 +16,10 @@ from openclaw_dash.widgets.ascii_art import (
 )
 from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
+from openclaw_dash.widgets.metric_boxes import (
+    MetricBox,
+    MetricBoxesBar,
+)
 from openclaw_dash.widgets.notifications import (
     NotificationLevel,
     notify,
@@ -39,10 +43,6 @@ from openclaw_dash.widgets.tabbed_groups import (
     next_tab,
     prev_tab,
     switch_tab,
-)
-from openclaw_dash.widgets.metric_boxes import (
-    MetricBox,
-    MetricBoxesBar,
 )
 
 __all__ = [
