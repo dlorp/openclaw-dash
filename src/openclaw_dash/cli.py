@@ -293,18 +293,24 @@ def cmd_auto_merge(args: argparse.Namespace) -> int:
     """Auto-merge approved PRs."""
     from pathlib import Path
 
-    from openclaw_dash.automation.pr_auto import PRAutomation, format_merge_results
+    from openclaw_dash.automation.pr_auto import (
+        MergeConfig,
+        PRAutomation,
+        format_merge_results,
+    )
 
     repos = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
     if args.repo:
         repos = [args.repo]
 
+    config = MergeConfig(dry_run=args.dry_run)
+
     for repo in repos:
         repo_path = Path.home() / "repos" / repo
         if not repo_path.exists():
             continue
-        automation = PRAutomation(repo_path, dry_run=args.dry_run)
-        results = automation.process_merge_candidates()
+        automation = PRAutomation(repo_path)
+        results = automation.auto_merge(config)
         print(format_merge_results(results, repo))
 
     return 0
@@ -314,18 +320,24 @@ def cmd_auto_cleanup(args: argparse.Namespace) -> int:
     """Clean up stale branches."""
     from pathlib import Path
 
-    from openclaw_dash.automation.pr_auto import PRAutomation, format_cleanup_results
+    from openclaw_dash.automation.pr_auto import (
+        CleanupConfig,
+        PRAutomation,
+        format_cleanup_results,
+    )
 
     repos = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
     if args.repo:
         repos = [args.repo]
 
+    config = CleanupConfig(dry_run=args.dry_run)
+
     for repo in repos:
         repo_path = Path.home() / "repos" / repo
         if not repo_path.exists():
             continue
-        automation = PRAutomation(repo_path, dry_run=args.dry_run)
-        results = automation.cleanup_stale_branches()
+        automation = PRAutomation(repo_path)
+        results = automation.cleanup_branches(config)
         print(format_cleanup_results(results, repo))
 
     return 0
@@ -333,9 +345,14 @@ def cmd_auto_cleanup(args: argparse.Namespace) -> int:
 
 def cmd_auto_deps(args: argparse.Namespace) -> int:
     """Run dependency updates."""
-    from openclaw_dash.automation.deps_auto import DepsAutomation, format_deps_results
+    from openclaw_dash.automation.deps_auto import (
+        DepsAutomation,
+        DepsConfig,
+        format_deps_results,
+    )
 
-    automation = DepsAutomation(dry_run=args.dry_run)
+    config = DepsConfig(dry_run=args.dry_run)
+    automation = DepsAutomation(config)
     results = automation.run_updates()
     print(format_deps_results(results))
     return 0
