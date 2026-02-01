@@ -81,7 +81,9 @@ class ResourcesPanel(Static):
         cpu_bar = progress_bar(cpu_pct / 100, width=12, show_percent=False, style="smooth")
         spark = sparkline(_cpu_history, width=10) if len(_cpu_history) > 1 else ""
 
-        lines.append(f"{status_indicator(cpu_status)} [bold]CPU:[/] {cpu_pct:.1f}% {cpu_bar} {spark}")
+        lines.append(
+            f"{status_indicator(cpu_status)} [bold]CPU:[/] {cpu_pct:.1f}% {cpu_bar} {spark}"
+        )
 
         # Per-core display (compact)
         per_core = cpu.get("per_core", [])
@@ -94,9 +96,7 @@ class ResourcesPanel(Static):
         # Load average (if available)
         load = data.get("load")
         if load:
-            lines.append(
-                f"  Load: {load['1min']:.2f} / {load['5min']:.2f} / {load['15min']:.2f}"
-            )
+            lines.append(f"  Load: {load['1min']:.2f} / {load['5min']:.2f} / {load['15min']:.2f}")
 
         lines.append(separator(40, "dotted"))
 
@@ -120,7 +120,9 @@ class ResourcesPanel(Static):
         mem_bar = progress_bar(mem_pct / 100, width=12, show_percent=False, style="smooth")
         spark = sparkline(_mem_history, width=10) if len(_mem_history) > 1 else ""
 
-        lines.append(f"{status_indicator(mem_status)} [bold]MEM:[/] {mem_pct:.1f}% {mem_bar} {spark}")
+        lines.append(
+            f"{status_indicator(mem_status)} [bold]MEM:[/] {mem_pct:.1f}% {mem_bar} {spark}"
+        )
         lines.append(
             f"  {mem.get('used_gb', 0):.1f}G / {mem.get('total_gb', 0):.1f}G "
             f"({mem.get('available_gb', 0):.1f}G free)"
@@ -182,12 +184,8 @@ class ResourcesPanel(Static):
             sent_spark = sparkline(_net_sent_history, width=8) if len(_net_sent_history) > 1 else ""
             recv_spark = sparkline(_net_recv_history, width=8) if len(_net_recv_history) > 1 else ""
 
-            lines.append(
-                f"  {STATUS_SYMBOLS['arrow_up']} {_format_rate(rate_sent)} {sent_spark}"
-            )
-            lines.append(
-                f"  {STATUS_SYMBOLS['arrow_down']} {_format_rate(rate_recv)} {recv_spark}"
-            )
+            lines.append(f"  {STATUS_SYMBOLS['arrow_up']} {_format_rate(rate_sent)} {sent_spark}")
+            lines.append(f"  {STATUS_SYMBOLS['arrow_down']} {_format_rate(rate_recv)} {recv_spark}")
         else:
             # Fallback to totals
             lines.append(
@@ -211,7 +209,7 @@ class CompactResourcesPanel(Static):
         content = self.query_one("#resources-compact", Static)
 
         if not data.get("available"):
-            content.update(f"[dim]Resources: unavailable[/]")
+            content.update("[dim]Resources: unavailable[/]")
             return
 
         cpu = data.get("cpu", {}).get("percent", 0)
@@ -227,6 +225,4 @@ class CompactResourcesPanel(Static):
         cpu_str = f"[{cpu_color}]{cpu:.0f}%[/]" if cpu_color else f"{cpu:.0f}%"
         mem_str = f"[{mem_color}]{mem:.0f}%[/]" if mem_color else f"{mem:.0f}%"
 
-        content.update(
-            f"CPU: {cpu_str} {cpu_bar}  MEM: {mem_str} {mem_bar}"
-        )
+        content.update(f"CPU: {cpu_str} {cpu_bar}  MEM: {mem_str} {mem_bar}")

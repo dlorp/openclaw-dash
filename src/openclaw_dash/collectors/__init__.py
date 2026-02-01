@@ -6,6 +6,7 @@ from openclaw_dash.collectors import (
     channels,
     cron,
     gateway,
+    logs,
     repos,
     resources,
     sessions,
@@ -19,5 +20,6 @@ __all__ = [
     "activity",
     "channels",
     "alerts",
+    "logs",
     "resources",
 ]
