@@ -36,8 +36,10 @@ TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/opencla
 - **Activity Log** — Recent actions with timestamps
 - **Sessions** — Active sessions and context burn rate
 - **Cron Jobs** — Scheduled tasks and status
-- **Security Audit** — Config scanning, dependency vulnerabilities *(coming soon)*
-- **Metrics** — Cost tracking, performance stats *(coming soon)*
+- **Alerts** — Color-coded severity alerts from all sources
+- **Channels** — Connected messaging channels and status
+- **Security Audit** — Config scanning, dependency vulnerabilities
+- **Metrics** — Cost tracking, performance stats
 
 ## Installation
 
@@ -61,7 +63,7 @@ openclaw-dash --status     # Quick text status
 openclaw-dash --json       # JSON output for scripting
 ```
 
-### Commands (coming soon)
+### Commands
 
 ```bash
 openclaw-dash security              # Run security audit
