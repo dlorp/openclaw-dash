@@ -40,6 +40,10 @@ from openclaw_dash.widgets.tabbed_groups import (
     prev_tab,
     switch_tab,
 )
+from openclaw_dash.widgets.metric_boxes import (
+    MetricBox,
+    MetricBoxesBar,
+)
 
 __all__ = [
     "SINGLE",
@@ -77,4 +81,7 @@ __all__ = [
     "switch_tab",
     "next_tab",
     "prev_tab",
+    # Metric boxes
+    "MetricBox",
+    "MetricBoxesBar",
 ]
