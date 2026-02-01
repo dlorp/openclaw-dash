@@ -286,6 +286,14 @@ class DashboardApp(App):
         padding: 1;
     }
 
+    .panel:focus-within {
+        border: round $accent;
+    }
+
+    .panel.collapsed {
+        display: none;
+    }
+
     #gateway-panel { row-span: 1; }
     #task-panel { column-span: 2; }
     #alerts-panel { column-span: 2; row-span: 1; }
@@ -309,6 +317,15 @@ class DashboardApp(App):
         ("t", "cycle_theme", "Theme"),
         ("h", "help", "Help"),
         ("question_mark", "help", "Help"),
+        # Vim-style scrolling
+        ("j", "scroll_down", "↓"),
+        ("k", "scroll_up", "↑"),
+        ("G", "scroll_end", "End"),
+        ("home", "scroll_home", "Top"),
+        # Tab navigation
+        ("tab", "focus_next_panel", "Next"),
+        ("shift+tab", "focus_prev_panel", "Prev"),
+        # Panel focus shortcuts
         ("g", "focus_panel('gateway-panel')", "Gateway"),
         ("s", "focus_panel('security-panel')", "Security"),
         ("m", "focus_panel('metrics-panel')", "Metrics"),
@@ -394,6 +411,9 @@ class DashboardApp(App):
             except Exception:
                 pass
 
+        # Apply initial responsive layout
+        self._apply_responsive_layout(self.size.width, self.size.height)
+
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
         self.set_interval(self.refresh_interval, self._auto_refresh)
@@ -477,6 +497,51 @@ class DashboardApp(App):
             panel.focus()
         except Exception:
             pass
+
+    def action_scroll_down(self) -> None:
+        """Scroll the focused panel down (vim j key)."""
+        focused = self.focused
+        if focused is not None:
+            # Find scrollable parent or use focused widget
+            widget = focused
+            while widget is not None:
+                if hasattr(widget, "scroll_down"):
+                    widget.scroll_down()
+                    return
+                widget = widget.parent
+
+    def action_scroll_up(self) -> None:
+        """Scroll the focused panel up (vim k key)."""
+        focused = self.focused
+        if focused is not None:
+            widget = focused
+            while widget is not None:
+                if hasattr(widget, "scroll_up"):
+                    widget.scroll_up()
+                    return
+                widget = widget.parent
+
+    def action_scroll_end(self) -> None:
+        """Scroll to the bottom of focused panel (vim G key)."""
+        focused = self.focused
+        if focused is not None:
+            widget = focused
+            while widget is not None:
+                if hasattr(widget, "scroll_end"):
+                    widget.scroll_end()
+                    return
+                widget = widget.parent
+
+    def action_scroll_home(self) -> None:
+        """Scroll to the top of focused panel (vim gg / Home key)."""
+        focused = self.focused
+        if focused is not None:
+            widget = focused
+            while widget is not None:
+                if hasattr(widget, "scroll_home"):
+                    widget.scroll_home()
+                    return
+                widget = widget.parent
 
     def action_toggle_resources(self) -> None:
         """Toggle the resources panel visibility and save preference."""
