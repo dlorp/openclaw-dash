@@ -1,7 +1,5 @@
 """Tests for vim-style keyboard navigation."""
 
-import pytest
-
 
 class TestVimKeyBindings:
     """Test vim-style keybindings are defined."""
