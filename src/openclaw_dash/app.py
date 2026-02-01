@@ -2,6 +2,7 @@
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
+from textual.events import Resize
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
@@ -27,6 +28,10 @@ from openclaw_dash.widgets.notifications import (
 )
 from openclaw_dash.widgets.resources import ResourcesPanel
 from openclaw_dash.widgets.security import SecurityPanel
+
+# Responsive breakpoints (width thresholds)
+COMPACT_WIDTH = 100  # Hide less-critical panels below this
+MINIMUM_WIDTH = 80   # Minimum supported terminal width
 
 
 class GatewayPanel(Static):
@@ -171,24 +176,56 @@ class SessionsPanel(Static):
         content.update("\n".join(lines))
 
 
-class VersionFooter(Static):
-    """Footer widget showing version info."""
+class StatusFooter(Static):
+    """Footer widget showing focused panel, mode, and version info."""
 
     DEFAULT_CSS = """
-    VersionFooter {
+    StatusFooter {
         dock: bottom;
         height: 1;
         background: $surface;
         color: $text-muted;
-        text-align: right;
         padding: 0 1;
     }
     """
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._focused_panel: str = ""
+        self._mode: str = "normal"
+
     def on_mount(self) -> None:
-        """Update with version info on mount."""
+        """Update with initial status on mount."""
+        self._update_display()
+
+    def set_focused_panel(self, panel_name: str) -> None:
+        """Update the focused panel display."""
+        self._focused_panel = panel_name
+        self._update_display()
+
+    def set_mode(self, mode: str) -> None:
+        """Update the current mode display."""
+        self._mode = mode
+        self._update_display()
+
+    def _update_display(self) -> None:
+        """Rebuild the status display."""
         info = get_version_info()
-        self.update(f"[dim]{info.format_short()}[/]")
+        parts = []
+
+        if self._focused_panel:
+            parts.append(f"[bold $primary]{self._focused_panel}[/]")
+
+        if self._mode and self._mode != "normal":
+            parts.append(f"[dim]({self._mode})[/]")
+
+        left_side = " │ ".join(parts) if parts else ""
+        right_side = f"[dim]{info.format_short()}[/]"
+
+        if left_side:
+            self.update(f"{left_side}  [dim]│[/]  {right_side}")
+        else:
+            self.update(right_side)
 
 
 class DashboardApp(App):
@@ -199,8 +236,28 @@ class DashboardApp(App):
     DEFAULT_REFRESH_INTERVAL = 30
     WATCH_REFRESH_INTERVAL = 5
 
+    # Panel IDs in tab-cycling order (most important first)
+    PANEL_ORDER = [
+        "gateway-panel",
+        "alerts-panel",
+        "repos-panel",
+        "metrics-panel",
+        "security-panel",
+        "logs-panel",
+        "resources-panel",
+        "cron-panel",
+        "sessions-panel",
+        "channels-panel",
+        "activity-panel",
+        "task-panel",
+    ]
+
+    # Less critical panels to hide in compact mode
+    COLLAPSIBLE_PANELS = ["channels-panel", "activity-panel"]
+
     config: Config
     refresh_interval: int
+    _compact_mode: bool = False
 
     def __init__(self, refresh_interval: int | None = None, watch_mode: bool = False) -> None:
         """Initialize the dashboard app.
@@ -247,7 +304,6 @@ class DashboardApp(App):
     """
 
     BINDINGS = [
-        ("ctrl+p", "command_palette", "Commands"),
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("t", "cycle_theme", "Theme"),
@@ -317,7 +373,7 @@ class DashboardApp(App):
             yield ResourcesPanel()
 
         yield Footer()
-        yield VersionFooter()
+        yield StatusFooter(id="status-footer")
 
     def on_mount(self) -> None:
         # Load user config
