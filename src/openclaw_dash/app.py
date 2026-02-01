@@ -15,6 +15,7 @@ from openclaw_dash.widgets.ascii_art import (
 )
 from openclaw_dash.widgets.channels import ChannelsPanel
 from openclaw_dash.widgets.metrics import MetricsPanel
+from openclaw_dash.widgets.security import SecurityPanel
 
 
 class GatewayPanel(Static):
@@ -165,7 +166,7 @@ class DashboardApp(App):
     CSS = """
     Screen {
         layout: grid;
-        grid-size: 3 4;
+        grid-size: 3 5;
         grid-gutter: 1;
         padding: 1;
     }
@@ -183,6 +184,7 @@ class DashboardApp(App):
     #cron-panel { }
     #sessions-panel { }
     #metrics-panel { column-span: 2; }
+    #security-panel { column-span: 2; row-span: 1; }
 
     DataTable { height: auto; }
     """
@@ -231,6 +233,10 @@ class DashboardApp(App):
             yield Static("[bold]📊 Metrics[/]")
             yield MetricsPanel()
 
+        with Container(id="security-panel", classes="panel"):
+            yield Static("[bold]🔒 Security[/]")
+            yield SecurityPanel()
+
         yield Footer()
 
     def on_mount(self) -> None:
@@ -248,6 +254,7 @@ class DashboardApp(App):
             SessionsPanel,
             ChannelsPanel,
             MetricsPanel,
+            SecurityPanel,
         ]:
             try:
                 panel = self.query_one(panel_cls)
