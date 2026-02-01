@@ -1,12 +1,10 @@
 """Main TUI application."""
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Header, Footer, Static, DataTable, Log
-from textual.timer import Timer
-from datetime import datetime
+from textual.containers import Container
+from textual.widgets import DataTable, Footer, Header, Static
 
-from openclaw_dash.collectors import gateway, sessions, cron, repos, activity
+from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 
 
 class GatewayPanel(Static):
@@ -21,9 +19,7 @@ class GatewayPanel(Static):
         if data.get("healthy"):
             ctx = data.get("context_pct", 0)
             content.update(
-                f"[green]✓ ONLINE[/]\n"
-                f"Context: {ctx:.0f}%\n"
-                f"Uptime: {data.get('uptime', '?')}"
+                f"[green]✓ ONLINE[/]\nContext: {ctx:.0f}%\nUptime: {data.get('uptime', '?')}"
             )
         else:
             content.update(f"[red]✗ OFFLINE[/]\n{data.get('error', '')}")
@@ -180,7 +176,14 @@ class DashboardApp(App):
         self.set_interval(30, self.action_refresh)
 
     def action_refresh(self) -> None:
-        for panel_cls in [GatewayPanel, CurrentTaskPanel, ActivityPanel, ReposPanel, CronPanel, SessionsPanel]:
+        for panel_cls in [
+            GatewayPanel,
+            CurrentTaskPanel,
+            ActivityPanel,
+            ReposPanel,
+            CronPanel,
+            SessionsPanel,
+        ]:
             try:
                 panel = self.query_one(panel_cls)
                 panel.refresh_data()

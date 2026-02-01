@@ -5,9 +5,9 @@ what's currently being worked on.
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
-from datetime import datetime
 
 WORKSPACE = Path.home() / ".openclaw" / "workspace"
 ACTIVITY_LOG = WORKSPACE / "memory" / "activity.json"
@@ -27,7 +27,7 @@ def collect() -> dict[str, Any]:
             data = json.loads(ACTIVITY_LOG.read_text())
             result["current_task"] = data.get("current_task")
             result["recent"] = data.get("recent", [])[-10:]
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
 
     # Fallback: check today's memory file for recent activity
@@ -45,11 +45,13 @@ def collect() -> dict[str, Any]:
                         time_part = parts[0].strip().split()[-1] if parts[0].strip() else "?"
                         action = parts[1].strip().lstrip(")").strip()
                         if action:
-                            result["recent"].append({
-                                "time": time_part,
-                                "action": action[:50],
-                            })
-        except IOError:
+                            result["recent"].append(
+                                {
+                                    "time": time_part,
+                                    "action": action[:50],
+                                }
+                            )
+        except OSError:
             pass
 
     return result
@@ -58,20 +60,22 @@ def collect() -> dict[str, Any]:
 def set_current_task(task: str) -> None:
     """Set the current task (called by lorp during work)."""
     ACTIVITY_LOG.parent.mkdir(parents=True, exist_ok=True)
-    
+
     data = {"current_task": None, "recent": []}
     if ACTIVITY_LOG.exists():
         try:
             data = json.loads(ACTIVITY_LOG.read_text())
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
 
     # Add previous task to recent if exists
     if data.get("current_task"):
-        data["recent"].append({
-            "time": datetime.now().strftime("%H:%M"),
-            "action": f"Completed: {data['current_task'][:40]}",
-        })
+        data["recent"].append(
+            {
+                "time": datetime.now().strftime("%H:%M"),
+                "action": f"Completed: {data['current_task'][:40]}",
+            }
+        )
         data["recent"] = data["recent"][-20:]  # Keep last 20
 
     data["current_task"] = task
@@ -88,13 +92,15 @@ def log_activity(action: str) -> None:
     if ACTIVITY_LOG.exists():
         try:
             data = json.loads(ACTIVITY_LOG.read_text())
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
 
-    data["recent"].append({
-        "time": datetime.now().strftime("%H:%M"),
-        "action": action[:100],
-    })
+    data["recent"].append(
+        {
+            "time": datetime.now().strftime("%H:%M"),
+            "action": action[:100],
+        }
+    )
     data["recent"] = data["recent"][-20:]
     data["updated_at"] = datetime.now().isoformat()
 

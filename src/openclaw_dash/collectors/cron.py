@@ -1,9 +1,9 @@
 """Cron jobs collector."""
 
-import subprocess
 import json
-from typing import Any
+import subprocess
 from datetime import datetime
+from typing import Any
 
 
 def collect() -> dict[str, Any]:
@@ -19,14 +19,16 @@ def collect() -> dict[str, Any]:
             data = json.loads(result.stdout)
             jobs = []
             for j in data.get("jobs", []):
-                jobs.append({
-                    "id": j.get("id", j.get("jobId", "?")),
-                    "name": j.get("name", j.get("id", "unnamed")),
-                    "enabled": j.get("enabled", True),
-                    "schedule": j.get("schedule", {}),
-                    "last_run": j.get("lastRun"),
-                    "next_run": j.get("nextRun"),
-                })
+                jobs.append(
+                    {
+                        "id": j.get("id", j.get("jobId", "?")),
+                        "name": j.get("name", j.get("id", "unnamed")),
+                        "enabled": j.get("enabled", True),
+                        "schedule": j.get("schedule", {}),
+                        "last_run": j.get("lastRun"),
+                        "next_run": j.get("nextRun"),
+                    }
+                )
             return {
                 "jobs": jobs,
                 "total": len(jobs),
