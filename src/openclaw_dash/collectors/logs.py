@@ -7,7 +7,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 # Log parsing regex
 LOG_PATTERN = re.compile(
     r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+\[([^\]]+)\]\s+(.*)$"
@@ -127,7 +126,7 @@ def tail_file(path: Path, n: int = 50) -> list[str]:
                         break
 
             return list(lines)[-n:]
-    except (OSError, IOError):
+    except OSError:
         return []
 
 
