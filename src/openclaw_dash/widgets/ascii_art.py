@@ -153,14 +153,16 @@ def draw_box(
         remaining = inner_width - len(title_part)
         left_pad = remaining // 2
         right_pad = remaining - left_pad
-        top = chars["tl"] + chars["h"] * left_pad + title_part + chars["h"] * right_pad + chars["tr"]
+        top = (
+            chars["tl"] + chars["h"] * left_pad + title_part + chars["h"] * right_pad + chars["tr"]
+        )
     else:
         top = chars["tl"] + chars["h"] * inner_width + chars["tr"]
     result.append(top)
 
     # Content lines
     for line in lines:
-        padded = line.ljust(inner_width - padding)[:inner_width - padding]
+        padded = line.ljust(inner_width - padding)[: inner_width - padding]
         result.append(f"{chars['v']}{' ' * padding}{padded}{' ' * (padding - 1)}{chars['v']}")
 
     # Bottom border

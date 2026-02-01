@@ -6,12 +6,9 @@ from textual.widgets import Static
 from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
 from openclaw_dash.widgets.ascii_art import (
     STATUS_SYMBOLS,
-    format_with_trend,
     mini_bar,
-    progress_bar,
     separator,
     sparkline,
-    status_indicator,
 )
 
 
@@ -43,12 +40,18 @@ class CostsPanel(Static):
         else:
             lines.append(f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${today_cost:.4f}")
 
-        lines.append(f"  {STATUS_SYMBOLS['arrow_right']} Input: {today.get('input_tokens', 0):,} tokens")
-        lines.append(f"  {STATUS_SYMBOLS['arrow_right']} Output: {today.get('output_tokens', 0):,} tokens")
+        lines.append(
+            f"  {STATUS_SYMBOLS['arrow_right']} Input: {today.get('input_tokens', 0):,} tokens"
+        )
+        lines.append(
+            f"  {STATUS_SYMBOLS['arrow_right']} Output: {today.get('output_tokens', 0):,} tokens"
+        )
 
         lines.append(separator(30, style="dotted"))
 
-        lines.append(f"[bold]{STATUS_SYMBOLS['star']} All time:[/] ${summary.get('total_cost', 0):.2f}")
+        lines.append(
+            f"[bold]{STATUS_SYMBOLS['star']} All time:[/] ${summary.get('total_cost', 0):.2f}"
+        )
         lines.append(f"  Avg daily: ${summary.get('avg_daily_cost', 0):.2f}")
 
         # Model breakdown with mini bars
