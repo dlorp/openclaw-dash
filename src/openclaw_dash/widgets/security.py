@@ -195,7 +195,9 @@ class DepsPanel(Static):
                 f"[dim]Scanned {result.packages_scanned} packages[/]",
             ]
             if result.errors:
-                lines.append(f"[yellow]{STATUS_SYMBOLS['warning']} {len(result.errors)} warnings[/]")
+                lines.append(
+                    f"[yellow]{STATUS_SYMBOLS['warning']} {len(result.errors)} warnings[/]"
+                )
             content.update("\n".join(lines))
             return
 
@@ -257,7 +259,9 @@ class DepsPanel(Static):
             lines.append(f"   [dim]... +{remaining} more[/]")
 
         if result.errors:
-            lines.append(f"\n[yellow]{STATUS_SYMBOLS['warning']} {len(result.errors)} scan errors[/]")
+            lines.append(
+                f"\n[yellow]{STATUS_SYMBOLS['warning']} {len(result.errors)} scan errors[/]"
+            )
 
         content.update("\n".join(lines))
 

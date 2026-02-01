@@ -45,25 +45,29 @@ def export_markdown(data: dict[str, Any]) -> str:
     # Gateway Status
     gw = data.get("gateway", {})
     status = "✅ ONLINE" if gw.get("healthy") else "❌ OFFLINE"
-    lines.extend([
-        "## Gateway Status",
-        "",
-        f"- **Status:** {status}",
-        f"- **Uptime:** {gw.get('uptime', 'unknown')}",
-        f"- **Context Usage:** {gw.get('context_pct', 0):.1f}%",
-        f"- **Version:** {gw.get('version', 'unknown')}",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Gateway Status",
+            "",
+            f"- **Status:** {status}",
+            f"- **Uptime:** {gw.get('uptime', 'unknown')}",
+            f"- **Context Usage:** {gw.get('context_pct', 0):.1f}%",
+            f"- **Version:** {gw.get('version', 'unknown')}",
+            "",
+        ]
+    )
 
     # Sessions
     sessions_data = data.get("sessions", {})
     active = sessions_data.get("active", [])
-    lines.extend([
-        "## Active Sessions",
-        "",
-        f"**Total:** {len(active)}",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Active Sessions",
+            "",
+            f"**Total:** {len(active)}",
+            "",
+        ]
+    )
     if active:
         lines.append("| Channel | Model | Duration |")
         lines.append("|---------|-------|----------|")
@@ -76,12 +80,14 @@ def export_markdown(data: dict[str, Any]) -> str:
     # Cron Jobs
     cron_data = data.get("cron", {})
     jobs = cron_data.get("jobs", [])
-    lines.extend([
-        "## Cron Jobs",
-        "",
-        f"**Total:** {len(jobs)}",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Cron Jobs",
+            "",
+            f"**Total:** {len(jobs)}",
+            "",
+        ]
+    )
     if jobs:
         lines.append("| Label | Schedule | Next Run |")
         lines.append("|-------|----------|----------|")
@@ -94,10 +100,12 @@ def export_markdown(data: dict[str, Any]) -> str:
     # Repos
     repos_data = data.get("repos", {})
     repos_list = repos_data.get("repos", [])
-    lines.extend([
-        "## Repositories",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Repositories",
+            "",
+        ]
+    )
     if repos_list:
         lines.append("| Repo | Branch | Open PRs | Health |")
         lines.append("|------|--------|----------|--------|")
@@ -111,10 +119,12 @@ def export_markdown(data: dict[str, Any]) -> str:
     activity_data = data.get("activity", {})
     current = activity_data.get("current_task")
     recent = activity_data.get("recent", [])
-    lines.extend([
-        "## Activity",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Activity",
+            "",
+        ]
+    )
     if current:
         lines.append(f"**Current Task:** {current}")
         lines.append("")
@@ -129,10 +139,12 @@ def export_markdown(data: dict[str, Any]) -> str:
     alerts_data = data.get("alerts", {})
     alert_list = alerts_data.get("alerts", [])
     if alert_list:
-        lines.extend([
-            "## Alerts",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Alerts",
+                "",
+            ]
+        )
         for a in alert_list:
             severity = a.get("severity", "info").upper()
             icon = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(a.get("severity"), "⚪")
@@ -146,51 +158,59 @@ def export_markdown(data: dict[str, Any]) -> str:
     costs = metrics.get("costs", {})
     today = costs.get("today", {})
     summary = costs.get("summary", {})
-    lines.extend([
-        "## Metrics",
-        "",
-        "### Token Costs",
-        "",
-        f"- **Today:** ${today.get('cost', 0):.4f}",
-        f"  - Input: {today.get('input_tokens', 0):,} tokens",
-        f"  - Output: {today.get('output_tokens', 0):,} tokens",
-        f"- **All Time:** ${summary.get('total_cost', 0):.2f}",
-        f"- **Avg Daily:** ${summary.get('avg_daily_cost', 0):.2f}",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Metrics",
+            "",
+            "### Token Costs",
+            "",
+            f"- **Today:** ${today.get('cost', 0):.4f}",
+            f"  - Input: {today.get('input_tokens', 0):,} tokens",
+            f"  - Output: {today.get('output_tokens', 0):,} tokens",
+            f"- **All Time:** ${summary.get('total_cost', 0):.2f}",
+            f"- **Avg Daily:** ${summary.get('avg_daily_cost', 0):.2f}",
+            "",
+        ]
+    )
 
     # Performance
     perf = metrics.get("performance", {}).get("summary", {})
-    lines.extend([
-        "### Performance",
-        "",
-        f"- **Total Calls:** {perf.get('total_calls', 0):,}",
-        f"- **Errors:** {perf.get('total_errors', 0)} ({perf.get('error_rate_pct', 0):.1f}%)",
-        f"- **Avg Latency:** {perf.get('avg_latency_ms', 0):.0f}ms",
-        "",
-    ])
+    lines.extend(
+        [
+            "### Performance",
+            "",
+            f"- **Total Calls:** {perf.get('total_calls', 0):,}",
+            f"- **Errors:** {perf.get('total_errors', 0)} ({perf.get('error_rate_pct', 0):.1f}%)",
+            f"- **Avg Latency:** {perf.get('avg_latency_ms', 0):.0f}ms",
+            "",
+        ]
+    )
 
     # GitHub
     gh = metrics.get("github", {})
     streak = gh.get("streak", {})
     pr = gh.get("pr_metrics", {})
     streak_days = streak.get("streak_days", 0)
-    lines.extend([
-        "### GitHub",
-        "",
-        f"- **Contribution Streak:** {streak_days} days {'🔥' if streak_days > 0 else '❄️'}",
-        f"- **Avg PR Cycle Time:** {pr.get('avg_cycle_hours', 0):.1f}h",
-        "",
-    ])
+    lines.extend(
+        [
+            "### GitHub",
+            "",
+            f"- **Contribution Streak:** {streak_days} days {'🔥' if streak_days > 0 else '❄️'}",
+            f"- **Avg PR Cycle Time:** {pr.get('avg_cycle_hours', 0):.1f}h",
+            "",
+        ]
+    )
 
     # Channels
     channels_data = data.get("channels", {})
     channel_list = channels_data.get("channels", [])
     if channel_list:
-        lines.extend([
-            "## Channels",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Channels",
+                "",
+            ]
+        )
         for c in channel_list:
             status_icon = "✅" if c.get("connected") else "❌"
             lines.append(f"- {status_icon} **{c.get('name', '?')}** ({c.get('type', '?')})")

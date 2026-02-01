@@ -8,7 +8,18 @@ from openclaw_dash.collectors import (
     gateway,
     logs,
     repos,
+    resources,
     sessions,
 )
 
-__all__ = ["gateway", "sessions", "cron", "repos", "activity", "channels", "alerts", "logs"]
+__all__ = [
+    "gateway",
+    "sessions",
+    "cron",
+    "repos",
+    "activity",
+    "channels",
+    "alerts",
+    "logs",
+    "resources",
+]
