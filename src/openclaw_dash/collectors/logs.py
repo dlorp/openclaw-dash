@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Any
 
 # Log parsing regex
-LOG_PATTERN = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+\[([^\]]+)\]\s+(.*)$")
+LOG_PATTERN = re.compile(
+    r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+\[([^\]]+)\]\s+(.*)$"
+)
 
 # Default log locations to check
 LOG_PATHS = [
