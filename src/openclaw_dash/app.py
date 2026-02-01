@@ -580,7 +580,7 @@ class DashboardApp(App):
         # Hide less critical panels when terminal is narrow
         hide_threshold = 100  # Minimum width for full layout
         panels_to_hide = ["channels-panel", "security-panel", "metrics-panel"]
-        
+
         for panel_id in panels_to_hide:
             try:
                 panel = self.query_one(f"#{panel_id}")
