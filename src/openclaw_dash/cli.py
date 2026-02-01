@@ -293,22 +293,20 @@ def cmd_auto_merge(args: argparse.Namespace) -> int:
     """Auto-merge approved PRs."""
     from pathlib import Path
 
-    from openclaw_dash.automation.pr_auto import PRAutoMerger, format_merge_results
+    from openclaw_dash.automation.pr_auto import PRAutomation, format_merge_results
 
     repos = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
     if args.repo:
         repos = [args.repo]
 
-    all_results = []
     for repo in repos:
         repo_path = Path.home() / "repos" / repo
         if not repo_path.exists():
             continue
-        merger = PRAutoMerger(repo_path, dry_run=args.dry_run)
-        results = merger.process_prs()
-        all_results.extend(results)
+        automation = PRAutomation(repo_path, dry_run=args.dry_run)
+        results = automation.process_merge_candidates()
+        print(format_merge_results(results, repo))
 
-    print(format_merge_results(all_results))
     return 0
 
 
@@ -316,32 +314,30 @@ def cmd_auto_cleanup(args: argparse.Namespace) -> int:
     """Clean up stale branches."""
     from pathlib import Path
 
-    from openclaw_dash.automation.pr_auto import BranchCleaner, format_cleanup_results
+    from openclaw_dash.automation.pr_auto import PRAutomation, format_cleanup_results
 
     repos = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
     if args.repo:
         repos = [args.repo]
 
-    all_results = []
     for repo in repos:
         repo_path = Path.home() / "repos" / repo
         if not repo_path.exists():
             continue
-        cleaner = BranchCleaner(repo_path, dry_run=args.dry_run)
-        results = cleaner.cleanup_branches()
-        all_results.extend(results)
+        automation = PRAutomation(repo_path, dry_run=args.dry_run)
+        results = automation.cleanup_stale_branches()
+        print(format_cleanup_results(results, repo))
 
-    print(format_cleanup_results(all_results))
     return 0
 
 
 def cmd_auto_deps(args: argparse.Namespace) -> int:
     """Run dependency updates."""
-    from openclaw_dash.automation.deps_auto import DependencyUpdater, format_update_results
+    from openclaw_dash.automation.deps_auto import DepsAutomation, format_deps_results
 
-    updater = DependencyUpdater(dry_run=args.dry_run)
-    results = updater.run_updates()
-    print(format_update_results(results))
+    automation = DepsAutomation(dry_run=args.dry_run)
+    results = automation.run_updates()
+    print(format_deps_results(results))
     return 0
 
 
