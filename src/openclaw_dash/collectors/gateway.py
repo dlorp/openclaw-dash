@@ -1,9 +1,9 @@
 """Gateway status collector."""
 
-import subprocess
 import json
-from typing import Any
+import subprocess
 from datetime import datetime
+from typing import Any
 
 
 def collect() -> dict[str, Any]:
@@ -31,9 +31,14 @@ def collect() -> dict[str, Any]:
     # Fallback
     try:
         import httpx
+
         resp = httpx.get("http://localhost:3000/health", timeout=5)
         if resp.status_code == 200:
-            return {"healthy": True, "uptime": "unknown", "collected_at": datetime.now().isoformat()}
+            return {
+                "healthy": True,
+                "uptime": "unknown",
+                "collected_at": datetime.now().isoformat(),
+            }
     except Exception:
         pass
 

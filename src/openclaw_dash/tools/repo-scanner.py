@@ -12,22 +12,19 @@ Usage:
     python3 repo-scanner.py [--json] [--update-discord]
 """
 
-import subprocess
 import json
+import subprocess
 import sys
-from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
 
 REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]
 REPO_BASE = Path.home() / "repos"
 
 
-def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str]:
+def run(cmd: str, cwd: Path | None = None) -> tuple[int, str]:
     """Run a shell command and return (returncode, output)."""
-    result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True, cwd=cwd
-    )
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd)
     return result.returncode, result.stdout.strip()
 
 
@@ -35,11 +32,11 @@ def count_todos(repo_path: Path) -> dict:
     """Count TODOs and FIXMEs in a repo."""
     todos = {"TODO": 0, "FIXME": 0, "HACK": 0, "XXX": 0}
     files_with_todos = []
-    
+
     for ext in ["py", "ts", "tsx", "js", "jsx"]:
         _, output = run(
             f'grep -rn "TODO\\|FIXME\\|HACK\\|XXX" --include="*.{ext}" . 2>/dev/null | grep -v node_modules | grep -v __pycache__ | grep -v ".git"',
-            cwd=repo_path
+            cwd=repo_path,
         )
         if output:
             for line in output.split("\n"):
@@ -56,7 +53,7 @@ def count_todos(repo_path: Path) -> dict:
                     fname = line.split(":")[0]
                     if fname not in files_with_todos:
                         files_with_todos.append(fname)
-    
+
     return {
         "counts": todos,
         "total": sum(todos.values()),
@@ -68,14 +65,14 @@ def count_tests(repo_path: Path) -> int:
     """Count test files/functions."""
     _, output = run(
         'find . -name "test_*.py" -o -name "*.test.ts" -o -name "*.test.tsx" 2>/dev/null | grep -v node_modules | wc -l',
-        cwd=repo_path
+        cwd=repo_path,
     )
     return int(output.strip()) if output.strip().isdigit() else 0
 
 
 def get_open_prs(repo: str) -> list:
     """Get open PRs for a repo."""
-    _, output = run(f'gh pr list -R dlorp/{repo} --state open --json number,title --limit 10')
+    _, output = run(f"gh pr list -R dlorp/{repo} --state open --json number,title --limit 10")
     try:
         return json.loads(output) if output else []
     except json.JSONDecodeError:
@@ -91,13 +88,13 @@ def get_last_commit(repo_path: Path) -> str:
 def scan_repo(repo: str) -> dict:
     """Scan a single repo for health metrics."""
     repo_path = REPO_BASE / repo
-    
+
     if not repo_path.exists():
         return {"error": f"Repo not found: {repo_path}"}
-    
+
     # Pull latest
     run("git fetch --quiet", cwd=repo_path)
-    
+
     return {
         "name": repo,
         "path": str(repo_path),
@@ -114,23 +111,23 @@ def format_report(results: list[dict]) -> str:
     lines = ["## 🔍 Repo Health Scan", ""]
     lines.append(f"**Scanned:** {datetime.now().strftime('%Y-%m-%d %H:%M AKST')}")
     lines.append("")
-    
+
     total_todos = 0
     total_prs = 0
-    
+
     for r in results:
         if "error" in r:
             lines.append(f"### ❌ {r.get('name', 'Unknown')}")
             lines.append(f"Error: {r['error']}")
             continue
-            
+
         name = r["name"]
         todos = r["todos"]
         prs = r["open_prs"]
-        
+
         total_todos += todos["total"]
         total_prs += len(prs)
-        
+
         # Status emoji
         if todos["total"] == 0:
             status = "✨"
@@ -140,7 +137,7 @@ def format_report(results: list[dict]) -> str:
             status = "🟡"
         else:
             status = "🔴"
-        
+
         lines.append(f"### {status} {name}")
         lines.append(f"- **TODOs:** {todos['total']} ({todos['counts']})")
         lines.append(f"- **Test files:** {r['test_files']}")
@@ -150,10 +147,10 @@ def format_report(results: list[dict]) -> str:
                 lines.append(f"  - #{pr['number']}: {pr['title'][:50]}")
         lines.append(f"- **Last commit:** {r['last_commit']}")
         lines.append("")
-    
+
     lines.append("---")
     lines.append(f"**Totals:** {total_todos} TODOs | {total_prs} open PRs")
-    
+
     return "\n".join(lines)
 
 
@@ -161,34 +158,34 @@ def save_snapshot(results: list[dict], path: Path):
     """Save results as JSON snapshot for trending."""
     snapshots_dir = path.parent / "snapshots"
     snapshots_dir.mkdir(exist_ok=True)
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     snapshot_file = snapshots_dir / f"health_{timestamp}.json"
-    
+
     with open(snapshot_file, "w") as f:
         json.dump(results, f, indent=2)
-    
+
     # Keep only last 30 snapshots
     snapshots = sorted(snapshots_dir.glob("health_*.json"))
     for old in snapshots[:-30]:
         old.unlink()
-    
+
     return snapshot_file
 
 
 def main():
     output_json = "--json" in sys.argv
     save_snapshot_flag = "--save" in sys.argv
-    
+
     results = []
     for repo in REPOS:
         print(f"Scanning {repo}...", file=sys.stderr)
         results.append(scan_repo(repo))
-    
+
     if save_snapshot_flag:
         snapshot = save_snapshot(results, Path(__file__))
         print(f"Saved snapshot: {snapshot}", file=sys.stderr)
-    
+
     if output_json:
         print(json.dumps(results, indent=2))
     else:

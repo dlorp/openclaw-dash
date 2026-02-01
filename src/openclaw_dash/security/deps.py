@@ -7,7 +7,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -20,7 +20,7 @@ class Vulnerability:
     severity: str  # critical, high, medium, low
     vulnerability_id: str
     description: str
-    fix_version: Optional[str] = None
+    fix_version: str | None = None
     source: str = ""  # pip-audit, npm, safety
 
 
@@ -65,7 +65,7 @@ class DependencyScanResult:
 class DependencyScanner:
     """Scans dependencies for known vulnerabilities."""
 
-    def __init__(self, project_dir: Optional[Path] = None):
+    def __init__(self, project_dir: Path | None = None):
         self.project_dir = project_dir or Path.cwd()
         self.result = DependencyScanResult()
 
@@ -218,7 +218,8 @@ class DependencyScanner:
                                         vuln_data.get("severity", "medium")
                                     ),
                                     vulnerability_id=", ".join(
-                                        str(v) for v in vuln_data.get("via", [])[:3]
+                                        str(v)
+                                        for v in vuln_data.get("via", [])[:3]
                                         if isinstance(v, str)
                                     )
                                     or "CVE-unknown",
@@ -237,7 +238,9 @@ class DependencyScanner:
                                     installed_version=advisory.get("findings", [{}])[0].get(
                                         "version", "unknown"
                                     ),
-                                    affected_versions=advisory.get("vulnerable_versions", "unknown"),
+                                    affected_versions=advisory.get(
+                                        "vulnerable_versions", "unknown"
+                                    ),
                                     severity=self._map_severity(advisory.get("severity", "medium")),
                                     vulnerability_id=f"GHSA-{advisory_id}",
                                     description=advisory.get("overview", "")[:500],
@@ -265,7 +268,7 @@ class DependencyScanner:
         return self.result
 
 
-def scan_dependencies(project_dir: Optional[Path] = None) -> DependencyScanResult:
+def scan_dependencies(project_dir: Path | None = None) -> DependencyScanResult:
     """Convenience function to scan dependencies."""
     scanner = DependencyScanner(project_dir=project_dir)
     return scanner.scan()

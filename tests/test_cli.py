@@ -1,8 +1,10 @@
 """Tests for CLI."""
 
-import pytest
 from unittest.mock import patch
-from openclaw_dash.cli import main, get_status
+
+import pytest
+
+from openclaw_dash.cli import get_status, main
 
 
 class TestCLI:
@@ -25,6 +27,7 @@ class TestCLI:
         result = main()
         assert result == 0
         import json
+
         captured = capsys.readouterr()
         data = json.loads(captured.out)
         assert "gateway" in data

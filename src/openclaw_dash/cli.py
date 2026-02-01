@@ -3,13 +3,12 @@
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import Any
 
 
 def get_status() -> dict[str, Any]:
     """Collect current status from all sources."""
-    from openclaw_dash.collectors import gateway, sessions, cron, repos, activity
+    from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 
     return {
         "gateway": gateway.collect(),
@@ -22,7 +21,7 @@ def get_status() -> dict[str, Any]:
 
 def get_metrics() -> dict[str, Any]:
     """Collect all metrics."""
-    from openclaw_dash.metrics import CostTracker, PerformanceMetrics, GitHubMetrics
+    from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
 
     return {
         "costs": CostTracker().collect(),
@@ -33,10 +32,10 @@ def get_metrics() -> dict[str, Any]:
 
 def print_metrics_text(metrics: dict[str, Any]) -> None:
     """Print metrics in human-readable format."""
+    from rich import box
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich import box
 
     console = Console()
 
@@ -44,7 +43,7 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
     costs = metrics.get("costs", {})
     today = costs.get("today", {})
     summary = costs.get("summary", {})
-    
+
     costs_text = (
         f"[bold cyan]Today:[/] ${today.get('cost', 0):.4f}\n"
         f"  Input: {today.get('input_tokens', 0):,} tokens\n"
@@ -68,10 +67,10 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
     gh = metrics.get("github", {})
     streak = gh.get("streak", {})
     pr = gh.get("pr_metrics", {})
-    
+
     streak_days = streak.get("streak_days", 0)
     streak_icon = "🔥" if streak_days > 0 else "❄️"
-    
+
     gh_text = (
         f"[bold cyan]Contribution streak:[/] {streak_days} days {streak_icon}\n"
         f"[bold cyan]PR cycle time:[/] {pr.get('avg_cycle_hours', 0):.1f}h avg\n"
@@ -93,10 +92,10 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
 
 def print_status_text(status: dict[str, Any]) -> None:
     """Print status in human-readable format."""
+    from rich import box
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich import box
 
     console = Console()
 
@@ -104,22 +103,26 @@ def print_status_text(status: dict[str, Any]) -> None:
     gw = status["gateway"]
     gw_icon = "✓" if gw.get("healthy") else "✗"
     gw_color = "green" if gw.get("healthy") else "red"
-    console.print(Panel(
-        f"[{gw_color}]{gw_icon} {'ONLINE' if gw.get('healthy') else 'OFFLINE'}[/]\n"
-        f"Context: {gw.get('context_pct', '?')}%\n"
-        f"Uptime: {gw.get('uptime', 'unknown')}",
-        title="Gateway",
-        box=box.ROUNDED,
-    ))
+    console.print(
+        Panel(
+            f"[{gw_color}]{gw_icon} {'ONLINE' if gw.get('healthy') else 'OFFLINE'}[/]\n"
+            f"Context: {gw.get('context_pct', '?')}%\n"
+            f"Uptime: {gw.get('uptime', 'unknown')}",
+            title="Gateway",
+            box=box.ROUNDED,
+        )
+    )
 
     # Current task / activity
     act = status.get("activity", {})
     if act.get("current_task"):
-        console.print(Panel(
-            f"[bold]{act['current_task']}[/]",
-            title="Current Task",
-            box=box.ROUNDED,
-        ))
+        console.print(
+            Panel(
+                f"[bold]{act['current_task']}[/]",
+                title="Current Task",
+                box=box.ROUNDED,
+            )
+        )
 
     # Recent activity
     if act.get("recent"):
@@ -142,18 +145,18 @@ def print_status_text(status: dict[str, Any]) -> None:
 def run_tui() -> None:
     """Launch the TUI dashboard."""
     from openclaw_dash.app import DashboardApp
+
     app = DashboardApp()
     app.run()
 
 
 def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool = False) -> int:
     """Run security audit and optionally apply fixes."""
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
     from rich import box
+    from rich.console import Console
+    from rich.table import Table
 
-    from openclaw_dash.security import SecurityAudit, DependencyScanner, SecurityFixer
+    from openclaw_dash.security import DependencyScanner, SecurityAudit, SecurityFixer
 
     console = Console()
 
@@ -196,7 +199,10 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
             "info": "dim",
         }
 
-        for f in sorted(audit_result.findings, key=lambda x: ["critical", "high", "medium", "low", "info"].index(x.severity)):
+        for f in sorted(
+            audit_result.findings,
+            key=lambda x: ["critical", "high", "medium", "low", "info"].index(x.severity),
+        ):
             table.add_row(
                 f"[{severity_colors.get(f.severity, '')}]{f.severity.upper()}[/]",
                 f.category,
@@ -218,7 +224,10 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
         table.add_column("Fix")
         table.add_column("ID")
 
-        for v in sorted(dep_result.vulnerabilities, key=lambda x: ["critical", "high", "medium", "low"].index(x.severity)):
+        for v in sorted(
+            dep_result.vulnerabilities,
+            key=lambda x: ["critical", "high", "medium", "low"].index(x.severity),
+        ):
             table.add_row(
                 v.package,
                 v.installed_version,
@@ -248,7 +257,9 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
             elif action.action == "failed":
                 console.print(f"[red]✗[/] {action.finding_title}: {action.error}")
 
-        console.print(f"\n[bold]Summary:[/] {fix_result.applied_count} applied, {fix_result.suggested_count} suggested, {fix_result.failed_count} failed")
+        console.print(
+            f"\n[bold]Summary:[/] {fix_result.applied_count} applied, {fix_result.suggested_count} suggested, {fix_result.failed_count} failed"
+        )
 
     # Summary
     summary = audit_result.summary
@@ -271,20 +282,30 @@ def main() -> int:
     )
     parser.add_argument("--status", action="store_true", help="Quick text status")
     parser.add_argument("--json", action="store_true", help="JSON output")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__import__('openclaw_dash').__version__}")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__import__('openclaw_dash').__version__}"
+    )
 
     # Subparsers for commands
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Security subcommand
     security_parser = subparsers.add_parser("security", help="Run security audit")
-    security_parser.add_argument("--deep", action="store_true", help="Deep scan (includes workspace)")
+    security_parser.add_argument(
+        "--deep", action="store_true", help="Deep scan (includes workspace)"
+    )
     security_parser.add_argument("--fix", action="store_true", help="Apply auto-fixes")
-    security_parser.add_argument("--json", dest="security_json", action="store_true", help="JSON output")
+    security_parser.add_argument(
+        "--json", dest="security_json", action="store_true", help="JSON output"
+    )
 
     # Metrics subcommand
-    metrics_parser = subparsers.add_parser("metrics", help="Show metrics (costs, performance, github)")
-    metrics_parser.add_argument("--json", dest="metrics_json", action="store_true", help="JSON output")
+    metrics_parser = subparsers.add_parser(
+        "metrics", help="Show metrics (costs, performance, github)"
+    )
+    metrics_parser.add_argument(
+        "--json", dest="metrics_json", action="store_true", help="JSON output"
+    )
     metrics_parser.add_argument("--costs", action="store_true", help="Show only costs")
     metrics_parser.add_argument("--performance", action="store_true", help="Show only performance")
     metrics_parser.add_argument("--github", action="store_true", help="Show only GitHub metrics")
@@ -302,7 +323,7 @@ def main() -> int:
     # Handle metrics command
     if args.command == "metrics":
         metrics = get_metrics()
-        
+
         # Filter if specific metric requested
         if args.costs or args.performance or args.github:
             filtered = {}
@@ -313,7 +334,7 @@ def main() -> int:
             if args.github:
                 filtered["github"] = metrics["github"]
             metrics = filtered
-        
+
         if args.metrics_json:
             print(json.dumps(metrics, indent=2, default=str))
         else:

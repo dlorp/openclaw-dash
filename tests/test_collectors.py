@@ -1,7 +1,6 @@
 """Tests for data collectors."""
 
-import pytest
-from openclaw_dash.collectors import gateway, sessions, cron, repos, activity
+from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 
 
 class TestGatewayCollector:

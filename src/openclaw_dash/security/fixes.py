@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import os
-import stat
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from openclaw_dash.security.audit import AuditResult, Finding
-from openclaw_dash.security.deps import DependencyScanResult, Vulnerability
+from openclaw_dash.security.audit import AuditResult
+from openclaw_dash.security.deps import DependencyScanResult
 
 
 @dataclass
@@ -20,9 +19,9 @@ class FixAction:
 
     finding_title: str
     action: str  # applied, suggested, failed
-    command: Optional[str] = None
+    command: str | None = None
     description: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -108,9 +107,7 @@ class SecurityFixer:
 
             self.fix_permission(path, target_mode)
 
-    def suggest_dependency_updates(
-        self, scan_result: DependencyScanResult
-    ) -> list[dict[str, Any]]:
+    def suggest_dependency_updates(self, scan_result: DependencyScanResult) -> list[dict[str, Any]]:
         """Generate suggested dependency updates."""
         updates: dict[str, dict[str, Any]] = {}
 
@@ -168,9 +165,7 @@ class SecurityFixer:
         else:
             return f"pip install '{pkg}>={version}'"
 
-    def apply_dependency_update(
-        self, package: str, version: str, source: str = "pip"
-    ) -> FixAction:
+    def apply_dependency_update(self, package: str, version: str, source: str = "pip") -> FixAction:
         """Apply a specific dependency update."""
         if source == "npm-audit" or source == "npm":
             cmd = ["npm", "install", f"{package}@{version}"]
@@ -216,8 +211,8 @@ class SecurityFixer:
 
     def fix_all(
         self,
-        audit_result: Optional[AuditResult] = None,
-        dep_result: Optional[DependencyScanResult] = None,
+        audit_result: AuditResult | None = None,
+        dep_result: DependencyScanResult | None = None,
         apply_dep_updates: bool = False,
     ) -> FixResult:
         """Apply all possible fixes."""
@@ -240,8 +235,8 @@ class SecurityFixer:
 
 
 def fix_security_issues(
-    audit_result: Optional[AuditResult] = None,
-    dep_result: Optional[DependencyScanResult] = None,
+    audit_result: AuditResult | None = None,
+    dep_result: DependencyScanResult | None = None,
     dry_run: bool = True,
 ) -> FixResult:
     """Convenience function to fix security issues."""

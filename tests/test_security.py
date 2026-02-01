@@ -5,28 +5,24 @@ import os
 import stat
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from openclaw_dash.security.audit import (
-    SecurityAudit,
+    SECRET_PATTERNS,
     AuditResult,
     Finding,
+    SecurityAudit,
     run_audit,
-    SECRET_PATTERNS,
 )
 from openclaw_dash.security.deps import (
     DependencyScanner,
     DependencyScanResult,
     Vulnerability,
-    scan_dependencies,
 )
 from openclaw_dash.security.fixes import (
-    SecurityFixer,
-    FixResult,
     FixAction,
-    fix_security_issues,
+    FixResult,
+    SecurityFixer,
 )
 
 
@@ -35,24 +31,28 @@ class TestSecretPatterns:
 
     def test_detects_openai_key(self):
         import re
+
         text = 'api_key = "sk-abcdefghijklmnopqrstuvwxyz1234567890abcd"'
         matched = any(re.search(p[0], text) for p in SECRET_PATTERNS)
         assert matched
 
     def test_detects_github_token(self):
         import re
+
         text = "GITHUB_TOKEN=ghp_1234567890abcdefghijklmnopqrstuvwxyz"
         matched = any(re.search(p[0], text) for p in SECRET_PATTERNS)
         assert matched
 
     def test_detects_aws_key(self):
         import re
+
         text = "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"
         matched = any(re.search(p[0], text) for p in SECRET_PATTERNS)
         assert matched
 
     def test_ignores_placeholder(self):
         import re
+
         # Placeholders should be filtered by audit logic, not regex
         # Using a long enough string to match patterns
         text = 'api_key = "your_api_key_here_placeholder_value"'
@@ -81,9 +81,7 @@ class TestSecurityAudit:
 
     def test_audit_result_to_dict(self):
         result = AuditResult(
-            findings=[
-                Finding(severity="high", category="test", title="Test", description="Desc")
-            ],
+            findings=[Finding(severity="high", category="test", title="Test", description="Desc")],
             scanned_files=5,
         )
         d = result.to_dict()
@@ -142,10 +140,14 @@ class TestSecurityAudit:
     def test_check_config_detects_exposed_server(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / "config.json"
-            config_file.write_text(json.dumps({
-                "server": {"host": "0.0.0.0"},
-                "auth": {"enabled": False},
-            }))
+            config_file.write_text(
+                json.dumps(
+                    {
+                        "server": {"host": "0.0.0.0"},
+                        "auth": {"enabled": False},
+                    }
+                )
+            )
 
             audit = SecurityAudit(openclaw_dir=Path(tmpdir))
             audit.check_config()
@@ -199,21 +201,23 @@ class TestDependencyScanner:
     def test_scan_pip_audit_parses_output(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps([
-                {
-                    "name": "requests",
-                    "version": "2.25.0",
-                    "vulns": [
-                        {
-                            "id": "CVE-2021-12345",
-                            "affected_versions": "<2.26.0",
-                            "fix_versions": ["2.26.0"],
-                            "severity": "high",
-                            "description": "Test",
-                        }
-                    ],
-                }
-            ]),
+            stdout=json.dumps(
+                [
+                    {
+                        "name": "requests",
+                        "version": "2.25.0",
+                        "vulns": [
+                            {
+                                "id": "CVE-2021-12345",
+                                "affected_versions": "<2.26.0",
+                                "fix_versions": ["2.26.0"],
+                                "severity": "high",
+                                "description": "Test",
+                            }
+                        ],
+                    }
+                ]
+            ),
         )
 
         scanner = DependencyScanner()
@@ -337,11 +341,14 @@ class TestCLIIntegration:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch.object(
-                __import__("openclaw_dash.security.audit", fromlist=["SecurityAudit"]).SecurityAudit,
+                __import__(
+                    "openclaw_dash.security.audit", fromlist=["SecurityAudit"]
+                ).SecurityAudit,
                 "__init__",
-                lambda self, **kwargs: setattr(self, "openclaw_dir", Path(tmpdir)) or setattr(self, "result", AuditResult()),
+                lambda self, **kwargs: setattr(self, "openclaw_dir", Path(tmpdir))
+                or setattr(self, "result", AuditResult()),
             ):
-                result = main()
+                main()
 
         captured = capsys.readouterr()
         # Should produce valid JSON
@@ -355,6 +362,7 @@ class TestCLIIntegration:
     @patch("sys.argv", ["openclaw-dash", "security", "--deep"])
     def test_security_command_deep_flag(self):
         from openclaw_dash.cli import main
+
         # Just verify it doesn't crash
         result = main()
         assert result in (0, 1)

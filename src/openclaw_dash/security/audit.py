@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import stat
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Common secret patterns to detect
 SECRET_PATTERNS = [
@@ -46,8 +45,8 @@ class Finding:
     category: str  # secrets, permissions, config
     title: str
     description: str
-    path: Optional[str] = None
-    line: Optional[int] = None
+    path: str | None = None
+    line: int | None = None
     recommendation: str = ""
     auto_fixable: bool = False
 
@@ -103,7 +102,7 @@ class AuditResult:
 class SecurityAudit:
     """Main security audit class."""
 
-    def __init__(self, openclaw_dir: Optional[Path] = None):
+    def __init__(self, openclaw_dir: Path | None = None):
         self.openclaw_dir = openclaw_dir or Path.home() / ".openclaw"
         self.result = AuditResult()
 
@@ -152,7 +151,9 @@ class SecurityAudit:
                 for pattern, secret_type in SECRET_PATTERNS:
                     if re.search(pattern, line):
                         # Check if it's likely a placeholder
-                        if any(ph in line.lower() for ph in ["example", "xxx", "your_", "changeme"]):
+                        if any(
+                            ph in line.lower() for ph in ["example", "xxx", "your_", "changeme"]
+                        ):
                             continue
 
                         self.result.findings.append(
@@ -192,7 +193,7 @@ class SecurityAudit:
 
             # Should be 700 (rwx------) or 750 at most
             if dir_mode & 0o077:  # Others or group have any access
-                world_readable = dir_mode & 0o004
+                dir_mode & 0o004
                 world_writable = dir_mode & 0o002
                 group_writable = dir_mode & 0o020
 
@@ -352,7 +353,7 @@ class SecurityAudit:
         return self.result
 
 
-def run_audit(deep: bool = False, openclaw_dir: Optional[Path] = None) -> AuditResult:
+def run_audit(deep: bool = False, openclaw_dir: Path | None = None) -> AuditResult:
     """Convenience function to run a security audit."""
     audit = SecurityAudit(openclaw_dir=openclaw_dir)
     return audit.run(deep=deep)
