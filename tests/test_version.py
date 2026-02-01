@@ -2,8 +2,6 @@
 
 from unittest.mock import patch
 
-import pytest
-
 from openclaw_dash.version import VERSION, VersionInfo, get_version_info
 
 
