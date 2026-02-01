@@ -23,6 +23,7 @@ dependencies = [
     "textual>=0.47.0",
     "rich>=13.0.0",
     "httpx>=0.25.0",
+    "tomli-w>=1.0.0",
 ]
 
 [project.optional-dependencies]

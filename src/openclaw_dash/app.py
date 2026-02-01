@@ -5,6 +5,7 @@ from textual.containers import Container
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+from openclaw_dash.config import Config, load_config
 from openclaw_dash.themes import THEMES, next_theme
 from openclaw_dash.widgets.alerts import AlertsPanel
 from openclaw_dash.widgets.ascii_art import (
@@ -165,6 +166,8 @@ class SessionsPanel(Static):
 class DashboardApp(App):
     """Lorp's system dashboard."""
 
+    config: Config
+
     CSS = """
     Screen {
         layout: grid;
@@ -251,17 +254,23 @@ class DashboardApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        # Load user config
+        self.config = load_config()
+
         # Register custom themes
         for theme in THEMES:
             self.register_theme(theme)
-        self.theme = "dark"  # Start with dark theme
+
+        # Apply saved theme (or default)
+        self.theme = self.config.theme
 
         self.action_refresh()
-        self.set_interval(30, self.action_refresh)
+        self.set_interval(self.config.refresh_interval, self.action_refresh)
 
     def action_cycle_theme(self) -> None:
-        """Cycle through available themes."""
+        """Cycle through available themes and save preference."""
         self.theme = next_theme(self.theme)
+        self.config.update(theme=self.theme)
         self.notify(f"Theme: {self.theme}", timeout=1.5)
 
     def action_refresh(self) -> None:
