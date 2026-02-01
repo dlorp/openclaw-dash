@@ -33,6 +33,13 @@ from openclaw_dash.widgets.security import (
     SecurityPanel,
     SecuritySummaryPanel,
 )
+from openclaw_dash.widgets.tabbed_groups import (
+    CodeTabGroup,
+    RuntimeTabGroup,
+    next_tab,
+    prev_tab,
+    switch_tab,
+)
 
 __all__ = [
     "SINGLE",
@@ -64,4 +71,10 @@ __all__ = [
     "notify_refresh",
     "notify_theme_change",
     "notify_panel_error",
+    # Tabbed groups
+    "RuntimeTabGroup",
+    "CodeTabGroup",
+    "switch_tab",
+    "next_tab",
+    "prev_tab",
 ]

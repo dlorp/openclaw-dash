@@ -2,10 +2,16 @@
 
 from openclaw_dash.themes import (
     DARK_THEME,
+    DARK_ORANGE,
+    GRANITE_GRAY,
     HACKER_THEME,
     LIGHT_THEME,
+    MEDIUM_TURQUOISE,
+    ROYAL_BLUE_LIGHT,
     THEME_NAMES,
     THEMES,
+    TITANIUM_YELLOW,
+    BrandColors,
     get_theme,
     next_theme,
 )
@@ -90,3 +96,59 @@ class TestNextTheme:
         for _ in range(3):
             theme = next_theme(theme)
         assert theme == "dark"
+
+
+class TestBrandColors:
+    """Tests for dlorp brand color definitions."""
+
+    def test_granite_gray_defined(self) -> None:
+        """Granite Gray should be defined for borders."""
+        assert GRANITE_GRAY == "#636764"
+        assert BrandColors.GRANITE_GRAY == "#636764"
+
+    def test_dark_orange_defined(self) -> None:
+        """Dark Orange should be defined for warnings."""
+        assert DARK_ORANGE == "#FB8B24"
+        assert BrandColors.DARK_ORANGE == "#FB8B24"
+
+    def test_titanium_yellow_defined(self) -> None:
+        """Titanium Yellow should be defined for highlights."""
+        assert TITANIUM_YELLOW == "#F4E409"
+        assert BrandColors.TITANIUM_YELLOW == "#F4E409"
+
+    def test_medium_turquoise_defined(self) -> None:
+        """Medium Turquoise should be defined for success."""
+        assert MEDIUM_TURQUOISE == "#50D8D7"
+        assert BrandColors.MEDIUM_TURQUOISE == "#50D8D7"
+
+    def test_royal_blue_defined(self) -> None:
+        """Royal Blue Light should be defined for primary."""
+        assert ROYAL_BLUE_LIGHT == "#3B60E4"
+        assert BrandColors.ROYAL_BLUE_LIGHT == "#3B60E4"
+
+    def test_all_brand_colors_are_valid_hex(self) -> None:
+        """All brand colors should be valid hex color codes."""
+        colors = [
+            GRANITE_GRAY,
+            DARK_ORANGE,
+            TITANIUM_YELLOW,
+            MEDIUM_TURQUOISE,
+            ROYAL_BLUE_LIGHT,
+        ]
+        for color in colors:
+            assert color.startswith("#")
+            assert len(color) == 7
+            # Check that all chars after # are valid hex
+            int(color[1:], 16)  # Will raise if invalid
+
+    def test_dark_theme_uses_brand_primary(self) -> None:
+        """Dark theme should use brand turquoise as primary."""
+        assert DARK_THEME.primary == MEDIUM_TURQUOISE
+
+    def test_dark_theme_uses_brand_secondary(self) -> None:
+        """Dark theme should use brand blue as secondary."""
+        assert DARK_THEME.secondary == ROYAL_BLUE_LIGHT
+
+    def test_dark_theme_uses_brand_accent(self) -> None:
+        """Dark theme should use brand orange as accent."""
+        assert DARK_THEME.accent == DARK_ORANGE

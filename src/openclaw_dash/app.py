@@ -2,7 +2,7 @@
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
-from textual.widgets import DataTable, Footer, Header, Static
+from textual.widgets import Collapsible, DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 from openclaw_dash.commands import DashboardCommands
@@ -274,6 +274,17 @@ class DashboardApp(App):
             self.refresh_interval = self.DEFAULT_REFRESH_INTERVAL
 
     CSS = """
+    /* =================================================================
+       OpenClaw Dashboard - dlorp Brand Styling
+       -----------------------------------------------------------------
+       Brand Colors:
+         #636764 Granite Gray    - borders, muted elements
+         #FB8B24 Dark Orange     - warnings, important actions
+         #F4E409 Titanium Yellow - highlights, focus states
+         #50D8D7 Medium Turquoise - success, online status
+         #3B60E4 Royal Blue Light - primary, links
+       ================================================================= */
+
     Screen {
         layout: grid;
         grid-size: 3 6;
@@ -281,18 +292,28 @@ class DashboardApp(App):
         padding: 1;
     }
 
+    /* Panel base styling with consistent borders */
     .panel {
-        border: round $primary;
-        padding: 1;
+        border: round #636764;  /* Granite Gray - consistent border color */
+        padding: 1 2;  /* Consistent: 1 vertical, 2 horizontal */
     }
 
     .panel:focus-within {
-        border: round $accent;
+        border: round #F4E409;  /* Titanium Yellow - focus highlight */
     }
 
     .panel.collapsed {
         display: none;
     }
+
+    /* Panel title styling for consistency */
+    .panel > Static:first-child {
+        margin-bottom: 1;
+    }
+
+    /* =================================================================
+       Panel Layout Grid
+       ================================================================= */
 
     #gateway-panel { row-span: 1; }
     #task-panel { column-span: 2; }
@@ -307,7 +328,24 @@ class DashboardApp(App):
     #resources-panel { column-span: 3; row-span: 1; }
     #resources-panel.hidden { display: none; }
 
+    /* =================================================================
+       Widget Styling
+       ================================================================= */
+
     DataTable { height: auto; }
+
+    /* Jump mode label styling - use brand Royal Blue */
+    .jump-label {
+        background: #3B60E4;  /* Royal Blue Light */
+        color: #ffffff;
+        text-style: bold;
+        padding: 0 1;
+        dock: top;
+        width: auto;
+        height: 1;
+        offset-x: 1;
+        offset-y: 0;
+    }
     """
 
     BINDINGS = [
@@ -334,6 +372,13 @@ class DashboardApp(App):
         ("p", "focus_panel('repos-panel')", "Repos"),
         ("l", "focus_panel('logs-panel')", "Logs"),
         ("x", "toggle_resources", "Resources"),
+        # Jump mode
+        ("f", "enter_jump_mode", "Jump"),
+        ("slash", "enter_jump_mode", "Jump"),
+        # Collapse/expand controls
+        ("enter", "toggle_focused_collapse", "Toggle"),
+        ("ctrl+left_square_bracket", "collapse_all", "Collapse All"),
+        ("ctrl+right_square_bracket", "expand_all", "Expand All"),
     ]
 
     _mounted: bool = False  # Track if initial mount is complete (for notifications)
@@ -342,52 +387,52 @@ class DashboardApp(App):
         yield Header(show_clock=True)
 
         with Container(id="gateway-panel", classes="panel"):
-            yield Static("[bold]Gateway[/]")
-            yield GatewayPanel()
+            with Collapsible(title="Gateway", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="gateway-panel-collapsible"):
+                yield GatewayPanel()
 
         with Container(id="task-panel", classes="panel"):
-            yield Static("[bold]Current Task[/]")
-            yield CurrentTaskPanel()
+            with Collapsible(title="Current Task", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="task-panel-collapsible"):
+                yield CurrentTaskPanel()
 
         with Container(id="alerts-panel", classes="panel"):
-            yield Static("[bold]⚠️ Alerts[/]")
-            yield AlertsPanel()
+            with Collapsible(title="⚠️ Alerts", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="alerts-panel-collapsible"):
+                yield AlertsPanel()
 
         with Container(id="repos-panel", classes="panel"):
-            yield Static("[bold]Repositories[/]")
-            yield ReposPanel()
+            with Collapsible(title="Repositories", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="repos-panel-collapsible"):
+                yield ReposPanel()
 
         with Container(id="activity-panel", classes="panel"):
-            yield Static("[bold]Activity[/]")
-            yield ActivityPanel()
+            with Collapsible(title="Activity", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="activity-panel-collapsible"):
+                yield ActivityPanel()
 
         with Container(id="cron-panel", classes="panel"):
-            yield Static("[bold]Cron[/]")
-            yield CronPanel()
+            with Collapsible(title="Cron", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="cron-panel-collapsible"):
+                yield CronPanel()
 
         with Container(id="sessions-panel", classes="panel"):
-            yield Static("[bold]Sessions[/]")
-            yield SessionsPanel()
+            with Collapsible(title="Sessions", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="sessions-panel-collapsible"):
+                yield SessionsPanel()
 
         with Container(id="channels-panel", classes="panel"):
-            yield Static("[bold]Channels[/]")
-            yield ChannelsPanel()
+            with Collapsible(title="Channels", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="channels-panel-collapsible"):
+                yield ChannelsPanel()
 
         with Container(id="metrics-panel", classes="panel"):
-            yield Static("[bold]📊 Metrics[/]")
-            yield MetricsPanel()
+            with Collapsible(title="📊 Metrics", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="metrics-panel-collapsible"):
+                yield MetricsPanel()
 
         with Container(id="security-panel", classes="panel"):
-            yield Static("[bold]🔒 Security[/]")
-            yield SecurityPanel()
+            with Collapsible(title="🔒 Security", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="security-panel-collapsible"):
+                yield SecurityPanel()
 
         with Container(id="logs-panel", classes="panel"):
-            yield Static("[bold]📜 Logs[/]")
-            yield LogsPanel(n_lines=12)
+            with Collapsible(title="📜 Logs", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="logs-panel-collapsible"):
+                yield LogsPanel(n_lines=12)
 
         with Container(id="resources-panel", classes="panel"):
-            yield Static("[bold]📊 Resources[/]")
-            yield ResourcesPanel()
+            with Collapsible(title="📊 Resources", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="resources-panel-collapsible"):
+                yield ResourcesPanel()
 
         yield Footer()
         yield StatusFooter(id="status-footer")
@@ -408,6 +453,14 @@ class DashboardApp(App):
             try:
                 panel = self.query_one("#resources-panel")
                 panel.add_class("hidden")
+            except Exception:
+                pass
+
+        # Apply saved collapsed states
+        for panel_id in self.config.collapsed_panels:
+            try:
+                collapsible = self.query_one(f"#{panel_id}-collapsible", Collapsible)
+                collapsible.collapsed = True
             except Exception:
                 pass
 
@@ -564,3 +617,150 @@ class DashboardApp(App):
                 self.notify("Resources panel: OFF", timeout=1.5)
         except Exception:
             pass
+
+    def action_toggle_focused_collapse(self) -> None:
+        """Toggle collapse state of the focused panel."""
+        focused = self.focused
+        if focused is None:
+            return
+
+        # Find the collapsible in the focused widget's hierarchy
+        widget = focused
+        while widget is not None:
+            # Check if we're inside a panel container
+            if hasattr(widget, "id") and widget.id and widget.id.endswith("-panel"):
+                panel_id = widget.id
+                try:
+                    collapsible = self.query_one(f"#{panel_id}-collapsible", Collapsible)
+                    collapsible.collapsed = not collapsible.collapsed
+                    self._save_collapsed_state(panel_id, collapsible.collapsed)
+                except Exception:
+                    pass
+                return
+            widget = widget.parent
+
+    def action_collapse_all(self) -> None:
+        """Collapse all panels."""
+        collapsed_ids = []
+        for panel_id in self.PANEL_ORDER:
+            try:
+                collapsible = self.query_one(f"#{panel_id}-collapsible", Collapsible)
+                collapsible.collapsed = True
+                collapsed_ids.append(panel_id)
+            except Exception:
+                pass
+
+        # Save all collapsed states
+        self.config.collapsed_panels = collapsed_ids
+        self.config.save()
+        self.notify("All panels collapsed", timeout=1.5)
+
+    def action_expand_all(self) -> None:
+        """Expand all panels."""
+        for panel_id in self.PANEL_ORDER:
+            try:
+                collapsible = self.query_one(f"#{panel_id}-collapsible", Collapsible)
+                collapsible.collapsed = False
+            except Exception:
+                pass
+
+        # Clear collapsed states
+        self.config.collapsed_panels = []
+        self.config.save()
+        self.notify("All panels expanded", timeout=1.5)
+
+    def _save_collapsed_state(self, panel_id: str, collapsed: bool) -> None:
+        """Save a panel's collapsed state to config."""
+        if collapsed:
+            if panel_id not in self.config.collapsed_panels:
+                self.config.collapsed_panels.append(panel_id)
+        else:
+            if panel_id in self.config.collapsed_panels:
+                self.config.collapsed_panels.remove(panel_id)
+        self.config.save()
+
+    def on_collapsible_collapsed(self, event: Collapsible.Collapsed) -> None:
+        """Handle collapsible collapse event."""
+        collapsible = event.collapsible
+        if collapsible.id and collapsible.id.endswith("-collapsible"):
+            panel_id = collapsible.id.replace("-collapsible", "")
+            self._save_collapsed_state(panel_id, True)
+
+    def on_collapsible_expanded(self, event: Collapsible.Expanded) -> None:
+        """Handle collapsible expand event."""
+        collapsible = event.collapsible
+        if collapsible.id and collapsible.id.endswith("-collapsible"):
+            panel_id = collapsible.id.replace("-collapsible", "")
+            self._save_collapsed_state(panel_id, False)
+
+    def action_enter_jump_mode(self) -> None:
+        """Enter jump mode for quick panel navigation."""
+        if self._jump_mode:
+            return  # Already in jump mode
+
+        self._jump_mode = True
+        self._jump_key_mapping = build_jump_labels(self.PANEL_ORDER)
+
+        # Show jump labels on each panel
+        for key, panel_id in self._jump_key_mapping.items():
+            try:
+                panel = self.query_one(f"#{panel_id}")
+                label = Static(f"[{key}]", classes="jump-label")
+                label.id = f"jump-label-{panel_id}"
+                panel.mount(label)
+            except Exception:
+                pass
+
+        # Update status footer to show jump mode
+        try:
+            footer = self.query_one("#status-footer", StatusFooter)
+            footer.set_mode("jump")
+        except Exception:
+            pass
+
+    def _exit_jump_mode(self) -> None:
+        """Exit jump mode and remove labels."""
+        if not self._jump_mode:
+            return
+
+        self._jump_mode = False
+
+        # Remove all jump labels
+        for panel_id in self.PANEL_ORDER:
+            try:
+                label = self.query_one(f"#jump-label-{panel_id}")
+                label.remove()
+            except Exception:
+                pass
+
+        # Reset status footer
+        try:
+            footer = self.query_one("#status-footer", StatusFooter)
+            footer.set_mode("normal")
+        except Exception:
+            pass
+
+    def on_key(self, event) -> None:
+        """Handle key presses, including jump mode navigation."""
+        if not self._jump_mode:
+            return
+
+        key = event.key.lower() if hasattr(event, "key") else str(event).lower()
+
+        # Escape exits jump mode without action
+        if key == "escape":
+            self._exit_jump_mode()
+            event.stop()
+            return
+
+        # Check if it's a valid jump key
+        if key in self._jump_key_mapping:
+            panel_id = self._jump_key_mapping[key]
+            self._exit_jump_mode()
+            self.action_focus_panel(panel_id)
+            event.stop()
+            return
+
+        # Any other key exits jump mode
+        self._exit_jump_mode()
+        event.stop()
