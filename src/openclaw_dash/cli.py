@@ -142,11 +142,15 @@ def print_status_text(status: dict[str, Any]) -> None:
         console.print(table)
 
 
-def run_tui() -> None:
-    """Launch the TUI dashboard."""
+def run_tui(refresh_interval: int | None = None) -> None:
+    """Launch the TUI dashboard.
+
+    Args:
+        refresh_interval: Override refresh interval in seconds. If None, uses config default.
+    """
     from openclaw_dash.app import DashboardApp
 
-    app = DashboardApp()
+    app = DashboardApp(refresh_interval=refresh_interval)
     app.run()
 
 
@@ -381,6 +385,9 @@ def main() -> int:
     parser.add_argument("--status", action="store_true", help="Quick text status")
     parser.add_argument("--json", action="store_true", help="JSON output")
     parser.add_argument(
+        "-w", "--watch", action="store_true", help="Watch mode: auto-refresh every 5s instead of 30s"
+    )
+    parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__import__('openclaw_dash').__version__}"
     )
 
@@ -500,7 +507,9 @@ def main() -> int:
             print_status_text(status)
         return 0
 
-    run_tui()
+    # Watch mode uses 5s refresh interval
+    refresh_interval = 5 if args.watch else None
+    run_tui(refresh_interval=refresh_interval)
     return 0
 
 
