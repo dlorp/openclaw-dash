@@ -1,3 +1,6 @@
 """openclaw-dash: At-a-glance dashboard for lorp's systems."""
 
-__version__ = "0.1.0"
+from openclaw_dash.version import VERSION, VersionInfo, get_version_info
+
+__version__ = VERSION
+__all__ = ["__version__", "VERSION", "VersionInfo", "get_version_info"]
