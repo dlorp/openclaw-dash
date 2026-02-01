@@ -274,6 +274,104 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
     return 1 if audit_result.critical_count > 0 or audit_result.high_count > 0 else 0
 
 
+def cmd_auto(args: argparse.Namespace) -> int:
+    """Handle auto subcommands."""
+    if args.auto_command == "merge":
+        return cmd_auto_merge(args)
+    elif args.auto_command == "cleanup":
+        return cmd_auto_cleanup(args)
+    elif args.auto_command == "deps":
+        return cmd_auto_deps(args)
+    elif args.auto_command == "backup":
+        return cmd_auto_backup(args)
+    else:
+        print("Usage: openclaw-dash auto {merge|cleanup|deps|backup}")
+        return 1
+
+
+def cmd_auto_merge(args: argparse.Namespace) -> int:
+    """Auto-merge approved PRs."""
+    from pathlib import Path
+
+    from openclaw_dash.automation.pr_auto import (
+        MergeConfig,
+        PRAutomation,
+        format_merge_results,
+    )
+
+    repos = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
+    if args.repo:
+        repos = [args.repo]
+
+    config = MergeConfig(dry_run=args.dry_run)
+
+    for repo in repos:
+        repo_path = Path.home() / "repos" / repo
+        if not repo_path.exists():
+            continue
+        automation = PRAutomation(repo_path)
+        results = automation.auto_merge(config)
+        print(format_merge_results(results, repo))
+
+    return 0
+
+
+def cmd_auto_cleanup(args: argparse.Namespace) -> int:
+    """Clean up stale branches."""
+    from pathlib import Path
+
+    from openclaw_dash.automation.pr_auto import (
+        CleanupConfig,
+        PRAutomation,
+        format_cleanup_results,
+    )
+
+    repos = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
+    if args.repo:
+        repos = [args.repo]
+
+    config = CleanupConfig(dry_run=args.dry_run)
+
+    for repo in repos:
+        repo_path = Path.home() / "repos" / repo
+        if not repo_path.exists():
+            continue
+        automation = PRAutomation(repo_path)
+        results = automation.cleanup_branches(config)
+        print(format_cleanup_results(results, repo))
+
+    return 0
+
+
+def cmd_auto_deps(args: argparse.Namespace) -> int:
+    """Run dependency updates."""
+    from openclaw_dash.automation.deps_auto import (
+        DepsAutomation,
+        DepsConfig,
+        format_deps_results,
+    )
+
+    config = DepsConfig(dry_run=args.dry_run)
+    automation = DepsAutomation(config)
+    results = automation.run_updates()
+    print(format_deps_results(results))
+    return 0
+
+
+def cmd_auto_backup(args: argparse.Namespace) -> int:
+    """Verify backup status."""
+    from openclaw_dash.automation.backup import BackupVerifier, format_backup_report
+
+    verifier = BackupVerifier()
+    report = verifier.verify()
+
+    if hasattr(args, "backup_json") and args.backup_json:
+        print(json.dumps(report.__dict__, indent=2, default=str))
+    else:
+        print(format_backup_report(report))
+    return 0
+
+
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -310,7 +408,35 @@ def main() -> int:
     metrics_parser.add_argument("--performance", action="store_true", help="Show only performance")
     metrics_parser.add_argument("--github", action="store_true", help="Show only GitHub metrics")
 
+    # Auto subcommand
+    auto_parser = subparsers.add_parser("auto", help="Automation commands")
+    auto_subparsers = auto_parser.add_subparsers(dest="auto_command", help="Auto commands")
+
+    # auto merge
+    merge_parser = auto_subparsers.add_parser("merge", help="Auto-merge approved PRs")
+    merge_parser.add_argument("--dry-run", action="store_true", help="Preview without merging")
+    merge_parser.add_argument("--repo", help="Specific repo to process")
+
+    # auto cleanup
+    cleanup_parser = auto_subparsers.add_parser("cleanup", help="Clean up stale branches")
+    cleanup_parser.add_argument("--dry-run", action="store_true", help="Preview without deleting")
+    cleanup_parser.add_argument("--repo", help="Specific repo to process")
+
+    # auto deps
+    deps_parser = auto_subparsers.add_parser("deps", help="Run dependency updates")
+    deps_parser.add_argument("--dry-run", action="store_true", help="Preview without creating PRs")
+
+    # auto backup
+    backup_parser = auto_subparsers.add_parser("backup", help="Verify backup status")
+    backup_parser.add_argument(
+        "--json", dest="backup_json", action="store_true", help="JSON output"
+    )
+
     args = parser.parse_args()
+
+    # Handle auto command
+    if args.command == "auto":
+        return cmd_auto(args)
 
     # Handle security command
     if args.command == "security":

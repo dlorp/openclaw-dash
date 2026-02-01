@@ -30,7 +30,6 @@ from pathlib import Path
 # Import pr-describe for PR description generation
 try:
     from pr_describe import generate_pr_description
-
     HAS_PR_DESCRIBE = True
 except ImportError:
     HAS_PR_DESCRIBE = False
@@ -123,7 +122,6 @@ def find_dep_files(repo_path: Path) -> dict:
 
 # --- Python Dependency Auditing ---
 
-
 def run_pip_audit(repo_path: Path, requirements_file: Path) -> list[Vulnerability]:
     """Run pip-audit on a requirements file."""
     if not tool_available("pip-audit"):
@@ -131,29 +129,23 @@ def run_pip_audit(repo_path: Path, requirements_file: Path) -> list[Vulnerabilit
 
     vulnerabilities = []
     code, stdout, stderr = run(
-        f"pip-audit -r {requirements_file} --format json 2>/dev/null", cwd=repo_path, timeout=180
+        f"pip-audit -r {requirements_file} --format json 2>/dev/null",
+        cwd=repo_path,
+        timeout=180
     )
 
     if code == 0 or stdout:
         try:
             results = json.loads(stdout) if stdout else []
             for vuln in results:
-                vulnerabilities.append(
-                    Vulnerability(
-                        package=vuln.get("name", "unknown"),
-                        installed_version=vuln.get("version", "unknown"),
-                        fixed_version=vuln.get("fix_versions", [None])[0]
-                        if vuln.get("fix_versions")
-                        else None,
-                        severity=vuln.get("vulns", [{}])[0].get("severity", "unknown")
-                        if vuln.get("vulns")
-                        else "unknown",
-                        description=vuln.get("vulns", [{}])[0].get("id", "Unknown vulnerability")
-                        if vuln.get("vulns")
-                        else "Unknown",
-                        source="pip-audit",
-                    )
-                )
+                vulnerabilities.append(Vulnerability(
+                    package=vuln.get("name", "unknown"),
+                    installed_version=vuln.get("version", "unknown"),
+                    fixed_version=vuln.get("fix_versions", [None])[0] if vuln.get("fix_versions") else None,
+                    severity=vuln.get("vulns", [{}])[0].get("severity", "unknown") if vuln.get("vulns") else "unknown",
+                    description=vuln.get("vulns", [{}])[0].get("id", "Unknown vulnerability") if vuln.get("vulns") else "Unknown",
+                    source="pip-audit"
+                ))
         except json.JSONDecodeError:
             pass
 
@@ -167,7 +159,9 @@ def run_safety_check(repo_path: Path, requirements_file: Path) -> list[Vulnerabi
 
     vulnerabilities = []
     code, stdout, stderr = run(
-        f"safety check -r {requirements_file} --json 2>/dev/null", cwd=repo_path, timeout=180
+        f"safety check -r {requirements_file} --json 2>/dev/null",
+        cwd=repo_path,
+        timeout=180
     )
 
     if stdout:
@@ -177,32 +171,24 @@ def run_safety_check(repo_path: Path, requirements_file: Path) -> list[Vulnerabi
             vulns = results.get("vulnerabilities", []) if isinstance(results, dict) else results
             for vuln in vulns:
                 if isinstance(vuln, dict):
-                    vulnerabilities.append(
-                        Vulnerability(
-                            package=vuln.get("package_name", "unknown"),
-                            installed_version=vuln.get("analyzed_version", "unknown"),
-                            fixed_version=vuln.get("fixed_versions", [None])[0]
-                            if vuln.get("fixed_versions")
-                            else None,
-                            severity=vuln.get("severity", {}).get("level", "unknown")
-                            if isinstance(vuln.get("severity"), dict)
-                            else "unknown",
-                            description=vuln.get("vulnerability_id", "Unknown vulnerability"),
-                            source="safety",
-                        )
-                    )
+                    vulnerabilities.append(Vulnerability(
+                        package=vuln.get("package_name", "unknown"),
+                        installed_version=vuln.get("analyzed_version", "unknown"),
+                        fixed_version=vuln.get("fixed_versions", [None])[0] if vuln.get("fixed_versions") else None,
+                        severity=vuln.get("severity", {}).get("level", "unknown") if isinstance(vuln.get("severity"), dict) else "unknown",
+                        description=vuln.get("vulnerability_id", "Unknown vulnerability"),
+                        source="safety"
+                    ))
                 elif isinstance(vuln, list) and len(vuln) >= 5:
                     # Old safety format: [pkg, version, installed, desc, id]
-                    vulnerabilities.append(
-                        Vulnerability(
-                            package=vuln[0],
-                            installed_version=vuln[2],
-                            fixed_version=None,
-                            severity="unknown",
-                            description=vuln[4],
-                            source="safety",
-                        )
-                    )
+                    vulnerabilities.append(Vulnerability(
+                        package=vuln[0],
+                        installed_version=vuln[2],
+                        fixed_version=None,
+                        severity="unknown",
+                        description=vuln[4],
+                        source="safety"
+                    ))
         except json.JSONDecodeError:
             pass
 
@@ -214,19 +200,20 @@ def get_pip_outdated(repo_path: Path) -> list[OutdatedDep]:
     outdated = []
 
     # Try pip list --outdated
-    code, stdout, stderr = run("pip list --outdated --format json 2>/dev/null", cwd=repo_path)
+    code, stdout, stderr = run(
+        "pip list --outdated --format json 2>/dev/null",
+        cwd=repo_path
+    )
 
     if code == 0 and stdout:
         try:
             for pkg in json.loads(stdout):
-                outdated.append(
-                    OutdatedDep(
-                        package=pkg["name"],
-                        current_version=pkg["version"],
-                        latest_version=pkg["latest_version"],
-                        dep_type="pip",
-                    )
-                )
+                outdated.append(OutdatedDep(
+                    package=pkg["name"],
+                    current_version=pkg["version"],
+                    latest_version=pkg["latest_version"],
+                    dep_type="pip"
+                ))
         except json.JSONDecodeError:
             pass
 
@@ -234,7 +221,6 @@ def get_pip_outdated(repo_path: Path) -> list[OutdatedDep]:
 
 
 # --- NPM Dependency Auditing ---
-
 
 def run_npm_audit(package_dir: Path) -> list[Vulnerability]:
     """Run npm audit on a package.json directory."""
@@ -244,7 +230,11 @@ def run_npm_audit(package_dir: Path) -> list[Vulnerability]:
     if not (package_dir / "package-lock.json").exists():
         return vulnerabilities
 
-    code, stdout, stderr = run("npm audit --json 2>/dev/null", cwd=package_dir, timeout=180)
+    code, stdout, stderr = run(
+        "npm audit --json 2>/dev/null",
+        cwd=package_dir,
+        timeout=180
+    )
 
     if stdout:
         try:
@@ -252,18 +242,14 @@ def run_npm_audit(package_dir: Path) -> list[Vulnerability]:
             vulns = results.get("vulnerabilities", {})
             for pkg_name, vuln_data in vulns.items():
                 severity = vuln_data.get("severity", "unknown")
-                vulnerabilities.append(
-                    Vulnerability(
-                        package=pkg_name,
-                        installed_version=vuln_data.get("range", "unknown"),
-                        fixed_version=vuln_data.get("fixAvailable", {}).get("version")
-                        if isinstance(vuln_data.get("fixAvailable"), dict)
-                        else None,
-                        severity=severity,
-                        description=f"{vuln_data.get('via', ['Unknown'])[0] if isinstance(vuln_data.get('via', ['Unknown'])[0], str) else vuln_data.get('via', [{}])[0].get('title', 'Unknown')}",
-                        source="npm",
-                    )
-                )
+                vulnerabilities.append(Vulnerability(
+                    package=pkg_name,
+                    installed_version=vuln_data.get("range", "unknown"),
+                    fixed_version=vuln_data.get("fixAvailable", {}).get("version") if isinstance(vuln_data.get("fixAvailable"), dict) else None,
+                    severity=severity,
+                    description=f"{vuln_data.get('via', ['Unknown'])[0] if isinstance(vuln_data.get('via', ['Unknown'])[0], str) else vuln_data.get('via', [{}])[0].get('title', 'Unknown')}",
+                    source="npm"
+                ))
         except json.JSONDecodeError:
             pass
 
@@ -274,20 +260,21 @@ def get_npm_outdated(package_dir: Path) -> list[OutdatedDep]:
     """Get outdated npm packages."""
     outdated = []
 
-    code, stdout, stderr = run("npm outdated --json 2>/dev/null", cwd=package_dir)
+    code, stdout, stderr = run(
+        "npm outdated --json 2>/dev/null",
+        cwd=package_dir
+    )
 
     # npm outdated returns exit code 1 if there are outdated packages
     if stdout:
         try:
             for pkg, info in json.loads(stdout).items():
-                outdated.append(
-                    OutdatedDep(
-                        package=pkg,
-                        current_version=info.get("current", "unknown"),
-                        latest_version=info.get("latest", "unknown"),
-                        dep_type="npm",
-                    )
-                )
+                outdated.append(OutdatedDep(
+                    package=pkg,
+                    current_version=info.get("current", "unknown"),
+                    latest_version=info.get("latest", "unknown"),
+                    dep_type="npm"
+                ))
         except json.JSONDecodeError:
             pass
 
@@ -295,7 +282,6 @@ def get_npm_outdated(package_dir: Path) -> list[OutdatedDep]:
 
 
 # --- Repo Scanning ---
-
 
 def scan_repo(repo: str) -> RepoAudit:
     """Scan a single repo for dependency issues."""
@@ -310,7 +296,7 @@ def scan_repo(repo: str) -> RepoAudit:
             outdated=[],
             dep_files=[],
             scanned_at=datetime.now().isoformat(),
-            errors=[f"Repo not found: {repo_path}"],
+            errors=[f"Repo not found: {repo_path}"]
         )
 
     # Find dependency files
@@ -382,12 +368,11 @@ def scan_repo(repo: str) -> RepoAudit:
         outdated=[asdict(d) for d in outdated],
         dep_files=all_dep_files,
         scanned_at=datetime.now().isoformat(),
-        errors=errors,
+        errors=errors
     )
 
 
 # --- PR Creation ---
-
 
 def run_tests(repo_path: Path) -> tuple[bool, str]:
     """Run tests in a repo. Returns (passed, output)."""
@@ -401,12 +386,7 @@ def run_tests(repo_path: Path) -> tuple[bool, str]:
 
     for cmd in test_commands:
         # Check if test framework exists
-        if (
-            "pytest" in cmd
-            and not (repo_path / "pytest.ini").exists()
-            and not list(repo_path.glob("test_*.py"))
-            and not list(repo_path.glob("**/test_*.py"))
-        ):
+        if "pytest" in cmd and not (repo_path / "pytest.ini").exists() and not list(repo_path.glob("test_*.py")) and not list(repo_path.glob("**/test_*.py")):
             continue
         if "npm test" in cmd and not (repo_path / "package.json").exists():
             continue
@@ -448,7 +428,6 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
                 content = req_file.read_text()
                 # Try various patterns
                 import re
-
                 patterns = [
                     rf"^{re.escape(dep.package)}==.*$",
                     rf"^{re.escape(dep.package)}>=.*$",
@@ -461,7 +440,7 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
                         pattern,
                         f"{dep.package}=={dep.latest_version}",
                         content,
-                        flags=re.MULTILINE | re.IGNORECASE,
+                        flags=re.MULTILINE | re.IGNORECASE
                     )
                     if count > 0:
                         req_file.write_text(new_content)
@@ -472,7 +451,9 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
 
         elif dep.dep_type == "npm":
             code, _, stderr = run(
-                f"npm install {dep.package}@{dep.latest_version} --save", cwd=repo_path, timeout=180
+                f"npm install {dep.package}@{dep.latest_version} --save",
+                cwd=repo_path,
+                timeout=180
             )
             if code != 0:
                 raise Exception(f"npm install failed: {stderr}")
@@ -488,9 +469,7 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
 
         # Commit
         security_tag = "🔒 " if dep.is_security else ""
-        commit_msg = (
-            f"{security_tag}Update {dep.package} from {dep.current_version} to {dep.latest_version}"
-        )
+        commit_msg = f"{security_tag}Update {dep.package} from {dep.current_version} to {dep.latest_version}"
 
         run("git add -A", cwd=repo_path)
         code, _, stderr = run(f'git commit -m "{commit_msg}"', cwd=repo_path)
@@ -509,9 +488,7 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
                 # Append dep-specific context
                 extra_notes = []
                 if dep.is_security:
-                    extra_notes.append(
-                        "⚠️ **Security update** - This package has known vulnerabilities in the current version."
-                    )
+                    extra_notes.append("⚠️ **Security update** - This package has known vulnerabilities in the current version.")
                 extra_notes.append(f"### Test Results\n{test_output}")
                 extra_notes.append("---\n*Created by dep-shepherd.py* 🐑")
                 pr_body += "\n\n" + "\n\n".join(extra_notes)
@@ -544,7 +521,8 @@ Updates **{dep.package}** from `{dep.current_version}` to `{dep.latest_version}`
 """
 
         code, stdout, stderr = run(
-            f'gh pr create --title "{commit_msg}" --body "{pr_body}" --base main', cwd=repo_path
+            f'gh pr create --title "{commit_msg}" --body "{pr_body}" --base main',
+            cwd=repo_path
         )
         if code != 0:
             raise Exception(f"PR creation failed: {stderr}")
@@ -573,42 +551,38 @@ def create_update_prs(results: list[RepoAudit], dry_run: bool = False) -> list[d
 
         # Sort: security first, then by severity
         all_deps = sorted(
-            audit.outdated, key=lambda x: (not x.get("is_security", False), x.get("package", ""))
+            audit.outdated,
+            key=lambda x: (not x.get("is_security", False), x.get("package", ""))
         )
 
         for dep_dict in all_deps:
             dep = OutdatedDep(**dep_dict) if isinstance(dep_dict, dict) else dep_dict
 
             if dry_run:
-                pr_results.append(
-                    {
-                        "repo": audit.name,
-                        "package": dep.package,
-                        "from": dep.current_version,
-                        "to": dep.latest_version,
-                        "is_security": dep.is_security,
-                        "status": "dry-run",
-                    }
-                )
+                pr_results.append({
+                    "repo": audit.name,
+                    "package": dep.package,
+                    "from": dep.current_version,
+                    "to": dep.latest_version,
+                    "is_security": dep.is_security,
+                    "status": "dry-run"
+                })
             else:
                 success, message = create_update_pr(audit.name, dep)
-                pr_results.append(
-                    {
-                        "repo": audit.name,
-                        "package": dep.package,
-                        "from": dep.current_version,
-                        "to": dep.latest_version,
-                        "is_security": dep.is_security,
-                        "status": "created" if success else "failed",
-                        "message": message,
-                    }
-                )
+                pr_results.append({
+                    "repo": audit.name,
+                    "package": dep.package,
+                    "from": dep.current_version,
+                    "to": dep.latest_version,
+                    "is_security": dep.is_security,
+                    "status": "created" if success else "failed",
+                    "message": message
+                })
 
     return pr_results
 
 
 # --- Output Formatting ---
-
 
 def severity_emoji(severity: str) -> str:
     """Get emoji for severity level."""
@@ -660,22 +634,10 @@ def format_report(results: list[RepoAudit]) -> str:
         # Vulnerabilities
         if audit.vulnerabilities:
             lines.append("#### 🔒 Security Vulnerabilities")
-            for v in sorted(
-                audit.vulnerabilities,
-                key=lambda x: ["critical", "high", "moderate", "low", "unknown"].index(
-                    x.get("severity", "unknown").lower()
-                )
-                if x.get("severity", "unknown").lower()
-                in ["critical", "high", "moderate", "low", "unknown"]
-                else 4,
-            ):
+            for v in sorted(audit.vulnerabilities, key=lambda x: ["critical", "high", "moderate", "low", "unknown"].index(x.get("severity", "unknown").lower()) if x.get("severity", "unknown").lower() in ["critical", "high", "moderate", "low", "unknown"] else 4):
                 sev = v.get("severity", "unknown")
                 emoji = severity_emoji(sev)
-                fix = (
-                    f" → {v.get('fixed_version')}"
-                    if v.get("fixed_version")
-                    else " (no fix available)"
-                )
+                fix = f" → {v.get('fixed_version')}" if v.get("fixed_version") else " (no fix available)"
                 lines.append(f"- {emoji} **{v.get('package')}** {v.get('installed_version')}{fix}")
                 lines.append(f"  - {v.get('description')} ({v.get('source')})")
             lines.append("")
@@ -688,17 +650,13 @@ def format_report(results: list[RepoAudit]) -> str:
             if security_outdated:
                 lines.append("#### ⚠️ Security-Related Updates")
                 for d in security_outdated[:10]:
-                    lines.append(
-                        f"- **{d.get('package')}**: {d.get('current_version')} → {d.get('latest_version')} ({d.get('dep_type')})"
-                    )
+                    lines.append(f"- **{d.get('package')}**: {d.get('current_version')} → {d.get('latest_version')} ({d.get('dep_type')})")
                 lines.append("")
 
             if regular_outdated:
                 lines.append(f"#### 📦 Outdated Packages ({len(regular_outdated)} total)")
                 for d in regular_outdated[:10]:
-                    lines.append(
-                        f"- {d.get('package')}: {d.get('current_version')} → {d.get('latest_version')} ({d.get('dep_type')})"
-                    )
+                    lines.append(f"- {d.get('package')}: {d.get('current_version')} → {d.get('latest_version')} ({d.get('dep_type')})")
                 if len(regular_outdated) > 10:
                     lines.append(f"- ... and {len(regular_outdated) - 10} more")
                 lines.append("")
@@ -790,14 +748,7 @@ def save_state(results: list[RepoAudit]):
     """Save scan results for trending."""
     state = {
         "scanned_at": datetime.now().isoformat(),
-        "results": [
-            asdict(r)
-            if hasattr(r, "__dataclass_fields__")
-            else r.__dict__
-            if hasattr(r, "__dict__")
-            else r
-            for r in results
-        ],
+        "results": [asdict(r) if hasattr(r, '__dataclass_fields__') else r.__dict__ if hasattr(r, '__dict__') else r for r in results]
     }
     STATE_FILE.write_text(json.dumps(state, indent=2, default=str))
 
@@ -805,6 +756,7 @@ def save_state(results: list[RepoAudit]):
 def main():
     # Parse arguments
     output_json = "--json" in sys.argv
+    output_report = "--report" in sys.argv
     output_digest = "--digest" in sys.argv
     do_update = "--update" in sys.argv
     dry_run = "--dry-run" in sys.argv
@@ -823,10 +775,7 @@ def main():
             missing_tools.append(tool)
 
     if missing_tools and not output_json:
-        print(
-            f"⚠️  Missing tools (some checks will be skipped): {', '.join(missing_tools)}",
-            file=sys.stderr,
-        )
+        print(f"⚠️  Missing tools (some checks will be skipped): {', '.join(missing_tools)}", file=sys.stderr)
 
     # Scan repos
     results = []
@@ -848,24 +797,16 @@ def main():
         else:
             print("\n## 🔄 Update Results\n")
             for pr in pr_results:
-                status_emoji = (
-                    "✅"
-                    if pr["status"] == "created"
-                    else "⏭️"
-                    if pr["status"] == "dry-run"
-                    else "❌"
-                )
+                status_emoji = "✅" if pr["status"] == "created" else "⏭️" if pr["status"] == "dry-run" else "❌"
                 security_tag = "🔒 " if pr.get("is_security") else ""
-                print(
-                    f"{status_emoji} {security_tag}**{pr['repo']}** {pr['package']}: {pr['from']} → {pr['to']}"
-                )
+                print(f"{status_emoji} {security_tag}**{pr['repo']}** {pr['package']}: {pr['from']} → {pr['to']}")
                 if pr.get("message"):
                     print(f"   {pr['message']}")
         return
 
     # Output results
     if output_json:
-        output = [asdict(r) if hasattr(r, "__dataclass_fields__") else r.__dict__ for r in results]
+        output = [asdict(r) if hasattr(r, '__dataclass_fields__') else r.__dict__ for r in results]
         print(json.dumps(output, indent=2, default=str))
     elif output_digest:
         print(format_digest(results))

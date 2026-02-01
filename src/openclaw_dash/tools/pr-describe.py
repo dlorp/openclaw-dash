@@ -32,23 +32,8 @@ from pathlib import Path
 FILE_CATEGORIES = {
     "tests": [r"test_", r"_test\.", r"\.test\.", r"tests/", r"__tests__/", r"spec/"],
     "docs": [r"\.md$", r"docs/", r"README", r"CHANGELOG", r"\.rst$"],
-    "config": [
-        r"\.json$",
-        r"\.ya?ml$",
-        r"\.toml$",
-        r"\.ini$",
-        r"\.env",
-        r"Makefile",
-        r"Dockerfile",
-    ],
-    "deps": [
-        r"requirements",
-        r"package\.json$",
-        r"package-lock\.json$",
-        r"pyproject\.toml$",
-        r"poetry\.lock$",
-        r"Cargo\.toml$",
-    ],
+    "config": [r"\.json$", r"\.ya?ml$", r"\.toml$", r"\.ini$", r"\.env", r"Makefile", r"Dockerfile"],
+    "deps": [r"requirements", r"package\.json$", r"package-lock\.json$", r"pyproject\.toml$", r"poetry\.lock$", r"Cargo\.toml$"],
     "ci": [r"\.github/", r"\.gitlab-ci", r"\.circleci/", r"Jenkinsfile", r"\.travis"],
 }
 
@@ -64,13 +49,7 @@ BREAKING_PATTERNS = [
 ]
 
 # Dependency patterns
-DEP_FILES = [
-    "requirements.txt",
-    "requirements-dev.txt",
-    "pyproject.toml",
-    "package.json",
-    "Cargo.toml",
-]
+DEP_FILES = ["requirements.txt", "requirements-dev.txt", "pyproject.toml", "package.json", "Cargo.toml"]
 
 
 @dataclass
@@ -131,9 +110,7 @@ def get_default_branch(repo_path: Path) -> str:
         return "master"
 
     # Try to get from remote
-    code, stdout, _ = run(
-        "git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d: -f2", cwd=repo_path
-    )
+    code, stdout, _ = run("git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d: -f2", cwd=repo_path)
     if code == 0 and stdout.strip():
         return stdout.strip()
 
@@ -144,7 +121,8 @@ def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
     """Get commits between base and head branches."""
     # Format: hash|||subject|||body
     code, stdout, _ = run(
-        f'git log {base}..{head} --format="%H|||%s|||%b---COMMIT---"', cwd=repo_path
+        f'git log {base}..{head} --format="%H|||%s|||%b---COMMIT---"',
+        cwd=repo_path
     )
 
     if code != 0 or not stdout:
@@ -157,13 +135,11 @@ def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
             continue
         parts = entry.split("|||", 2)
         if len(parts) >= 2:
-            commits.append(
-                CommitInfo(
-                    hash=parts[0][:8],
-                    subject=parts[1].strip(),
-                    body=parts[2].strip() if len(parts) > 2 else "",
-                )
-            )
+            commits.append(CommitInfo(
+                hash=parts[0][:8],
+                subject=parts[1].strip(),
+                body=parts[2].strip() if len(parts) > 2 else ""
+            ))
 
     return commits
 
@@ -171,34 +147,42 @@ def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
 def get_changed_files(repo_path: Path, base: str, head: str) -> list[FileChange]:
     """Get list of changed files with status."""
     # Get file statuses
-    code, stdout, _ = run(f"git diff {base}...{head} --name-status", cwd=repo_path)
+    code, stdout, _ = run(
+        f'git diff {base}...{head} --name-status',
+        cwd=repo_path
+    )
 
     if code != 0:
         return []
 
     files = []
-    for line in stdout.split("\n"):
+    for line in stdout.split('\n'):
         if not line.strip():
             continue
-        parts = line.split("\t")
+        parts = line.split('\t')
         if len(parts) >= 2:
             status = parts[0][0]  # First char: A, M, D, R, etc.
             filepath = parts[-1]  # Last part is the path (handles renames)
 
-            files.append(
-                FileChange(path=filepath, status=status, category=categorize_file(filepath))
-            )
+            files.append(FileChange(
+                path=filepath,
+                status=status,
+                category=categorize_file(filepath)
+            ))
 
     # Get numstat for additions/deletions
-    code, stdout, _ = run(f"git diff {base}...{head} --numstat", cwd=repo_path)
+    code, stdout, _ = run(
+        f'git diff {base}...{head} --numstat',
+        cwd=repo_path
+    )
 
     if code == 0 and stdout:
         numstat = {}
-        for line in stdout.split("\n"):
-            parts = line.split("\t")
+        for line in stdout.split('\n'):
+            parts = line.split('\t')
             if len(parts) == 3:
-                adds = int(parts[0]) if parts[0] != "-" else 0
-                dels = int(parts[1]) if parts[1] != "-" else 0
+                adds = int(parts[0]) if parts[0] != '-' else 0
+                dels = int(parts[1]) if parts[1] != '-' else 0
                 numstat[parts[2]] = (adds, dels)
 
         for f in files:
@@ -233,32 +217,33 @@ def detect_breaking_changes(commits: list[CommitInfo], diff_text: str) -> list[s
                 break
 
     # Check diff for API changes (function/class removals)
-    removed_defs = re.findall(r"^-\s*(def|class|function|export)\s+(\w+)", diff_text, re.MULTILINE)
+    removed_defs = re.findall(r'^-\s*(def|class|function|export)\s+(\w+)', diff_text, re.MULTILINE)
     for kind, name in removed_defs:
         breaking.append(f"Removed {kind} `{name}`")
 
     return list(set(breaking))[:5]  # Dedupe and limit
 
 
-def detect_new_dependencies(
-    repo_path: Path, base: str, head: str, files: list[FileChange]
-) -> list[str]:
+def detect_new_dependencies(repo_path: Path, base: str, head: str, files: list[FileChange]) -> list[str]:
     """Detect new dependencies added."""
     new_deps = []
 
     dep_changes = [f for f in files if f.category == "deps"]
 
     for dep_file in dep_changes:
-        code, stdout, _ = run(f'git diff {base}...{head} -- "{dep_file.path}"', cwd=repo_path)
+        code, stdout, _ = run(
+            f'git diff {base}...{head} -- "{dep_file.path}"',
+            cwd=repo_path
+        )
 
         if code != 0:
             continue
 
         # Python requirements
         if "requirements" in dep_file.path:
-            for match in re.finditer(r"^\+([a-zA-Z0-9_-]+)", stdout, re.MULTILINE):
+            for match in re.finditer(r'^\+([a-zA-Z0-9_-]+)', stdout, re.MULTILINE):
                 pkg = match.group(1)
-                if not pkg.startswith("#") and pkg not in ["#", "-r", "-e"]:
+                if not pkg.startswith('#') and pkg not in ['#', '-r', '-e']:
                     new_deps.append(f"pip: {pkg}")
 
         # package.json
@@ -271,7 +256,7 @@ def detect_new_dependencies(
         if "pyproject.toml" in dep_file.path:
             for match in re.finditer(r'^\+\s*"?([a-zA-Z0-9_-]+)', stdout, re.MULTILINE):
                 pkg = match.group(1)
-                if pkg and not pkg.startswith("["):
+                if pkg and not pkg.startswith('['):
                     new_deps.append(f"pip: {pkg}")
 
     return list(set(new_deps))[:10]
@@ -323,9 +308,7 @@ def generate_summary(commits: list[CommitInfo], files: list[FileChange]) -> str:
     for commit in commits[:7]:  # Limit to 7 commits
         # Clean up conventional commit prefixes
         subject = commit.subject
-        subject = re.sub(
-            r"^(feat|fix|docs|style|refactor|test|chore|ci|perf|build)(\([^)]+\))?:\s*", "", subject
-        )
+        subject = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|ci|perf|build)(\([^)]+\))?:\s*', '', subject)
         lines.append(f"- {subject}")
 
     if len(commits) > 7:
@@ -359,11 +342,7 @@ def generate_testing_suggestions(files: list[FileChange], commits: list[CommitIn
             suggestions.append(f"Run unit tests for: {', '.join(list(modules)[:5])}")
 
     # API/endpoint changes
-    api_files = [
-        f
-        for f in source_files
-        if any(x in f.path.lower() for x in ["api", "route", "endpoint", "view", "controller"])
-    ]
+    api_files = [f for f in source_files if any(x in f.path.lower() for x in ["api", "route", "endpoint", "view", "controller"])]
     if api_files:
         suggestions.append("Test API endpoints for request/response changes")
 
@@ -380,25 +359,17 @@ def generate_testing_suggestions(files: list[FileChange], commits: list[CommitIn
         suggestions.append("Verify configuration changes in development environment")
 
     # Database/migration files
-    db_files = [
-        f
-        for f in files
-        if any(x in f.path.lower() for x in ["migration", "schema", "model", "database"])
-    ]
+    db_files = [f for f in files if any(x in f.path.lower() for x in ["migration", "schema", "model", "database"])]
     if db_files:
         suggestions.append("Test database migrations on staging data")
 
     # Frontend changes
-    frontend_files = [
-        f for f in source_files if any(x in f.path for x in [".tsx", ".jsx", ".vue", ".svelte"])
-    ]
+    frontend_files = [f for f in source_files if any(x in f.path for x in [".tsx", ".jsx", ".vue", ".svelte"])]
     if frontend_files:
         suggestions.append("Visual regression testing for UI changes")
 
     # Performance-related
-    perf_commits = [
-        c for c in commits if "perf" in c.subject.lower() or "optim" in c.subject.lower()
-    ]
+    perf_commits = [c for c in commits if "perf" in c.subject.lower() or "optim" in c.subject.lower()]
     if perf_commits:
         suggestions.append("Benchmark performance changes")
 
@@ -407,21 +378,25 @@ def generate_testing_suggestions(files: list[FileChange], commits: list[CommitIn
 
 def get_diff_text(repo_path: Path, base: str, head: str) -> str:
     """Get the full diff text."""
-    code, stdout, _ = run(f"git diff {base}...{head}", cwd=repo_path)
+    code, stdout, _ = run(f'git diff {base}...{head}', cwd=repo_path)
     return stdout if code == 0 else ""
 
 
-def generate_pr_description(repo_path: str | Path, base_branch: str, head_branch: str) -> str:
+def generate_pr_description(
+    repo_path: str | Path,
+    base_branch: str,
+    head_branch: str
+) -> str:
     """
     Generate a PR description for the given branches.
-
+    
     This is the main module API for use by other tools (e.g., dep-shepherd).
-
+    
     Args:
         repo_path: Path to the git repository
         base_branch: The target branch (e.g., "main")
         head_branch: The source branch (e.g., "feature-xyz")
-
+    
     Returns:
         Formatted markdown PR description
     """
@@ -472,16 +447,14 @@ def generate_pr_description(repo_path: str | Path, base_branch: str, head_branch
     }
 
     # Format markdown
-    return format_markdown(
-        PRDescription(
-            summary=summary,
-            changes=changes,
-            testing=testing,
-            notes=notes,
-            commits=[asdict(c) for c in commits],
-            stats=stats,
-        )
-    )
+    return format_markdown(PRDescription(
+        summary=summary,
+        changes=changes,
+        testing=testing,
+        notes=notes,
+        commits=[asdict(c) for c in commits],
+        stats=stats,
+    ))
 
 
 def format_markdown(desc: PRDescription) -> str:
@@ -545,9 +518,7 @@ def format_markdown(desc: PRDescription) -> str:
 
     # Stats footer
     lines.append("---")
-    lines.append(
-        f"*{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed (+{desc.stats['additions']}/-{desc.stats['deletions']})*"
-    )
+    lines.append(f"*{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed (+{desc.stats['additions']}/-{desc.stats['deletions']})*")
 
     return "\n".join(lines)
 
