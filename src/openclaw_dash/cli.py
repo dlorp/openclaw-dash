@@ -44,43 +44,40 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
     today = costs.get("today", {})
     summary = costs.get("summary", {})
 
-    if costs:
-        costs_text = (
-            f"[bold cyan]Today:[/] ${today.get('cost', 0):.4f}\n"
-            f"  Input: {today.get('input_tokens', 0):,} tokens\n"
-            f"  Output: {today.get('output_tokens', 0):,} tokens\n\n"
-            f"[bold cyan]All time:[/] ${summary.get('total_cost', 0):.2f}\n"
-            f"  Avg daily: ${summary.get('avg_daily_cost', 0):.2f}\n"
-            f"  Days tracked: {summary.get('days_tracked', 0)}"
-        )
-        console.print(Panel(costs_text, title="💰 Token Costs", box=box.ROUNDED))
+    costs_text = (
+        f"[bold cyan]Today:[/] ${today.get('cost', 0):.4f}\n"
+        f"  Input: {today.get('input_tokens', 0):,} tokens\n"
+        f"  Output: {today.get('output_tokens', 0):,} tokens\n\n"
+        f"[bold cyan]All time:[/] ${summary.get('total_cost', 0):.2f}\n"
+        f"  Avg daily: ${summary.get('avg_daily_cost', 0):.2f}\n"
+        f"  Days tracked: {summary.get('days_tracked', 0)}"
+    )
+    console.print(Panel(costs_text, title="💰 Token Costs", box=box.ROUNDED))
 
     # Performance panel
     perf = metrics.get("performance", {}).get("summary", {})
-    if perf:
-        perf_text = (
-            f"[bold cyan]Total calls:[/] {perf.get('total_calls', 0):,}\n"
-            f"[bold cyan]Errors:[/] {perf.get('total_errors', 0)} ({perf.get('error_rate_pct', 0):.1f}%)\n"
-            f"[bold cyan]Avg latency:[/] {perf.get('avg_latency_ms', 0):.0f}ms"
-        )
-        console.print(Panel(perf_text, title="⚡ Performance", box=box.ROUNDED))
+    perf_text = (
+        f"[bold cyan]Total calls:[/] {perf.get('total_calls', 0):,}\n"
+        f"[bold cyan]Errors:[/] {perf.get('total_errors', 0)} ({perf.get('error_rate_pct', 0):.1f}%)\n"
+        f"[bold cyan]Avg latency:[/] {perf.get('avg_latency_ms', 0):.0f}ms"
+    )
+    console.print(Panel(perf_text, title="⚡ Performance", box=box.ROUNDED))
 
     # GitHub panel
     gh = metrics.get("github", {})
-    if gh:
-        streak = gh.get("streak", {})
-        pr = gh.get("pr_metrics", {})
+    streak = gh.get("streak", {})
+    pr = gh.get("pr_metrics", {})
 
-        streak_days = streak.get("streak_days", 0)
-        streak_icon = "🔥" if streak_days > 0 else "❄️"
+    streak_days = streak.get("streak_days", 0)
+    streak_icon = "🔥" if streak_days > 0 else "❄️"
 
-        gh_text = (
-            f"[bold cyan]Contribution streak:[/] {streak_days} days {streak_icon}\n"
-            f"[bold cyan]PR cycle time:[/] {pr.get('avg_cycle_hours', 0):.1f}h avg\n"
-            f"  Fastest: {pr.get('fastest_merge_hours') or 0:.1f}h\n"
-            f"  Slowest: {pr.get('slowest_merge_hours') or 0:.1f}h"
-        )
-        console.print(Panel(gh_text, title="🐙 GitHub", box=box.ROUNDED))
+    gh_text = (
+        f"[bold cyan]Contribution streak:[/] {streak_days} days {streak_icon}\n"
+        f"[bold cyan]PR cycle time:[/] {pr.get('avg_cycle_hours', 0):.1f}h avg\n"
+        f"  Fastest: {pr.get('fastest_merge_hours') or 0:.1f}h\n"
+        f"  Slowest: {pr.get('slowest_merge_hours') or 0:.1f}h"
+    )
+    console.print(Panel(gh_text, title="🐙 GitHub", box=box.ROUNDED))
 
     # Cost trend table
     trend = costs.get("trend", {})
@@ -88,8 +85,8 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
         table = Table(title="Cost Trend (last 7 days)", box=box.SIMPLE)
         table.add_column("Date")
         table.add_column("Cost", justify="right")
-        for d, c in zip(trend["dates"], trend["costs"]):
-            table.add_row(d, f"${c:.4f}")
+        for date, cost in zip(trend["dates"], trend["costs"]):
+            table.add_row(date, f"${cost:.4f}")
         console.print(table)
 
 
@@ -151,6 +148,130 @@ def run_tui() -> None:
 
     app = DashboardApp()
     app.run()
+
+
+def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool = False) -> int:
+    """Run security audit and optionally apply fixes."""
+    from rich import box
+    from rich.console import Console
+    from rich.table import Table
+
+    from openclaw_dash.security import DependencyScanner, SecurityAudit, SecurityFixer
+
+    console = Console()
+
+    if not json_output:
+        console.print("[bold]🔒 Running OpenClaw Security Audit...[/]\n")
+
+    # Run config/secrets audit
+    audit = SecurityAudit()
+    audit_result = audit.run(deep=deep)
+
+    # Run dependency scan
+    scanner = DependencyScanner()
+    dep_result = scanner.scan()
+
+    if json_output:
+        combined = {
+            "audit": audit_result.to_dict(),
+            "dependencies": dep_result.to_dict(),
+        }
+        if fix:
+            fixer = SecurityFixer(dry_run=False)
+            fix_result = fixer.fix_all(audit_result=audit_result, dep_result=dep_result)
+            combined["fixes"] = fix_result.to_dict()
+        print(json.dumps(combined, indent=2, default=str))
+        return 1 if audit_result.critical_count > 0 else 0
+
+    # Display audit results
+    if audit_result.findings:
+        table = Table(title="Security Findings", box=box.ROUNDED)
+        table.add_column("Severity", style="bold")
+        table.add_column("Category")
+        table.add_column("Title")
+        table.add_column("Path")
+
+        severity_colors = {
+            "critical": "red bold",
+            "high": "red",
+            "medium": "yellow",
+            "low": "cyan",
+            "info": "dim",
+        }
+
+        for f in sorted(
+            audit_result.findings,
+            key=lambda x: ["critical", "high", "medium", "low", "info"].index(x.severity),
+        ):
+            table.add_row(
+                f"[{severity_colors.get(f.severity, '')}]{f.severity.upper()}[/]",
+                f.category,
+                f.title,
+                f.path or "-",
+            )
+
+        console.print(table)
+    else:
+        console.print("[green]✓ No security issues found in configuration[/]")
+
+    # Display dependency results
+    if dep_result.vulnerabilities:
+        console.print()
+        table = Table(title="Vulnerable Dependencies", box=box.ROUNDED)
+        table.add_column("Package")
+        table.add_column("Version")
+        table.add_column("Severity")
+        table.add_column("Fix")
+        table.add_column("ID")
+
+        for v in sorted(
+            dep_result.vulnerabilities,
+            key=lambda x: ["critical", "high", "medium", "low"].index(x.severity),
+        ):
+            table.add_row(
+                v.package,
+                v.installed_version,
+                v.severity.upper(),
+                v.fix_version or "-",
+                v.vulnerability_id[:30],
+            )
+
+        console.print(table)
+    else:
+        console.print("[green]✓ No vulnerable dependencies found[/]")
+
+    if dep_result.errors:
+        console.print(f"\n[dim]Scan notes: {', '.join(dep_result.errors)}[/]")
+
+    # Apply fixes if requested
+    if fix:
+        console.print("\n[bold]🔧 Applying fixes...[/]\n")
+        fixer = SecurityFixer(dry_run=False)
+        fix_result = fixer.fix_all(audit_result=audit_result, dep_result=dep_result)
+
+        for action in fix_result.actions:
+            if action.action == "applied":
+                console.print(f"[green]✓[/] {action.finding_title}: {action.description}")
+            elif action.action == "suggested":
+                console.print(f"[yellow]→[/] {action.finding_title}: {action.command}")
+            elif action.action == "failed":
+                console.print(f"[red]✗[/] {action.finding_title}: {action.error}")
+
+        console.print(
+            f"\n[bold]Summary:[/] {fix_result.applied_count} applied, {fix_result.suggested_count} suggested, {fix_result.failed_count} failed"
+        )
+
+    # Summary
+    summary = audit_result.summary
+    console.print(
+        f"\n[bold]Audit Summary:[/] "
+        f"[red]{summary['critical']} critical[/], "
+        f"[red]{summary['high']} high[/], "
+        f"[yellow]{summary['medium']} medium[/], "
+        f"[cyan]{summary['low']} low[/]"
+    )
+
+    return 1 if audit_result.critical_count > 0 or audit_result.high_count > 0 else 0
 
 
 def cmd_auto(args: argparse.Namespace) -> int:
@@ -226,8 +347,6 @@ def cmd_auto_deps(args: argparse.Namespace) -> int:
 
 def cmd_auto_backup(args: argparse.Namespace) -> int:
     """Verify backup status."""
-    import json
-
     from openclaw_dash.automation.backup import BackupVerifier, format_backup_report
 
     verifier = BackupVerifier()
@@ -254,6 +373,16 @@ def main() -> int:
 
     # Subparsers for commands
     subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Security subcommand
+    security_parser = subparsers.add_parser("security", help="Run security audit")
+    security_parser.add_argument(
+        "--deep", action="store_true", help="Deep scan (includes workspace)"
+    )
+    security_parser.add_argument("--fix", action="store_true", help="Apply auto-fixes")
+    security_parser.add_argument(
+        "--json", dest="security_json", action="store_true", help="JSON output"
+    )
 
     # Metrics subcommand
     metrics_parser = subparsers.add_parser(
@@ -295,6 +424,14 @@ def main() -> int:
     # Handle auto command
     if args.command == "auto":
         return cmd_auto(args)
+
+    # Handle security command
+    if args.command == "security":
+        return run_security_audit(
+            deep=args.deep,
+            fix=args.fix,
+            json_output=args.security_json,
+        )
 
     # Handle metrics command
     if args.command == "metrics":
