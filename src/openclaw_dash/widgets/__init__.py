@@ -16,6 +16,10 @@ from openclaw_dash.widgets.ascii_art import (
 )
 from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
+from openclaw_dash.widgets.metric_boxes import (
+    MetricBox,
+    MetricBoxesBar,
+)
 from openclaw_dash.widgets.notifications import (
     NotificationLevel,
     notify,
@@ -32,6 +36,13 @@ from openclaw_dash.widgets.security import (
     DepsSummaryPanel,
     SecurityPanel,
     SecuritySummaryPanel,
+)
+from openclaw_dash.widgets.tabbed_groups import (
+    CodeTabGroup,
+    RuntimeTabGroup,
+    next_tab,
+    prev_tab,
+    switch_tab,
 )
 
 __all__ = [
@@ -64,4 +75,13 @@ __all__ = [
     "notify_refresh",
     "notify_theme_change",
     "notify_panel_error",
+    # Tabbed groups
+    "RuntimeTabGroup",
+    "CodeTabGroup",
+    "switch_tab",
+    "next_tab",
+    "prev_tab",
+    # Metric boxes
+    "MetricBox",
+    "MetricBoxesBar",
 ]

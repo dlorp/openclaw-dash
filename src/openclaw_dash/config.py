@@ -30,6 +30,7 @@ class Config:
     refresh_interval: int = 30
     show_notifications: bool = True
     show_resources: bool = True  # System resource monitoring panel
+    collapsed_panels: list[str] = field(default_factory=list)  # Panel IDs that are collapsed
 
     # File path for this config (not persisted)
     _path: Path = field(default=DEFAULT_CONFIG_PATH, repr=False, compare=False)
@@ -41,6 +42,7 @@ class Config:
             "refresh_interval": self.refresh_interval,
             "show_notifications": self.show_notifications,
             "show_resources": self.show_resources,
+            "collapsed_panels": self.collapsed_panels,
         }
 
     @classmethod
@@ -51,6 +53,7 @@ class Config:
             refresh_interval=data.get("refresh_interval", 30),
             show_notifications=data.get("show_notifications", True),
             show_resources=data.get("show_resources", True),
+            collapsed_panels=data.get("collapsed_panels", []),
             _path=path or DEFAULT_CONFIG_PATH,
         )
 

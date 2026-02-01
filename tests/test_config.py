@@ -32,6 +32,7 @@ class TestConfig:
             "refresh_interval": 60,
             "show_notifications": False,
             "show_resources": True,
+            "collapsed_panels": [],
         }
 
     def test_from_dict(self):

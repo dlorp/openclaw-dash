@@ -24,6 +24,15 @@ STATIC_SHORTCUTS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
+        "Tab Groups",
+        [
+            ("1", "Focus Runtime tabs (Sessions/Cron/Channels)"),
+            ("2", "Focus Code tabs (Repos/Activity)"),
+            ("[", "Previous tab in group"),
+            ("]", "Next tab in group"),
+        ],
+    ),
+    (
         "Navigation",
         [
             ("Tab", "Focus next panel"),
@@ -32,8 +41,6 @@ STATIC_SHORTCUTS: list[tuple[str, list[tuple[str, str]]]] = [
             ("s", "Focus Security panel"),
             ("m", "Focus Metrics panel"),
             ("a", "Focus Alerts panel"),
-            ("c", "Focus Cron panel"),
-            ("p", "Focus Repositories panel"),
             ("l", "Focus Logs panel"),
         ],
     ),
@@ -286,14 +293,21 @@ SHORTCUTS: list[tuple[str, list[tuple[str, str]]]] = [
         ],
     ),
     (
+        "Tab Groups",
+        [
+            ("1", "Focus Runtime tabs"),
+            ("2", "Focus Code tabs"),
+            ("[ / ]", "Previous/Next tab in group"),
+        ],
+    ),
+    (
         "Panel Focus",
         [
             ("G", "Focus Gateway panel"),
             ("S", "Focus Security panel"),
             ("M", "Focus Metrics panel"),
             ("A", "Focus Alerts panel"),
-            ("C", "Focus Cron panel"),
-            ("P", "Focus Repositories panel"),
+            ("L", "Focus Logs panel"),
         ],
     ),
     (

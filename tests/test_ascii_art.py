@@ -1,6 +1,7 @@
 """Tests for ASCII art utilities."""
 
 from openclaw_dash.widgets.ascii_art import (
+    BRAND_COLORS,
     DOUBLE,
     ROUNDED,
     SINGLE,
@@ -284,3 +285,46 @@ class TestStatusSymbols:
         assert "circle_empty" in STATUS_SYMBOLS
         assert "square_full" in STATUS_SYMBOLS
         assert "square_empty" in STATUS_SYMBOLS
+
+
+class TestBrandColors:
+    """Test brand colors are properly defined for widget use."""
+
+    def test_brand_colors_dict_exists(self):
+        """BRAND_COLORS dictionary should exist."""
+        assert isinstance(BRAND_COLORS, dict)
+
+    def test_all_brand_colors_present(self):
+        """All dlorp brand colors should be present."""
+        expected_keys = [
+            "granite_gray",
+            "dark_orange",
+            "titanium_yellow",
+            "medium_turquoise",
+            "royal_blue",
+        ]
+        for key in expected_keys:
+            assert key in BRAND_COLORS, f"Missing brand color: {key}"
+
+    def test_brand_colors_are_valid_hex(self):
+        """All brand colors should be valid hex codes."""
+        for name, color in BRAND_COLORS.items():
+            assert color.startswith("#"), f"{name} should start with #"
+            assert len(color) == 7, f"{name} should be 7 chars (e.g., #RRGGBB)"
+            # Validate hex
+            try:
+                int(color[1:], 16)
+            except ValueError:
+                raise AssertionError(f"{name} ({color}) is not valid hex")
+
+    def test_granite_gray_for_borders(self):
+        """Granite Gray should be #636764 for borders."""
+        assert BRAND_COLORS["granite_gray"] == "#636764"
+
+    def test_dark_orange_for_warnings(self):
+        """Dark Orange should be #FB8B24 for warnings."""
+        assert BRAND_COLORS["dark_orange"] == "#FB8B24"
+
+    def test_medium_turquoise_for_success(self):
+        """Medium Turquoise should be #50D8D7 for success."""
+        assert BRAND_COLORS["medium_turquoise"] == "#50D8D7"

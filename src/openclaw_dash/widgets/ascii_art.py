@@ -8,6 +8,21 @@ from __future__ import annotations
 
 from typing import Literal
 
+# =============================================================================
+# dlorp Brand Colors (for reference in widgets)
+# =============================================================================
+# Use these constants for consistent color styling across widgets.
+# For Textual themes, see themes.py - these are for Rich markup in widgets.
+
+BRAND_COLORS = {
+    "granite_gray": "#636764",      # Borders, muted elements
+    "dark_orange": "#FB8B24",       # Warnings, important actions
+    "titanium_yellow": "#F4E409",   # Highlights, focus states
+    "medium_turquoise": "#50D8D7",  # Success, online status
+    "royal_blue": "#3B60E4",        # Primary, links
+}
+
+
 # Box drawing characters
 SINGLE = {
     "tl": "┌",
