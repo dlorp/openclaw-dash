@@ -2,6 +2,11 @@
 
 TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/openclaw) ecosystem at a glance.
 
+![Dashboard Screenshot](docs/images/dashboard.svg)
+
+<details>
+<summary>ASCII Preview</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  OPENCLAW DASHBOARD                                       14:32 PST     │
@@ -31,6 +36,8 @@ TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/opencla
 
 Jump Mode: Press 'f' then letter to focus panel    Tabs: Switch with Tab key
 ```
+
+</details>
 
 ## Features
 
