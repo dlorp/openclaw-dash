@@ -164,9 +164,10 @@ def draw_box(
     result.append(top)
 
     # Content lines
+    content_width = inner_width - (padding * 2)
     for line in lines:
-        padded = line.ljust(inner_width - padding)[: inner_width - padding]
-        result.append(f"{chars['v']}{' ' * padding}{padded}{' ' * (padding - 1)}{chars['v']}")
+        padded = line.ljust(content_width)[:content_width]
+        result.append(f"{chars['v']}{' ' * padding}{padded}{' ' * padding}{chars['v']}")
 
     # Bottom border
     bottom = chars["bl"] + chars["h"] * inner_width + chars["br"]

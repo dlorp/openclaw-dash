@@ -36,7 +36,7 @@ class Alert:
     description: str = ""
     timestamp: datetime = field(default_factory=datetime.now)
     url: str | None = None
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
