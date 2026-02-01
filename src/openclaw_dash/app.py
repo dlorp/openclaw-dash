@@ -15,6 +15,7 @@ from openclaw_dash.widgets.ascii_art import (
     status_indicator,
 )
 from openclaw_dash.widgets.channels import ChannelsPanel
+from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.metrics import MetricsPanel
 from openclaw_dash.widgets.security import SecurityPanel
 
@@ -194,6 +195,14 @@ class DashboardApp(App):
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("t", "cycle_theme", "Theme"),
+        ("h", "help", "Help"),
+        ("question_mark", "help", "Help"),
+        ("g", "focus_panel('gateway-panel')", "Gateway"),
+        ("s", "focus_panel('security-panel')", "Security"),
+        ("m", "focus_panel('metrics-panel')", "Metrics"),
+        ("a", "focus_panel('alerts-panel')", "Alerts"),
+        ("c", "focus_panel('cron-panel')", "Cron"),
+        ("p", "focus_panel('repos-panel')", "Repos"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -273,3 +282,15 @@ class DashboardApp(App):
                 panel.refresh_data()
             except Exception:
                 pass
+
+    def action_help(self) -> None:
+        """Show the help panel with keyboard shortcuts."""
+        self.push_screen(HelpScreen())
+
+    def action_focus_panel(self, panel_id: str) -> None:
+        """Focus a specific panel by ID."""
+        try:
+            panel = self.query_one(f"#{panel_id}")
+            panel.focus()
+        except Exception:
+            pass
