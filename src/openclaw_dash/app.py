@@ -4,7 +4,9 @@ from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import DataTable, Footer, Header, Static
 
-from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+from openclaw_dash.collectors import activity, alerts, cron, gateway, repos, sessions
+from openclaw_dash.widgets.alerts import AlertsPanel
+from openclaw_dash.widgets.channels import ChannelsPanel
 
 
 class GatewayPanel(Static):
@@ -117,7 +119,7 @@ class DashboardApp(App):
     CSS = """
     Screen {
         layout: grid;
-        grid-size: 3 3;
+        grid-size: 3 4;
         grid-gutter: 1;
         padding: 1;
     }
@@ -133,6 +135,7 @@ class DashboardApp(App):
     #activity-panel { row-span: 2; }
     #cron-panel { }
     #sessions-panel { }
+    #channels-panel { }
 
     DataTable { height: auto; }
     """
@@ -169,6 +172,10 @@ class DashboardApp(App):
             yield Static("[bold]Sessions[/]")
             yield SessionsPanel()
 
+        with Container(id="channels-panel", classes="panel"):
+            yield Static("[bold]Channels[/]")
+            yield ChannelsPanel()
+
         yield Footer()
 
     def on_mount(self) -> None:
@@ -183,6 +190,7 @@ class DashboardApp(App):
             ReposPanel,
             CronPanel,
             SessionsPanel,
+            ChannelsPanel,
         ]:
             try:
                 panel = self.query_one(panel_cls)
