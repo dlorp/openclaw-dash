@@ -24,9 +24,7 @@ REPO_BASE = Path.home() / "repos"
 
 def run(cmd: str, cwd: Path | None = None) -> tuple[int, str]:
     """Run a shell command and return (returncode, output)."""
-    result = subprocess.run(
-        cmd, shell=True, capture_output=True, text=True, cwd=cwd
-    )
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd)
     return result.returncode, result.stdout.strip()
 
 
@@ -38,7 +36,7 @@ def count_todos(repo_path: Path) -> dict:
     for ext in ["py", "ts", "tsx", "js", "jsx"]:
         _, output = run(
             f'grep -rn "TODO\\|FIXME\\|HACK\\|XXX" --include="*.{ext}" . 2>/dev/null | grep -v node_modules | grep -v __pycache__ | grep -v ".git"',
-            cwd=repo_path
+            cwd=repo_path,
         )
         if output:
             for line in output.split("\n"):
@@ -67,14 +65,14 @@ def count_tests(repo_path: Path) -> int:
     """Count test files/functions."""
     _, output = run(
         'find . -name "test_*.py" -o -name "*.test.ts" -o -name "*.test.tsx" 2>/dev/null | grep -v node_modules | wc -l',
-        cwd=repo_path
+        cwd=repo_path,
     )
     return int(output.strip()) if output.strip().isdigit() else 0
 
 
 def get_open_prs(repo: str) -> list:
     """Get open PRs for a repo."""
-    _, output = run(f'gh pr list -R dlorp/{repo} --state open --json number,title --limit 10')
+    _, output = run(f"gh pr list -R dlorp/{repo} --state open --json number,title --limit 10")
     try:
         return json.loads(output) if output else []
     except json.JSONDecodeError:

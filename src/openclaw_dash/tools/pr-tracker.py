@@ -33,7 +33,7 @@ def run(cmd: str) -> tuple[int, str]:
 def get_prs(repo: str, state: str = "all") -> list[dict]:
     """Get PRs for a repo."""
     _, output = run(
-        f'gh pr list -R dlorp/{repo} --state {state} --json number,title,state,createdAt,mergedAt,closedAt,author --limit 20'
+        f"gh pr list -R dlorp/{repo} --state {state} --json number,title,state,createdAt,mergedAt,closedAt,author --limit 20"
     )
     try:
         return json.loads(output) if output else []
@@ -118,11 +118,16 @@ def main():
     save_state({"prs": all_prs})
 
     if output_json:
-        print(json.dumps({
-            "open_prs": open_prs,
-            "changes": changes,
-            "timestamp": datetime.now().isoformat(),
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "open_prs": open_prs,
+                    "changes": changes,
+                    "timestamp": datetime.now().isoformat(),
+                },
+                indent=2,
+            )
+        )
         return
 
     # Format output
