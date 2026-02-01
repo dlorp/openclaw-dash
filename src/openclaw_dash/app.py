@@ -20,6 +20,7 @@ from openclaw_dash.widgets.ascii_art import (
 from openclaw_dash.widgets.channels import ChannelsPanel
 from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.logs import LogsPanel
+from openclaw_dash.widgets.metric_boxes import MetricBoxesBar
 from openclaw_dash.widgets.metrics import MetricsPanel
 from openclaw_dash.widgets.notifications import (
     notify_panel_error,
@@ -30,7 +31,7 @@ from openclaw_dash.widgets.security import SecurityPanel
 
 # Responsive breakpoints (width thresholds)
 COMPACT_WIDTH = 100  # Hide less-critical panels below this
-MINIMUM_WIDTH = 80   # Minimum supported terminal width
+MINIMUM_WIDTH = 80  # Minimum supported terminal width
 
 
 def build_jump_labels(panel_ids: list[str]) -> dict[str, str]:
@@ -398,53 +399,126 @@ class DashboardApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
+        yield MetricBoxesBar(id="metric-boxes")
 
         with Container(id="gateway-panel", classes="panel"):
-            with Collapsible(title="Gateway", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="gateway-panel-collapsible"):
+            with Collapsible(
+                title="Gateway",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="gateway-panel-collapsible",
+            ):
                 yield GatewayPanel()
 
         with Container(id="task-panel", classes="panel"):
-            with Collapsible(title="Current Task", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="task-panel-collapsible"):
+            with Collapsible(
+                title="Current Task",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="task-panel-collapsible",
+            ):
                 yield CurrentTaskPanel()
 
         with Container(id="alerts-panel", classes="panel"):
-            with Collapsible(title="⚠️ Alerts", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="alerts-panel-collapsible"):
+            with Collapsible(
+                title="⚠️ Alerts",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="alerts-panel-collapsible",
+            ):
                 yield AlertsPanel()
 
         with Container(id="repos-panel", classes="panel"):
-            with Collapsible(title="Repositories", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="repos-panel-collapsible"):
+            with Collapsible(
+                title="Repositories",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="repos-panel-collapsible",
+            ):
                 yield ReposPanel()
 
         with Container(id="activity-panel", classes="panel"):
-            with Collapsible(title="Activity", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="activity-panel-collapsible"):
+            with Collapsible(
+                title="Activity",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="activity-panel-collapsible",
+            ):
                 yield ActivityPanel()
 
         with Container(id="cron-panel", classes="panel"):
-            with Collapsible(title="Cron", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="cron-panel-collapsible"):
+            with Collapsible(
+                title="Cron",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="cron-panel-collapsible",
+            ):
                 yield CronPanel()
 
         with Container(id="sessions-panel", classes="panel"):
-            with Collapsible(title="Sessions", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="sessions-panel-collapsible"):
+            with Collapsible(
+                title="Sessions",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="sessions-panel-collapsible",
+            ):
                 yield SessionsPanel()
 
         with Container(id="channels-panel", classes="panel"):
-            with Collapsible(title="Channels", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="channels-panel-collapsible"):
+            with Collapsible(
+                title="Channels",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="channels-panel-collapsible",
+            ):
                 yield ChannelsPanel()
 
         with Container(id="metrics-panel", classes="panel"):
-            with Collapsible(title="📊 Metrics", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="metrics-panel-collapsible"):
+            with Collapsible(
+                title="📊 Metrics",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="metrics-panel-collapsible",
+            ):
                 yield MetricsPanel()
 
         with Container(id="security-panel", classes="panel"):
-            with Collapsible(title="🔒 Security", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="security-panel-collapsible"):
+            with Collapsible(
+                title="🔒 Security",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="security-panel-collapsible",
+            ):
                 yield SecurityPanel()
 
         with Container(id="logs-panel", classes="panel"):
-            with Collapsible(title="📜 Logs", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="logs-panel-collapsible"):
+            with Collapsible(
+                title="📜 Logs",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="logs-panel-collapsible",
+            ):
                 yield LogsPanel(n_lines=12)
 
         with Container(id="resources-panel", classes="panel"):
-            with Collapsible(title="📊 Resources", collapsed=False, collapsed_symbol="▸", expanded_symbol="▾", id="resources-panel-collapsible"):
+            with Collapsible(
+                title="📊 Resources",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="resources-panel-collapsible",
+            ):
                 yield ResourcesPanel()
 
         yield Footer()
@@ -486,6 +560,13 @@ class DashboardApp(App):
 
     def _auto_refresh(self) -> None:
         """Auto-refresh without notification (for timer-based refresh)."""
+        # Refresh metric boxes bar
+        try:
+            metric_boxes = self.query_one(MetricBoxesBar)
+            metric_boxes.refresh_data()
+        except Exception:
+            pass
+
         for panel_cls in [
             GatewayPanel,
             CurrentTaskPanel,
@@ -517,6 +598,13 @@ class DashboardApp(App):
 
     def action_refresh(self) -> None:
         """Refresh all panels and show notification."""
+        # Refresh metric boxes bar
+        try:
+            metric_boxes = self.query_one(MetricBoxesBar)
+            metric_boxes.refresh_data()
+        except Exception:
+            pass
+
         panels = [
             GatewayPanel,
             CurrentTaskPanel,
