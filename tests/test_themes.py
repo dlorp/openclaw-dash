@@ -1,8 +1,8 @@
 """Tests for the themes module."""
 
 from openclaw_dash.themes import (
-    DARK_THEME,
     DARK_ORANGE,
+    DARK_THEME,
     GRANITE_GRAY,
     HACKER_THEME,
     LIGHT_THEME,

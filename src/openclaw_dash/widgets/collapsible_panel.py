@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Container
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 class CollapsiblePanel(Container):
     """A panel that can be collapsed/expanded.
-    
+
     Wraps content in a Textual Collapsible widget with a summary line
     visible when collapsed.
     """
@@ -24,32 +25,32 @@ class CollapsiblePanel(Container):
     CollapsiblePanel {
         height: auto;
     }
-    
+
     CollapsiblePanel > Collapsible {
         padding: 0;
         margin: 0;
         border: none;
         background: transparent;
     }
-    
+
     CollapsiblePanel > Collapsible > CollapsibleTitle {
         padding: 0 1;
         background: transparent;
     }
-    
+
     CollapsiblePanel > Collapsible > Contents {
         padding: 0;
     }
-    
+
     CollapsiblePanel .summary {
         padding: 0 1;
         color: $text-muted;
     }
-    
+
     CollapsiblePanel.-collapsed .summary {
         display: block;
     }
-    
+
     CollapsiblePanel:not(.-collapsed) .summary {
         display: none;
     }
@@ -74,7 +75,7 @@ class CollapsiblePanel(Container):
         classes: str | None = None,
     ) -> None:
         """Initialize a collapsible panel.
-        
+
         Args:
             *children: Content widgets to display when expanded.
             title: Panel title shown in the collapsible header.
@@ -121,11 +122,11 @@ class CollapsiblePanel(Container):
             expanded_symbol="▾",
         ):
             yield from self._children
-        
+
         # Summary line shown when collapsed
         summary_text = self._get_summary()
         yield Static(summary_text, classes="summary", id=f"{self._panel_id}-summary")
-        
+
         self._update_classes()
 
     def _get_summary(self) -> str:

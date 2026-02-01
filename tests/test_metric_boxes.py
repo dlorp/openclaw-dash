@@ -1,9 +1,7 @@
 """Tests for metric_boxes widget."""
 
-from unittest.mock import MagicMock, patch
 
 import pytest
-from textual.containers import Horizontal
 from textual.widgets import Static
 
 from openclaw_dash.widgets.metric_boxes import (

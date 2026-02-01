@@ -6,7 +6,6 @@ core design system variables that panels and widgets use.
 
 from textual.theme import Theme
 
-
 # =============================================================================
 # dlorp Brand Colors
 # =============================================================================

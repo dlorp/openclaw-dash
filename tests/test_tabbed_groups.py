@@ -2,7 +2,6 @@
 
 import inspect
 
-import pytest
 from textual.containers import Container
 from textual.widgets import Static
 

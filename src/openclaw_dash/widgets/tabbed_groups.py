@@ -14,10 +14,10 @@ from textual.widgets import Static, TabbedContent, TabPane
 
 class RuntimeTabGroup(Container):
     """Tabbed group containing runtime-related panels.
-    
+
     Contains:
     - Sessions panel
-    - Cron panel  
+    - Cron panel
     - Channels panel
     """
 
@@ -25,37 +25,37 @@ class RuntimeTabGroup(Container):
     RuntimeTabGroup {
         height: auto;
     }
-    
+
     RuntimeTabGroup TabbedContent {
         height: auto;
     }
-    
+
     RuntimeTabGroup TabPane {
         height: auto;
         padding: 0;
     }
-    
+
     RuntimeTabGroup Tabs {
         background: $surface;
     }
-    
+
     RuntimeTabGroup Tab {
         background: $surface;
         color: $text-muted;
         padding: 0 2;
     }
-    
+
     RuntimeTabGroup Tab:hover {
         background: $panel;
         color: $primary;
     }
-    
+
     RuntimeTabGroup Tab.-active {
         background: $primary 15%;
         color: $primary;
         text-style: bold;
     }
-    
+
     RuntimeTabGroup Underline {
         background: $primary;
     }
@@ -69,7 +69,7 @@ class RuntimeTabGroup(Container):
         **kwargs,
     ) -> None:
         """Initialize with the panel widgets.
-        
+
         Args:
             sessions_panel: The sessions panel widget.
             cron_panel: The cron panel widget.
@@ -92,7 +92,7 @@ class RuntimeTabGroup(Container):
 
 class CodeTabGroup(Container):
     """Tabbed group containing code-related panels.
-    
+
     Contains:
     - Repos panel
     - Activity panel
@@ -102,37 +102,37 @@ class CodeTabGroup(Container):
     CodeTabGroup {
         height: auto;
     }
-    
+
     CodeTabGroup TabbedContent {
         height: auto;
     }
-    
+
     CodeTabGroup TabPane {
         height: auto;
         padding: 0;
     }
-    
+
     CodeTabGroup Tabs {
         background: $surface;
     }
-    
+
     CodeTabGroup Tab {
         background: $surface;
         color: $text-muted;
         padding: 0 2;
     }
-    
+
     CodeTabGroup Tab:hover {
         background: $panel;
         color: $secondary;
     }
-    
+
     CodeTabGroup Tab.-active {
         background: $secondary 15%;
         color: $secondary;
         text-style: bold;
     }
-    
+
     CodeTabGroup Underline {
         background: $secondary;
     }
@@ -145,7 +145,7 @@ class CodeTabGroup(Container):
         **kwargs,
     ) -> None:
         """Initialize with the panel widgets.
-        
+
         Args:
             repos_panel: The repos panel widget.
             activity_panel: The activity panel widget.
@@ -164,7 +164,7 @@ class CodeTabGroup(Container):
 
 def switch_tab(tabbed_content: TabbedContent, tab_id: str) -> None:
     """Switch to a specific tab within a TabbedContent.
-    
+
     Args:
         tabbed_content: The TabbedContent widget.
         tab_id: The ID of the tab pane to activate.
@@ -174,17 +174,17 @@ def switch_tab(tabbed_content: TabbedContent, tab_id: str) -> None:
 
 def next_tab(tabbed_content: TabbedContent) -> None:
     """Switch to the next tab in a TabbedContent.
-    
+
     Args:
         tabbed_content: The TabbedContent widget.
     """
     # Get current active and all pane IDs
     current = tabbed_content.active
     pane_ids = [pane.id for pane in tabbed_content.query("TabPane") if pane.id]
-    
+
     if not pane_ids:
         return
-    
+
     try:
         idx = pane_ids.index(current)
         next_idx = (idx + 1) % len(pane_ids)
@@ -196,16 +196,16 @@ def next_tab(tabbed_content: TabbedContent) -> None:
 
 def prev_tab(tabbed_content: TabbedContent) -> None:
     """Switch to the previous tab in a TabbedContent.
-    
+
     Args:
         tabbed_content: The TabbedContent widget.
     """
     current = tabbed_content.active
     pane_ids = [pane.id for pane in tabbed_content.query("TabPane") if pane.id]
-    
+
     if not pane_ids:
         return
-    
+
     try:
         idx = pane_ids.index(current)
         prev_idx = (idx - 1) % len(pane_ids)

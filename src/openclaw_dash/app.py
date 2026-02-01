@@ -33,6 +33,19 @@ COMPACT_WIDTH = 100  # Hide less-critical panels below this
 MINIMUM_WIDTH = 80   # Minimum supported terminal width
 
 
+def build_jump_labels(panel_ids: list[str]) -> dict[str, str]:
+    """Build a mapping of single letter keys to panel IDs for jump mode.
+
+    Args:
+        panel_ids: List of panel ID strings.
+
+    Returns:
+        Dict mapping single letters (a-z) to panel IDs.
+    """
+    keys = "asdfghjklqwertyuiopzxcvbnm"  # Home row first for ergonomics
+    return {keys[i]: panel_id for i, panel_id in enumerate(panel_ids) if i < len(keys)}
+
+
 class GatewayPanel(Static):
     """Gateway status panel."""
 
