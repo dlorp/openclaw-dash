@@ -6,6 +6,7 @@ from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 from openclaw_dash.themes import THEMES, next_theme
+from openclaw_dash.version import get_version_info
 from openclaw_dash.widgets.alerts import AlertsPanel
 from openclaw_dash.widgets.ascii_art import (
     STATUS_SYMBOLS,
@@ -162,6 +163,26 @@ class SessionsPanel(Static):
         content.update("\n".join(lines))
 
 
+class VersionFooter(Static):
+    """Footer widget showing version info."""
+
+    DEFAULT_CSS = """
+    VersionFooter {
+        dock: bottom;
+        height: 1;
+        background: $surface;
+        color: $text-muted;
+        text-align: right;
+        padding: 0 1;
+    }
+    """
+
+    def on_mount(self) -> None:
+        """Update with version info on mount."""
+        info = get_version_info()
+        self.update(f"[dim]{info.format_short()}[/]")
+
+
 class DashboardApp(App):
     """Lorp's system dashboard."""
 
@@ -249,6 +270,7 @@ class DashboardApp(App):
             yield SecurityPanel()
 
         yield Footer()
+        yield VersionFooter()
 
     def on_mount(self) -> None:
         # Register custom themes
