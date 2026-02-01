@@ -131,7 +131,9 @@ class DashboardCommands(Provider):
         toggle_res_name = "Toggle Resources Panel"
         match = matcher.match(toggle_res_name)
         if match > 0:
-            yield Hit(match, toggle_res_name, self._toggle_resources, help="Show/hide resources (x)")
+            yield Hit(
+                match, toggle_res_name, self._toggle_resources, help="Show/hide resources (x)"
+            )
 
         # Focus panel commands
         panels = [

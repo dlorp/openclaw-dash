@@ -1,6 +1,5 @@
 """Tests for metric_boxes widget."""
 
-
 import pytest
 from textual.widgets import Static
 

@@ -2,7 +2,6 @@
 
 import inspect
 
-import pytest
 from textual.containers import Container
 from textual.widgets import Static
 
@@ -126,9 +125,6 @@ class TestTabNavigation:
         assert callable(prev_tab)
 
 
-@pytest.mark.skip(
-    reason="Tab groups not yet integrated into app.py - widgets complete, integration pending"
-)
 class TestAppIntegration:
     """Integration tests for tabbed groups in the app."""
 
