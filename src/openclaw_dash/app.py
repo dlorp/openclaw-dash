@@ -315,6 +315,7 @@ class DashboardApp(App):
             ChannelsPanel,
             MetricsPanel,
             SecurityPanel,
+            LogsPanel,
         ]
         refreshed = 0
         errors = []
