@@ -432,11 +432,36 @@ def main() -> int:
         "--json", dest="backup_json", action="store_true", help="JSON output"
     )
 
+    # Export subcommand
+    export_parser = subparsers.add_parser("export", help="Export dashboard data to file")
+    export_parser.add_argument(
+        "--format",
+        choices=["json", "md"],
+        default="json",
+        help="Output format (default: json)",
+    )
+    export_parser.add_argument(
+        "--output", "-o",
+        metavar="FILE",
+        help="Output file path (default: auto-generated)",
+    )
+
     args = parser.parse_args()
 
     # Handle auto command
     if args.command == "auto":
         return cmd_auto(args)
+
+    # Handle export command
+    if args.command == "export":
+        from openclaw_dash.exporter import export_to_file
+
+        filepath, _ = export_to_file(
+            output_path=args.output,
+            format=args.format,
+        )
+        print(f"Exported to: {filepath}")
+        return 0
 
     # Handle security command
     if args.command == "security":
