@@ -5,6 +5,7 @@ from textual.containers import Container
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+from openclaw_dash.themes import THEMES, next_theme
 from openclaw_dash.widgets.alerts import AlertsPanel
 from openclaw_dash.widgets.ascii_art import (
     STATUS_SYMBOLS,
@@ -198,6 +199,7 @@ class DashboardApp(App):
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
+        ("t", "cycle_theme", "Theme"),
         ("h", "help", "Help"),
         ("question_mark", "help", "Help"),
         ("g", "focus_panel('gateway-panel')", "Gateway"),
@@ -256,6 +258,11 @@ class DashboardApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        # Register custom themes
+        for theme in THEMES:
+            self.register_theme(theme)
+        self.theme = "dark"  # Start with dark theme
+
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
         self.set_interval(30, self._auto_refresh)
@@ -279,6 +286,11 @@ class DashboardApp(App):
                 panel.refresh_data()
             except Exception:
                 pass
+
+    def action_cycle_theme(self) -> None:
+        """Cycle through available themes."""
+        self.theme = next_theme(self.theme)
+        self.notify(f"Theme: {self.theme}", timeout=1.5)
 
     def action_refresh(self) -> None:
         """Refresh all panels and show notification."""
