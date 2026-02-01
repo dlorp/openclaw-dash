@@ -173,19 +173,26 @@ class DashboardApp(App):
 
     COMMANDS = {DashboardCommands}
 
+    DEFAULT_REFRESH_INTERVAL = 30
     WATCH_REFRESH_INTERVAL = 5
 
     config: Config
-    watch_mode: bool = False
+    refresh_interval: int
 
-    def __init__(self, watch_mode: bool = False) -> None:
+    def __init__(self, refresh_interval: int | None = None, watch_mode: bool = False) -> None:
         """Initialize the dashboard app.
 
         Args:
-            watch_mode: If True, uses aggressive 5s refresh interval.
+            refresh_interval: Custom refresh interval in seconds. If None, uses default (30s).
+            watch_mode: If True and refresh_interval not set, uses aggressive 5s refresh.
         """
         super().__init__()
-        self.watch_mode = watch_mode
+        if refresh_interval is not None:
+            self.refresh_interval = refresh_interval
+        elif watch_mode:
+            self.refresh_interval = self.WATCH_REFRESH_INTERVAL
+        else:
+            self.refresh_interval = self.DEFAULT_REFRESH_INTERVAL
 
     CSS = """
     Screen {
@@ -287,8 +294,7 @@ class DashboardApp(App):
 
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
-        interval = self.WATCH_REFRESH_INTERVAL if self.watch_mode else self.config.refresh_interval
-        self.set_interval(interval, self._auto_refresh)
+        self.set_interval(self.refresh_interval, self._auto_refresh)
 
     def _auto_refresh(self) -> None:
         """Auto-refresh without notification (for timer-based refresh)."""
