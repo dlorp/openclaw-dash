@@ -441,7 +441,8 @@ def main() -> int:
         help="Output format (default: json)",
     )
     export_parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         metavar="FILE",
         help="Output file path (default: auto-generated)",
     )

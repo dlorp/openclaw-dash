@@ -126,18 +126,19 @@ class TestExtractBindings:
 
     def test_extract_from_tuple_bindings(self):
         """Should extract from tuple-style bindings."""
+
         class MockApp:
             BINDINGS = [
                 ("q", "quit", "Quit"),
                 ("r", "refresh", "Refresh"),
             ]
-        
+
         result = extract_bindings_from_app(MockApp())
-        
+
         # Should have General category
         categories = {name: shortcuts for name, shortcuts in result}
         assert "General" in categories
-        
+
         # Check shortcuts are extracted
         general_keys = [key for key, _ in categories["General"]]
         assert "Q" in general_keys
@@ -145,29 +146,31 @@ class TestExtractBindings:
 
     def test_extract_from_binding_objects(self):
         """Should extract from Binding objects."""
+
         class MockApp:
             BINDINGS = [
                 Binding("q", "quit", "Quit application"),
                 Binding("t", "cycle_theme", "Change theme"),
             ]
-        
+
         result = extract_bindings_from_app(MockApp())
         categories = {name: shortcuts for name, shortcuts in result}
-        
+
         assert "General" in categories
         assert "Display" in categories
 
     def test_combines_duplicate_actions(self):
         """Should combine keys bound to same action."""
+
         class MockApp:
             BINDINGS = [
                 ("h", "help", "Help"),
                 ("question_mark", "help", "Help"),
             ]
-        
+
         result = extract_bindings_from_app(MockApp())
         categories = {name: shortcuts for name, shortcuts in result}
-        
+
         # Should only have one help entry with combined keys
         assert "Help" in categories
         help_shortcuts = categories["Help"]
@@ -178,6 +181,7 @@ class TestExtractBindings:
 
     def test_category_ordering(self):
         """Categories should be ordered: General, Display, Panel Focus, then Help."""
+
         class MockApp:
             BINDINGS = [
                 ("h", "help", "Help"),
@@ -185,10 +189,10 @@ class TestExtractBindings:
                 ("q", "quit", "Quit"),
                 ("g", "focus_gateway", "Gateway"),
             ]
-        
+
         result = extract_bindings_from_app(MockApp())
         category_names = [name for name, _ in result]
-        
+
         # General should come before Display
         assert category_names.index("General") < category_names.index("Display")
         # Help should be last
