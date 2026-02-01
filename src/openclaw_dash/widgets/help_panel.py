@@ -16,6 +16,14 @@ if TYPE_CHECKING:
 # Static shortcuts that aren't in app bindings (navigation hints, etc.)
 STATIC_SHORTCUTS: list[tuple[str, list[tuple[str, str]]]] = [
     (
+        "Vim Navigation",
+        [
+            ("j/k", "Scroll down/up (vim style)"),
+            ("G", "Scroll to bottom"),
+            ("Home", "Scroll to top"),
+        ],
+    ),
+    (
         "Navigation",
         [
             ("↑/↓", "Scroll focused panel"),

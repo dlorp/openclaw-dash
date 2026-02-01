@@ -171,24 +171,56 @@ class SessionsPanel(Static):
         content.update("\n".join(lines))
 
 
-class VersionFooter(Static):
-    """Footer widget showing version info."""
+class StatusFooter(Static):
+    """Footer widget showing focused panel, mode, and version info."""
 
     DEFAULT_CSS = """
-    VersionFooter {
+    StatusFooter {
         dock: bottom;
         height: 1;
         background: $surface;
         color: $text-muted;
-        text-align: right;
         padding: 0 1;
     }
     """
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._focused_panel: str = ""
+        self._mode: str = "normal"
+
     def on_mount(self) -> None:
-        """Update with version info on mount."""
+        """Update with initial status on mount."""
+        self._update_display()
+
+    def set_focused_panel(self, panel_name: str) -> None:
+        """Update the focused panel display."""
+        self._focused_panel = panel_name
+        self._update_display()
+
+    def set_mode(self, mode: str) -> None:
+        """Update the current mode display."""
+        self._mode = mode
+        self._update_display()
+
+    def _update_display(self) -> None:
+        """Rebuild the status display."""
         info = get_version_info()
-        self.update(f"[dim]{info.format_short()}[/]")
+        parts = []
+
+        if self._focused_panel:
+            parts.append(f"[bold $primary]{self._focused_panel}[/]")
+
+        if self._mode and self._mode != "normal":
+            parts.append(f"[dim]({self._mode})[/]")
+
+        left_side = " │ ".join(parts) if parts else ""
+        right_side = f"[dim]{info.format_short()}[/]"
+
+        if left_side:
+            self.update(f"{left_side}  [dim]│[/]  {right_side}")
+        else:
+            self.update(right_side)
 
 
 class DashboardApp(App):
@@ -199,8 +231,28 @@ class DashboardApp(App):
     DEFAULT_REFRESH_INTERVAL = 30
     WATCH_REFRESH_INTERVAL = 5
 
+    # Panel IDs in tab-cycling order (most important first)
+    PANEL_ORDER = [
+        "gateway-panel",
+        "alerts-panel",
+        "repos-panel",
+        "metrics-panel",
+        "security-panel",
+        "logs-panel",
+        "resources-panel",
+        "cron-panel",
+        "sessions-panel",
+        "channels-panel",
+        "activity-panel",
+        "task-panel",
+    ]
+
+    # Less critical panels to hide in compact mode
+    COLLAPSIBLE_PANELS = ["channels-panel", "activity-panel"]
+
     config: Config
     refresh_interval: int
+    _compact_mode: bool = False
 
     def __init__(self, refresh_interval: int | None = None, watch_mode: bool = False) -> None:
         """Initialize the dashboard app.
@@ -230,6 +282,14 @@ class DashboardApp(App):
         padding: 1;
     }
 
+    .panel:focus-within {
+        border: round $accent;
+    }
+
+    .panel.collapsed {
+        display: none;
+    }
+
     #gateway-panel { row-span: 1; }
     #task-panel { column-span: 2; }
     #alerts-panel { column-span: 2; row-span: 1; }
@@ -252,6 +312,15 @@ class DashboardApp(App):
         ("t", "cycle_theme", "Theme"),
         ("h", "help", "Help"),
         ("question_mark", "help", "Help"),
+        # Vim-style scrolling
+        ("j", "scroll_down", "↓"),
+        ("k", "scroll_up", "↑"),
+        ("G", "scroll_end", "End"),
+        ("home", "scroll_home", "Top"),
+        # Tab navigation
+        ("tab", "focus_next_panel", "Next"),
+        ("shift+tab", "focus_prev_panel", "Prev"),
+        # Panel focus shortcuts
         ("g", "focus_panel('gateway-panel')", "Gateway"),
         ("s", "focus_panel('security-panel')", "Security"),
         ("m", "focus_panel('metrics-panel')", "Metrics"),
@@ -316,7 +385,7 @@ class DashboardApp(App):
             yield ResourcesPanel()
 
         yield Footer()
-        yield VersionFooter()
+        yield StatusFooter(id="status-footer")
 
     def on_mount(self) -> None:
         # Load user config
@@ -336,6 +405,9 @@ class DashboardApp(App):
                 panel.add_class("hidden")
             except Exception:
                 pass
+
+        # Apply initial responsive layout
+        self._apply_responsive_layout(self.size.width, self.size.height)
 
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
@@ -420,6 +492,51 @@ class DashboardApp(App):
             panel.focus()
         except Exception:
             pass
+
+    def action_scroll_down(self) -> None:
+        """Scroll the focused panel down (vim j key)."""
+        focused = self.focused
+        if focused is not None:
+            # Find scrollable parent or use focused widget
+            widget = focused
+            while widget is not None:
+                if hasattr(widget, "scroll_down"):
+                    widget.scroll_down()
+                    return
+                widget = widget.parent
+
+    def action_scroll_up(self) -> None:
+        """Scroll the focused panel up (vim k key)."""
+        focused = self.focused
+        if focused is not None:
+            widget = focused
+            while widget is not None:
+                if hasattr(widget, "scroll_up"):
+                    widget.scroll_up()
+                    return
+                widget = widget.parent
+
+    def action_scroll_end(self) -> None:
+        """Scroll to the bottom of focused panel (vim G key)."""
+        focused = self.focused
+        if focused is not None:
+            widget = focused
+            while widget is not None:
+                if hasattr(widget, "scroll_end"):
+                    widget.scroll_end()
+                    return
+                widget = widget.parent
+
+    def action_scroll_home(self) -> None:
+        """Scroll to the top of focused panel (vim gg / Home key)."""
+        focused = self.focused
+        if focused is not None:
+            widget = focused
+            while widget is not None:
+                if hasattr(widget, "scroll_home"):
+                    widget.scroll_home()
+                    return
+                widget = widget.parent
 
     def action_toggle_resources(self) -> None:
         """Toggle the resources panel visibility and save preference."""
