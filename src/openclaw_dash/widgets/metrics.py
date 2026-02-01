@@ -4,6 +4,12 @@ from textual.app import ComposeResult
 from textual.widgets import Static
 
 from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
+from openclaw_dash.widgets.ascii_art import (
+    STATUS_SYMBOLS,
+    mini_bar,
+    separator,
+    sparkline,
+)
 
 
 class CostsPanel(Static):
@@ -19,25 +25,48 @@ class CostsPanel(Static):
 
         today = data.get("today", {})
         summary = data.get("summary", {})
+        daily_history = data.get("daily_costs", [])
 
-        lines = [
-            f"[bold]Today:[/] ${today.get('cost', 0):.4f}",
-            f"  Input: {today.get('input_tokens', 0):,} tokens",
-            f"  Output: {today.get('output_tokens', 0):,} tokens",
-            "",
-            f"[bold]All time:[/] ${summary.get('total_cost', 0):.2f}",
-            f"  Avg daily: ${summary.get('avg_daily_cost', 0):.2f}",
-        ]
+        # Build sparkline from daily history if available
+        cost_values = [d.get("cost", 0) for d in daily_history[-14:]] if daily_history else []
 
-        # Model breakdown
+        lines = []
+
+        # Today's cost with sparkline
+        today_cost = today.get("cost", 0)
+        if cost_values:
+            spark = sparkline(cost_values, width=12)
+            lines.append(f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${today_cost:.4f}  {spark}")
+        else:
+            lines.append(f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${today_cost:.4f}")
+
+        lines.append(
+            f"  {STATUS_SYMBOLS['arrow_right']} Input: {today.get('input_tokens', 0):,} tokens"
+        )
+        lines.append(
+            f"  {STATUS_SYMBOLS['arrow_right']} Output: {today.get('output_tokens', 0):,} tokens"
+        )
+
+        lines.append(separator(30, style="dotted"))
+
+        lines.append(
+            f"[bold]{STATUS_SYMBOLS['star']} All time:[/] ${summary.get('total_cost', 0):.2f}"
+        )
+        lines.append(f"  Avg daily: ${summary.get('avg_daily_cost', 0):.2f}")
+
+        # Model breakdown with mini bars
         by_model = today.get("by_model", {})
         if by_model:
             lines.append("")
-            lines.append("[dim]By model:[/]")
+            lines.append(separator(30, style="thin", label="By Model"))
+            total_model_cost = sum(s.get("cost", 0) for s in by_model.values())
             for model, stats in sorted(
                 by_model.items(), key=lambda x: x[1].get("cost", 0), reverse=True
             )[:3]:
-                lines.append(f"  {model}: ${stats.get('cost', 0):.4f}")
+                cost = stats.get("cost", 0)
+                ratio = cost / total_model_cost if total_model_cost > 0 else 0
+                bar = mini_bar(ratio, width=6)
+                lines.append(f"  {bar} {model}: ${cost:.4f}")
 
         content.update("\n".join(lines))
 
