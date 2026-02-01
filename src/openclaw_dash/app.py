@@ -18,7 +18,6 @@ from openclaw_dash.widgets.channels import ChannelsPanel
 from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.metrics import MetricsPanel
 from openclaw_dash.widgets.notifications import (
-    notify_error,
     notify_panel_error,
     notify_refresh,
 )

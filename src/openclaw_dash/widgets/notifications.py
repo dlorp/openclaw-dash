@@ -4,7 +4,7 @@ Uses Textual's built-in notify() system with consistent styling.
 """
 
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from textual.app import App
@@ -41,7 +41,7 @@ def notify(
     app: "App",
     message: str,
     level: NotificationLevel = NotificationLevel.INFO,
-    timeout: Optional[float] = None,
+    timeout: float | None = None,
 ) -> None:
     """Show a notification toast.
 
@@ -62,22 +62,22 @@ def notify(
     )
 
 
-def notify_info(app: "App", message: str, timeout: Optional[float] = None) -> None:
+def notify_info(app: "App", message: str, timeout: float | None = None) -> None:
     """Show an info notification."""
     notify(app, message, NotificationLevel.INFO, timeout)
 
 
-def notify_success(app: "App", message: str, timeout: Optional[float] = None) -> None:
+def notify_success(app: "App", message: str, timeout: float | None = None) -> None:
     """Show a success notification (uses INFO level with shorter timeout)."""
     notify(app, message, NotificationLevel.INFO, timeout or 1.5)
 
 
-def notify_warning(app: "App", message: str, timeout: Optional[float] = None) -> None:
+def notify_warning(app: "App", message: str, timeout: float | None = None) -> None:
     """Show a warning notification."""
     notify(app, message, NotificationLevel.WARNING, timeout)
 
 
-def notify_error(app: "App", message: str, timeout: Optional[float] = None) -> None:
+def notify_error(app: "App", message: str, timeout: float | None = None) -> None:
     """Show an error notification."""
     notify(app, message, NotificationLevel.ERROR, timeout)
 
