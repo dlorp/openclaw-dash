@@ -10,8 +10,10 @@ SHORTCUTS = [
     (
         "General",
         [
+            ("Ctrl+P", "Open command palette"),
             ("q", "Quit application"),
             ("r", "Refresh all panels"),
+            ("t", "Cycle theme"),
             ("h / ?", "Toggle this help panel"),
         ],
     ),

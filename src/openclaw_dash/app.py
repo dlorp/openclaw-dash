@@ -5,6 +5,7 @@ from textual.containers import Container
 from textual.widgets import DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+from openclaw_dash.commands import DashboardCommands
 from openclaw_dash.themes import THEMES, next_theme
 from openclaw_dash.widgets.alerts import AlertsPanel
 from openclaw_dash.widgets.ascii_art import (
@@ -164,6 +165,8 @@ class SessionsPanel(Static):
 
 class DashboardApp(App):
     """Lorp's system dashboard."""
+
+    COMMANDS = {DashboardCommands}
 
     CSS = """
     Screen {
