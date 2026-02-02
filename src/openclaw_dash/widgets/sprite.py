@@ -87,6 +87,17 @@ SPRITES: dict[str, list[str]] = {
     ],
 }
 
+# State icons (emoji-style, for compact mode)
+STATE_ICONS: dict[SpriteState, str] = {
+    SpriteState.IDLE: "😊",
+    SpriteState.SLEEP: "😴",
+    SpriteState.THINK: "🤔",
+    SpriteState.WORK: "⚡",
+    SpriteState.SPAWN: "👥",
+    SpriteState.DONE: "✅",
+    SpriteState.ALERT: "⚠️",
+}
+
 # State colors for Textual rich markup
 STATE_COLORS: dict[SpriteState, str] = {
     SpriteState.IDLE: "white",
@@ -136,6 +147,18 @@ def get_sprite_art(state: SpriteState | str) -> str:
         ASCII art string for the sprite
     """
     return "\n".join(get_sprite(state))
+
+
+def get_state_icon(state: SpriteState) -> str:
+    """Get the emoji icon for a state.
+
+    Args:
+        state: The sprite state
+
+    Returns:
+        Emoji character for the state
+    """
+    return STATE_ICONS.get(state, "●")
 
 
 def get_state_color(state: SpriteState) -> str:
@@ -217,20 +240,20 @@ class SpriteWidget(Static):
 
     def on_mount(self) -> None:
         """Handle widget mount - render initial state."""
-        self._do_render()
+        self._render()
 
     def watch_state(self, new_state: SpriteState) -> None:
         """React to state changes."""
         # Update status text to default if not custom
         if not self.status_text or self.status_text in DEFAULT_STATUS_TEXT.values():
             self.status_text = DEFAULT_STATUS_TEXT.get(new_state, "")
-        self._do_render()
+        self._render()
 
     def watch_status_text(self, new_text: str) -> None:
         """React to status text changes."""
-        self._do_render()
+        self._render()
 
-    def _do_render(self) -> None:
+    def _render(self) -> None:
         """Render the sprite display."""
         try:
             display = self.query_one("#sprite-display", Static)
@@ -240,11 +263,9 @@ class SpriteWidget(Static):
         color = get_state_color(self.state)
 
         if self._compact:
-            # Compact mode: single-line ASCII face + status
-            sprite_lines = get_sprite(self.state)
-            # Use the face line (line 3, index 2) for compact display
-            face = sprite_lines[2] if len(sprite_lines) > 2 else "(o.o)"
-            display.update(f"[{color}]{face}[/] {self.status_text}")
+            # Compact mode: just icon + status
+            icon = get_state_icon(self.state)
+            display.update(f"[{color}]{icon}[/] {self.status_text}")
         else:
             # Full ASCII art mode
             sprite_art = get_sprite_art(self.state)
@@ -329,12 +350,10 @@ def format_sprite_status(state: SpriteState | str, status_text: str = "") -> str
         status_text: Status message
 
     Returns:
-        Formatted string with face, color, and status
+        Formatted string with icon, color, and status
     """
     parsed_state = parse_state(state)
-    sprite_lines = get_sprite(parsed_state)
-    # Use the face line (line 3, index 2) for compact display
-    face = sprite_lines[2] if len(sprite_lines) > 2 else "(o.o)"
+    icon = get_state_icon(parsed_state)
     color = get_state_color(parsed_state)
     text = status_text or DEFAULT_STATUS_TEXT.get(parsed_state, "")
-    return f"[{color}]{face}[/] {text}"
+    return f"[{color}]{icon}[/] {text}"

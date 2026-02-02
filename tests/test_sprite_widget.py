@@ -4,6 +4,7 @@ from openclaw_dash.widgets.sprite import (
     DEFAULT_STATUS_TEXT,
     SPRITES,
     STATE_COLORS,
+    STATE_ICONS,
     CompactSpriteWidget,
     SpriteState,
     SpriteWidget,
@@ -12,6 +13,7 @@ from openclaw_dash.widgets.sprite import (
     get_sprite,
     get_sprite_art,
     get_state_color,
+    get_state_icon,
     parse_state,
 )
 
@@ -152,6 +154,25 @@ class TestSprites:
         assert sprite[2] == "(!.!)"  # Alert eyes
 
 
+class TestStateIcons:
+    """Tests for state emoji icons."""
+
+    def test_all_states_have_icons(self):
+        """Test all states have icons defined."""
+        for state in SpriteState:
+            assert state in STATE_ICONS
+
+    def test_get_state_icon(self):
+        """Test get_state_icon returns correct icons."""
+        assert get_state_icon(SpriteState.IDLE) == "😊"
+        assert get_state_icon(SpriteState.SLEEP) == "😴"
+        assert get_state_icon(SpriteState.THINK) == "🤔"
+        assert get_state_icon(SpriteState.WORK) == "⚡"
+        assert get_state_icon(SpriteState.SPAWN) == "👥"
+        assert get_state_icon(SpriteState.DONE) == "✅"
+        assert get_state_icon(SpriteState.ALERT) == "⚠️"
+
+
 class TestStateColors:
     """Tests for state colors."""
 
@@ -222,19 +243,18 @@ class TestFormatSpriteStatus:
         """Test formatting with SpriteState enum."""
         result = format_sprite_status(SpriteState.WORK)
         assert "[cyan]" in result
-        assert "(o.o)" in result  # Face from work sprite
+        assert "⚡" in result
         assert "working..." in result
 
     def test_format_with_string(self):
         """Test formatting with string state."""
         result = format_sprite_status("done")
         assert "[green]" in result
-        assert "(^.^)" in result  # Face from done sprite
+        assert "✅" in result
 
     def test_format_with_custom_text(self):
         """Test formatting with custom status text."""
         result = format_sprite_status(SpriteState.ALERT, "custom message")
-        assert "(!.!)" in result  # Face from alert sprite
         assert "custom message" in result
 
 
