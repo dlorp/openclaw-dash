@@ -50,6 +50,7 @@ Jump Mode: Press 'f' then letter to focus panel    Tabs: Switch with Tab key
 - **Cron Jobs** — Scheduled tasks and status
 - **Alerts** — Color-coded severity alerts from all sources
 - **Channels** — Connected messaging channels and status
+- **Agents** — Sub-agent coordination view with status, context usage, and task summaries
 - **Security Audit** — Config scanning, dependency vulnerabilities
 - **Metrics** — Cost tracking, performance stats, GitHub streak
 - **System Resources** — CPU, memory, disk, and network I/O (toggleable with `x`)
