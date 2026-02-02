@@ -18,7 +18,15 @@ def collect(repos: list[str] | None = None) -> dict[str, Any]:
     """Collect repository health metrics."""
     # Return mock data in demo mode
     if is_demo_mode():
-        return {"repos": mock_repos(), "collected_at": datetime.now().isoformat()}
+        mock_data = mock_repos()
+        # Filter by requested repos if specified
+        if repos is not None:
+            mock_data = [r for r in mock_data if r.get("name") in repos]
+        return {
+            "repos": mock_data,
+            "total": len(mock_data),
+            "collected_at": datetime.now().isoformat(),
+        }
 
     repos = repos or DEFAULT_REPOS
     results = []
