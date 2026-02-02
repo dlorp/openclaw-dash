@@ -38,6 +38,17 @@ from openclaw_dash.widgets.security import (
     SecurityPanel,
     SecuritySummaryPanel,
 )
+from openclaw_dash.widgets.sessions import (
+    SessionsPanel,
+    SessionsSummaryPanel,
+    SessionStatus,
+)
+from openclaw_dash.widgets.sessions import (
+    get_status_color as get_session_status_color,
+)
+from openclaw_dash.widgets.sessions import (
+    get_status_icon as get_session_status_icon,
+)
 from openclaw_dash.widgets.tabbed_groups import (
     CodeTabGroup,
     RuntimeTabGroup,
@@ -101,4 +112,10 @@ __all__ = [
     "ToolHarnessData",
     "Tool",
     "ToolState",
+    # Sessions
+    "SessionsPanel",
+    "SessionsSummaryPanel",
+    "SessionStatus",
+    "get_session_status_color",
+    "get_session_status_icon",
 ]

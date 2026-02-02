@@ -1,5 +1,7 @@
 """Logs collector for OpenClaw gateway logs."""
 
+from __future__ import annotations
+
 import os
 import re
 from collections import deque
