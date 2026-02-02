@@ -12,7 +12,13 @@ def collect() -> dict[str, Any]:
     """Collect session information."""
     # Return mock data in demo mode
     if is_demo_mode():
-        return {"sessions": mock_sessions(), "collected_at": datetime.now().isoformat()}
+        sessions = mock_sessions()
+        return {
+            "sessions": sessions,
+            "total": len(sessions),
+            "active": len(sessions),  # All mock sessions are considered active
+            "collected_at": datetime.now().isoformat(),
+        }
 
     try:
         result = subprocess.run(
