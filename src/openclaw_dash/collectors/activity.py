@@ -1,6 +1,6 @@
 """Activity and current task collector.
 
-Reads from lorp's activity log and workspace state to determine
+Reads from the activity log and workspace state to determine
 what's currently being worked on.
 """
 
@@ -72,7 +72,7 @@ def collect() -> dict[str, Any]:
 
 
 def set_current_task(task: str) -> None:
-    """Set the current task (called by lorp during work)."""
+    """Set the current task for display in the dashboard."""
     ACTIVITY_LOG.parent.mkdir(parents=True, exist_ok=True)
 
     data = {"current_task": None, "recent": []}

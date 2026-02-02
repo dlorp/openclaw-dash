@@ -7,14 +7,14 @@ core design system variables that panels and widgets use.
 from textual.theme import Theme
 
 # =============================================================================
-# dlorp Brand Colors
+# OpenClaw Brand Colors
 # =============================================================================
 # These are the canonical brand colors used throughout the dashboard.
 # Reference these constants instead of hardcoding hex values.
 
 
 class BrandColors:
-    """dlorp brand color palette."""
+    """OpenClaw brand color palette."""
 
     GRANITE_GRAY = "#636764"  # Borders, muted elements
     DARK_ORANGE = "#FB8B24"  # Warnings, important actions
@@ -38,9 +38,9 @@ ROYAL_BLUE_LIGHT = BrandColors.ROYAL_BLUE_LIGHT
 # Dark theme - default, easy on the eyes
 DARK_THEME = Theme(
     name="dark",
-    primary="#50D8D7",  # Medium Turquoise (dlorp brand)
-    secondary="#3B60E4",  # Royal Blue Light (dlorp brand)
-    accent="#FB8B24",  # Dark Orange (dlorp brand)
+    primary="#50D8D7",  # Medium Turquoise
+    secondary="#3B60E4",  # Royal Blue Light
+    accent="#FB8B24",  # Dark Orange
     foreground="#E0E0E0",
     background="#1A1A1A",
     surface="#2A2A2A",

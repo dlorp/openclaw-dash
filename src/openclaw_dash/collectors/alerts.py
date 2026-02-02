@@ -13,6 +13,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
+from pathlib import Path
 from typing import Any
 
 
@@ -50,10 +51,22 @@ class Alert:
         }
 
 
-DEFAULT_REPOS = [
-    "dlorpprojects/openclaw",
-    "dlorpprojects/openclaw-dash",
-]
+# Default repos - can be overridden in config file at ~/.config/openclaw-dash/config.json
+# Format: {"repos": ["owner/repo", ...]}
+DEFAULT_REPOS: list[str] = []
+
+
+def _load_repos_from_config() -> list[str]:
+    """Load repos from config file if it exists."""
+    config_path = Path.home() / ".config" / "openclaw-dash" / "config.json"
+    if config_path.exists():
+        try:
+            config = json.loads(config_path.read_text())
+            return config.get("repos", [])
+        except (OSError, json.JSONDecodeError):
+            pass
+    return DEFAULT_REPOS
+
 
 # Context usage thresholds
 CONTEXT_WARNING_PCT = 75
@@ -63,7 +76,7 @@ CONTEXT_CRITICAL_PCT = 90
 def collect_ci_failures(repos: list[str] | None = None) -> list[Alert]:
     """Collect recent CI/CD failures from GitHub Actions."""
     alerts: list[Alert] = []
-    repos_to_check = repos or DEFAULT_REPOS
+    repos_to_check = repos or _load_repos_from_config()
 
     for repo in repos_to_check:
         try:

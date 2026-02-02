@@ -1,4 +1,4 @@
-"""openclaw-dash: At-a-glance dashboard for lorp's systems."""
+"""openclaw-dash: TUI dashboard for OpenClaw gateway monitoring."""
 
 from openclaw_dash.version import VERSION, VersionInfo, get_version_info
 

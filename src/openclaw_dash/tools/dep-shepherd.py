@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-dep-shepherd.py — Dependency audit and update tool for dlorp's repos.
+dep-shepherd.py — Dependency audit and update tool for configured repos.
 
 Features:
 - Scan repos for outdated/vulnerable dependencies
