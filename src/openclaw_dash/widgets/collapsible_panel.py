@@ -45,14 +45,11 @@ class CollapsiblePanel(Container):
     CollapsiblePanel .summary {
         padding: 0 1;
         color: $text-muted;
+        display: none;
     }
 
     CollapsiblePanel.-collapsed .summary {
         display: block;
-    }
-
-    CollapsiblePanel:not(.-collapsed) .summary {
-        display: none;
     }
     """
 
