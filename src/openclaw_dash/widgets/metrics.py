@@ -1,8 +1,12 @@
 """Metrics panel widget for the TUI dashboard."""
 
+from datetime import date
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.widgets import Static
 
+from openclaw_dash.collectors.billing import BillingCollector
 from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
 from openclaw_dash.widgets.ascii_art import (
     STATUS_SYMBOLS,
@@ -14,8 +18,88 @@ from openclaw_dash.widgets.ascii_art import (
 )
 
 
+def calculate_cost_forecast(
+    daily_costs: list[dict[str, Any]], lookback_days: int = 7
+) -> dict[str, Any]:
+    """Calculate cost forecast based on recent spending patterns.
+
+    Args:
+        daily_costs: List of daily cost records with 'date' and 'cost' keys.
+        lookback_days: Number of recent days to use for averaging.
+
+    Returns:
+        Dictionary with:
+            - daily_avg: Average daily cost over the lookback period
+            - projected_monthly: Projected cost for a 30-day month
+            - trend: Trend indicator ('↑' increasing, '↓' decreasing, '→' stable)
+            - trend_pct: Percentage change between periods
+    """
+    if not daily_costs:
+        return {
+            "daily_avg": 0.0,
+            "projected_monthly": 0.0,
+            "trend": "→",
+            "trend_pct": 0.0,
+        }
+
+    # Sort by date descending and take recent days
+    sorted_costs = sorted(daily_costs, key=lambda x: x.get("date", ""), reverse=True)
+
+    # Get costs for recent period
+    recent_costs = [d.get("cost", d.get("total_cost", 0)) for d in sorted_costs[:lookback_days]]
+
+    # Get costs for prior period (for trend calculation)
+    prior_costs = [
+        d.get("cost", d.get("total_cost", 0))
+        for d in sorted_costs[lookback_days : lookback_days * 2]
+    ]
+
+    # Calculate daily average from recent period
+    daily_avg = sum(recent_costs) / len(recent_costs) if recent_costs else 0.0
+
+    # Project to full month (30 days)
+    projected_monthly = daily_avg * 30
+
+    # Calculate trend by comparing recent vs prior period averages
+    if prior_costs and recent_costs:
+        prior_avg = sum(prior_costs) / len(prior_costs)
+        if prior_avg > 0:
+            trend_pct = ((daily_avg - prior_avg) / prior_avg) * 100
+        else:
+            trend_pct = 100.0 if daily_avg > 0 else 0.0
+    else:
+        trend_pct = 0.0
+
+    # Determine trend indicator (5% threshold for stability)
+    if trend_pct > 5:
+        trend = "↑"
+    elif trend_pct < -5:
+        trend = "↓"
+    else:
+        trend = "→"
+
+    return {
+        "daily_avg": round(daily_avg, 4),
+        "projected_monthly": round(projected_monthly, 2),
+        "trend": trend,
+        "trend_pct": round(trend_pct, 1),
+    }
+
+
+def get_days_in_current_month() -> int:
+    """Get the number of days in the current month."""
+    today = date.today()
+    # Get first day of next month, then subtract one day
+    if today.month == 12:
+        next_month = date(today.year + 1, 1, 1)
+    else:
+        next_month = date(today.year, today.month + 1, 1)
+    last_day = next_month.replace(day=1)
+    return (last_day - today.replace(day=1)).days
+
+
 class CostsPanel(Static):
-    """Token costs display."""
+    """Token costs display with API and estimated cost sources."""
 
     def compose(self) -> ComposeResult:
         yield Static("Loading...", id="costs-content")
@@ -29,18 +113,46 @@ class CostsPanel(Static):
         summary = data.get("summary", {})
         daily_history = data.get("daily_costs", [])
 
+        # If daily_costs not in data, try to get from tracker history
+        if not daily_history:
+            daily_history = tracker.get_history(days=14)
+
+        # Try to fetch real billing data from APIs
+        billing_collector = BillingCollector()
+        billing_data = billing_collector.collect()
+        has_api_data = billing_data.get("has_api_data", False)
+        api_cost = billing_data.get("total_api_cost", 0.0)
+
         # Build sparkline from daily history if available
-        cost_values = [d.get("cost", 0) for d in daily_history[-14:]] if daily_history else []
+        cost_values = (
+            [d.get("cost", d.get("total_cost", 0)) for d in daily_history[-14:]]
+            if daily_history
+            else []
+        )
 
         lines = []
 
-        # Today's cost with sparkline
+        # Today's cost with sparkline and source indicator
         today_cost = today.get("cost", 0)
-        if cost_values:
-            spark = sparkline(cost_values, width=12)
-            lines.append(f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${today_cost:.4f}  {spark}")
+
+        # Determine display cost and source
+        if has_api_data and api_cost > 0:
+            display_cost = api_cost
+            source_indicator = "[green]API[/]"
         else:
-            lines.append(f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${today_cost:.4f}")
+            display_cost = today_cost
+            source_indicator = "[yellow]Est[/]"
+
+        if cost_values:
+            spark = sparkline(cost_values, width=10)
+            lines.append(
+                f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${display_cost:.4f} "
+                f"{source_indicator}  {spark}"
+            )
+        else:
+            lines.append(
+                f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${display_cost:.4f} {source_indicator}"
+            )
 
         lines.append(
             f"  {STATUS_SYMBOLS['arrow_right']} Input: {today.get('input_tokens', 0):,} tokens"
@@ -48,6 +160,26 @@ class CostsPanel(Static):
         lines.append(
             f"  {STATUS_SYMBOLS['arrow_right']} Output: {today.get('output_tokens', 0):,} tokens"
         )
+
+        # Show API availability status
+        api_status = billing_data.get("api_available", {})
+        api_indicators = []
+        if api_status.get("openai"):
+            api_indicators.append("[green]OpenAI✓[/]")
+        else:
+            api_indicators.append("[dim]OpenAI[/]")
+        # Anthropic never has API (no billing endpoint)
+        api_indicators.append("[dim]Anthropic[/]")
+        lines.append(f"  [dim]APIs:[/] {' '.join(api_indicators)}")
+
+        lines.append(separator(30, style="dotted"))
+
+        # Cost Forecast section with source-aware data
+        forecast = calculate_cost_forecast(daily_history)
+        forecast_source = "[green]API[/]" if has_api_data else "[yellow]Est[/]"
+        lines.append(f"[bold]💰 Forecast:[/] {forecast_source}")
+        lines.append(f"  Proj/Mo: ${forecast['projected_monthly']:.2f} {forecast['trend']}")
+        lines.append(f"  Avg/Day: ${forecast['daily_avg']:.2f}")
 
         lines.append(separator(30, style="dotted"))
 
@@ -238,18 +370,42 @@ class MetricsPanel(Static):
 
         lines = []
 
-        # Costs summary with sparkline
+        # Costs summary with sparkline, forecast, and source indicator
         try:
-            costs = CostTracker().collect()
+            tracker = CostTracker()
+            costs = tracker.collect()
             today_cost = costs.get("today", {}).get("cost", 0)
-            total_cost = costs.get("summary", {}).get("total_cost", 0)
             daily_history = costs.get("daily_costs", [])
-            cost_values = [d.get("cost", 0) for d in daily_history[-10:]] if daily_history else []
+            if not daily_history:
+                daily_history = tracker.get_history(days=14)
+            cost_values = (
+                [d.get("cost", d.get("total_cost", 0)) for d in daily_history[-10:]]
+                if daily_history
+                else []
+            )
 
-            cost_line = f"[bold]{STATUS_SYMBOLS['diamond']} Costs:[/] ${today_cost:.3f} today / ${total_cost:.2f} total"
+            # Try to fetch real billing data from APIs
+            billing_collector = BillingCollector()
+            billing_data = billing_collector.collect()
+            has_api_data = billing_data.get("has_api_data", False)
+            api_cost = billing_data.get("total_api_cost", 0.0)
+
+            # Use API cost if available, otherwise estimated
+            if has_api_data and api_cost > 0:
+                display_cost = api_cost
+                source_indicator = "[green]API[/]"
+            else:
+                display_cost = today_cost
+                source_indicator = "[yellow]Est[/]"
+
+            # Calculate forecast
+            forecast = calculate_cost_forecast(daily_history)
+
+            cost_line = f"[bold]💰 Costs:[/] ${display_cost:.2f} {source_indicator}"
             if cost_values:
                 cost_line += f"  {sparkline(cost_values, width=10)}"
             lines.append(cost_line)
+            lines.append(f"  Proj/Mo: ${forecast['projected_monthly']:.2f} {forecast['trend']}")
         except Exception:
             lines.append(f"[dim]{STATUS_SYMBOLS['diamond']} Costs: unavailable[/]")
 
