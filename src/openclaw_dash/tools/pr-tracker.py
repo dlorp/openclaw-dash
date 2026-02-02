@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pr-tracker.py — Track PR status across dlorp's repos.
+pr-tracker.py — Track PR status across configured repos.
 
 Features:
 - List all open PRs with age
@@ -12,15 +12,22 @@ Usage:
     python3 pr-tracker.py           # Show current PR status
     python3 pr-tracker.py --check   # Check for changes since last run
     python3 pr-tracker.py --json    # Output as JSON
+
+Configuration:
+    Set GITHUB_ORG environment variable or edit GITHUB_ORG below.
+    Set REPOS list to your repos.
 """
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
-REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]
+# Configuration - customize for your setup
+GITHUB_ORG = os.environ.get("GITHUB_ORG", "")  # Set your GitHub username/org
+REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]  # Your repos
 STATE_FILE = Path(__file__).parent / ".pr_state.json"
 
 
@@ -32,8 +39,11 @@ def run(cmd: str) -> tuple[int, str]:
 
 def get_prs(repo: str, state: str = "all") -> list[dict]:
     """Get PRs for a repo."""
+    if not GITHUB_ORG:
+        print("Error: Set GITHUB_ORG environment variable or edit the script.", file=sys.stderr)
+        return []
     _, output = run(
-        f"gh pr list -R dlorp/{repo} --state {state} --json number,title,state,createdAt,mergedAt,closedAt,author --limit 20"
+        f"gh pr list -R {GITHUB_ORG}/{repo} --state {state} --json number,title,state,createdAt,mergedAt,closedAt,author --limit 20"
     )
     try:
         return json.loads(output) if output else []

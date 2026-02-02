@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-repo-scanner.py — Scan dlorp's repos for health metrics.
+repo-scanner.py — Scan repos for health metrics.
 
 Tracks:
 - TODO/FIXME counts by file
@@ -10,16 +10,23 @@ Tracks:
 
 Usage:
     python3 repo-scanner.py [--json] [--update-discord]
+
+Configuration:
+    Set GITHUB_ORG environment variable or edit GITHUB_ORG below.
+    Set REPOS list and REPO_BASE path to match your setup.
 """
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
-REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]
-REPO_BASE = Path.home() / "repos"
+# Configuration - customize for your setup
+GITHUB_ORG = os.environ.get("GITHUB_ORG", "")  # Set your GitHub username/org
+REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]  # Your repos
+REPO_BASE = Path.home() / "repos"  # Local path to cloned repos
 
 
 def run(cmd: str, cwd: Path | None = None) -> tuple[int, str]:
@@ -72,7 +79,9 @@ def count_tests(repo_path: Path) -> int:
 
 def get_open_prs(repo: str) -> list:
     """Get open PRs for a repo."""
-    _, output = run(f"gh pr list -R dlorp/{repo} --state open --json number,title --limit 10")
+    if not GITHUB_ORG:
+        return []
+    _, output = run(f"gh pr list -R {GITHUB_ORG}/{repo} --state open --json number,title --limit 10")
     try:
         return json.loads(output) if output else []
     except json.JSONDecodeError:

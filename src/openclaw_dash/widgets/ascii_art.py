@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Literal
 
 # =============================================================================
-# dlorp Brand Colors (for reference in widgets)
+# Brand Colors (for reference in widgets)
 # =============================================================================
 # Use these constants for consistent color styling across widgets.
 # For Textual themes, see themes.py - these are for Rich markup in widgets.

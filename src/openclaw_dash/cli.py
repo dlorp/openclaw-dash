@@ -380,7 +380,7 @@ def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
         prog="openclaw-dash",
-        description="At-a-glance dashboard for lorp's systems",
+        description="TUI dashboard for OpenClaw gateway monitoring",
     )
     parser.add_argument("--status", action="store_true", help="Quick text status")
     parser.add_argument("--json", action="store_true", help="JSON output")

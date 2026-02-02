@@ -301,7 +301,7 @@ class DashboardApp(App):
 
     CSS = """
     /* =================================================================
-       OpenClaw Dashboard - dlorp Brand Styling
+       OpenClaw Dashboard - Brand Styling
        -----------------------------------------------------------------
        Brand Colors:
          #636764 Granite Gray    - borders, muted elements

@@ -6,7 +6,7 @@ A horizontal bar of key performance indicators that displays at a glance:
 - Error rate (% with mini bar)
 - Streak/uptime days
 
-Uses dlorp's brand colors:
+Brand colors:
 - #636764 Granite Gray
 - #FB8B24 Dark Orange
 - #F4E409 Titanium Yellow
