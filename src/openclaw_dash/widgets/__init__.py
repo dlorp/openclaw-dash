@@ -15,6 +15,7 @@ from openclaw_dash.widgets.ascii_art import (
     trend_indicator,
 )
 from openclaw_dash.widgets.help_panel import HelpScreen
+from openclaw_dash.widgets.input_pane import CommandSent, InputPane
 from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
 from openclaw_dash.widgets.metric_boxes import (
     MetricBox,
@@ -59,6 +60,9 @@ __all__ = [
     "trend_indicator",
     "format_with_trend",
     "HelpScreen",
+    # Input pane
+    "InputPane",
+    "CommandSent",
     "LogsPanel",
     "LogsSummaryPanel",
     "SecurityPanel",
