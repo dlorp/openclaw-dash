@@ -61,6 +61,17 @@ from openclaw_dash.widgets.sessions import (
 from openclaw_dash.widgets.sessions import (
     get_status_icon as get_session_status_icon,
 )
+from openclaw_dash.widgets.sprite import (
+    CompactSpriteWidget,
+    SpriteState,
+    SpriteWidget,
+    create_sprite,
+    format_sprite_status,
+    get_sprite_frame,
+    get_state_color,
+    get_state_icon,
+    parse_state,
+)
 from openclaw_dash.widgets.tabbed_groups import (
     CodeTabGroup,
     RuntimeTabGroup,
@@ -141,4 +152,14 @@ __all__ = [
     # Cron panel
     "CronPanel",
     "CronSummaryPanel",
+    # Sprite widget
+    "SpriteWidget",
+    "CompactSpriteWidget",
+    "SpriteState",
+    "create_sprite",
+    "format_sprite_status",
+    "get_sprite_frame",
+    "get_state_icon",
+    "get_state_color",
+    "parse_state",
 ]
