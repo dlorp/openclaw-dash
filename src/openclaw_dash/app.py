@@ -20,6 +20,7 @@ from openclaw_dash.widgets.ascii_art import (
 )
 from openclaw_dash.widgets.channels import ChannelsPanel
 from openclaw_dash.widgets.help_panel import HelpScreen
+from openclaw_dash.widgets.input_pane import CommandSent, InputPane
 from openclaw_dash.widgets.logs import LogsPanel
 from openclaw_dash.widgets.metric_boxes import MetricBoxesBar
 from openclaw_dash.widgets.metrics import MetricsPanel
@@ -414,6 +415,9 @@ class DashboardApp(App):
         ("2", "focus_tab_group('code-group')", "Code"),
         ("bracketleft", "prev_tab_in_group", "["),
         ("bracketright", "next_tab_in_group", "]"),
+        # Input pane
+        ("colon", "focus_input", "Input"),
+        ("i", "focus_input", "Input"),
     ]
 
     _mounted: bool = False  # Track if initial mount is complete (for notifications)
@@ -552,6 +556,7 @@ class DashboardApp(App):
             ):
                 yield ResourcesPanel()
 
+        yield InputPane(id="input-pane")
         yield Footer()
         yield StatusFooter(id="status-footer")
 
@@ -976,3 +981,27 @@ class DashboardApp(App):
         # Any other key exits jump mode
         self._exit_jump_mode()
         event.stop()
+
+    def action_focus_input(self) -> None:
+        """Focus the command input pane."""
+        try:
+            input_pane = self.query_one(InputPane)
+            input_pane.focus_input()
+        except Exception:
+            pass
+
+    def on_command_sent(self, event: CommandSent) -> None:
+        """Handle command sent events from the input pane."""
+        if event.success:
+            # Show brief success notification
+            self.notify(
+                f"Command sent: {event.command[:30]}{'...' if len(event.command) > 30 else ''}",
+                timeout=2.0,
+            )
+        else:
+            # Show error notification
+            self.notify(
+                f"Error: {event.response[:50]}{'...' if len(event.response) > 50 else ''}",
+                severity="error",
+                timeout=4.0,
+            )
