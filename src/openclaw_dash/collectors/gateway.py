@@ -1,10 +1,9 @@
 """Gateway status collector."""
 
-import json
-import subprocess
 from datetime import datetime
 from typing import Any
 
+from openclaw_dash.collectors.openclaw_cli import get_openclaw_status, status_to_gateway_data
 from openclaw_dash.demo import is_demo_mode, mock_gateway_status
 
 
@@ -14,38 +13,28 @@ def collect() -> dict[str, Any]:
     if is_demo_mode():
         return mock_gateway_status()
 
-    try:
-        result = subprocess.run(
-            ["openclaw", "gateway", "status", "--json"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0:
-            data = json.loads(result.stdout)
-            return {
-                "healthy": data.get("running", False),
-                "uptime": data.get("uptime", "unknown"),
-                "pid": data.get("pid"),
-                "version": data.get("version"),
-                "context_pct": data.get("contextUsage", 0) * 100 if data.get("contextUsage") else 0,
-                "collected_at": datetime.now().isoformat(),
-            }
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
-        pass
+    # Try real CLI data first
+    status = get_openclaw_status()
+    if status is not None:
+        return status_to_gateway_data(status)
 
-    # Fallback
+    # Fallback - try HTTP health check
     try:
         import httpx
 
-        resp = httpx.get("http://localhost:3000/health", timeout=5)
+        resp = httpx.get("http://localhost:18789/health", timeout=5)
         if resp.status_code == 200:
             return {
                 "healthy": True,
-                "uptime": "unknown",
+                "mode": "unknown",
+                "url": "http://localhost:18789",
                 "collected_at": datetime.now().isoformat(),
             }
     except Exception:
         pass
 
-    return {"healthy": False, "error": "Cannot connect", "collected_at": datetime.now().isoformat()}
+    return {
+        "healthy": False,
+        "error": "Cannot connect to gateway",
+        "collected_at": datetime.now().isoformat(),
+    }
