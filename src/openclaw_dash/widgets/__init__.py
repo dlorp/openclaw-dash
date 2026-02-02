@@ -22,6 +22,10 @@ from openclaw_dash.widgets.ascii_art import (
     status_indicator,
     trend_indicator,
 )
+from openclaw_dash.widgets.cron import (
+    CronPanel,
+    CronSummaryPanel,
+)
 from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.input_pane import CommandSent, InputPane
 from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
@@ -134,4 +138,7 @@ __all__ = [
     "SessionStatus",
     "get_session_status_color",
     "get_session_status_icon",
+    # Cron panel
+    "CronPanel",
+    "CronSummaryPanel",
 ]
