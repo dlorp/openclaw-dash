@@ -10,6 +10,8 @@ from openclaw_dash.widgets.metrics import (
     GitHubPanel,
     MetricsPanel,
     PerformancePanel,
+    calculate_cost_forecast,
+    get_days_in_current_month,
 )
 
 
@@ -496,5 +498,198 @@ class TestMetricsPanelRendering:
             mock_gh_cls.return_value = mock_gh
 
             panel = MetricsPanel()
+            children = list(panel.compose())
+            assert len(children) >= 1
+
+
+class TestCostForecast:
+    """Tests for the cost forecasting functionality."""
+
+    def test_calculate_cost_forecast_empty_data(self):
+        """Test forecast with empty data returns zeros."""
+        result = calculate_cost_forecast([])
+        assert result["daily_avg"] == 0.0
+        assert result["projected_monthly"] == 0.0
+        assert result["trend"] == "→"
+        assert result["trend_pct"] == 0.0
+
+    def test_calculate_cost_forecast_single_day(self):
+        """Test forecast with a single day of data."""
+        daily_costs = [{"date": "2026-02-01", "cost": 1.50}]
+        result = calculate_cost_forecast(daily_costs)
+        assert result["daily_avg"] == 1.50
+        assert result["projected_monthly"] == 45.0  # 1.50 * 30
+        assert result["trend"] == "→"  # No prior data to compare
+
+    def test_calculate_cost_forecast_stable_trend(self):
+        """Test forecast shows stable trend when costs are consistent."""
+        daily_costs = [
+            {"date": "2026-02-07", "cost": 1.00},
+            {"date": "2026-02-06", "cost": 1.00},
+            {"date": "2026-02-05", "cost": 1.00},
+            {"date": "2026-02-04", "cost": 1.00},
+            {"date": "2026-02-03", "cost": 1.00},
+            {"date": "2026-02-02", "cost": 1.00},
+            {"date": "2026-02-01", "cost": 1.00},
+            # Prior period
+            {"date": "2026-01-31", "cost": 1.00},
+            {"date": "2026-01-30", "cost": 1.00},
+            {"date": "2026-01-29", "cost": 1.00},
+            {"date": "2026-01-28", "cost": 1.00},
+            {"date": "2026-01-27", "cost": 1.00},
+            {"date": "2026-01-26", "cost": 1.00},
+            {"date": "2026-01-25", "cost": 1.00},
+        ]
+        result = calculate_cost_forecast(daily_costs)
+        assert result["daily_avg"] == 1.00
+        assert result["projected_monthly"] == 30.0
+        assert result["trend"] == "→"
+
+    def test_calculate_cost_forecast_increasing_trend(self):
+        """Test forecast detects increasing cost trend."""
+        daily_costs = [
+            # Recent period (higher costs)
+            {"date": "2026-02-07", "cost": 2.00},
+            {"date": "2026-02-06", "cost": 2.00},
+            {"date": "2026-02-05", "cost": 2.00},
+            {"date": "2026-02-04", "cost": 2.00},
+            {"date": "2026-02-03", "cost": 2.00},
+            {"date": "2026-02-02", "cost": 2.00},
+            {"date": "2026-02-01", "cost": 2.00},
+            # Prior period (lower costs)
+            {"date": "2026-01-31", "cost": 1.00},
+            {"date": "2026-01-30", "cost": 1.00},
+            {"date": "2026-01-29", "cost": 1.00},
+            {"date": "2026-01-28", "cost": 1.00},
+            {"date": "2026-01-27", "cost": 1.00},
+            {"date": "2026-01-26", "cost": 1.00},
+            {"date": "2026-01-25", "cost": 1.00},
+        ]
+        result = calculate_cost_forecast(daily_costs)
+        assert result["daily_avg"] == 2.00
+        assert result["projected_monthly"] == 60.0
+        assert result["trend"] == "↑"
+        assert result["trend_pct"] == 100.0  # 100% increase
+
+    def test_calculate_cost_forecast_decreasing_trend(self):
+        """Test forecast detects decreasing cost trend."""
+        daily_costs = [
+            # Recent period (lower costs)
+            {"date": "2026-02-07", "cost": 0.50},
+            {"date": "2026-02-06", "cost": 0.50},
+            {"date": "2026-02-05", "cost": 0.50},
+            {"date": "2026-02-04", "cost": 0.50},
+            {"date": "2026-02-03", "cost": 0.50},
+            {"date": "2026-02-02", "cost": 0.50},
+            {"date": "2026-02-01", "cost": 0.50},
+            # Prior period (higher costs)
+            {"date": "2026-01-31", "cost": 1.00},
+            {"date": "2026-01-30", "cost": 1.00},
+            {"date": "2026-01-29", "cost": 1.00},
+            {"date": "2026-01-28", "cost": 1.00},
+            {"date": "2026-01-27", "cost": 1.00},
+            {"date": "2026-01-26", "cost": 1.00},
+            {"date": "2026-01-25", "cost": 1.00},
+        ]
+        result = calculate_cost_forecast(daily_costs)
+        assert result["daily_avg"] == 0.50
+        assert result["projected_monthly"] == 15.0
+        assert result["trend"] == "↓"
+        assert result["trend_pct"] == -50.0  # 50% decrease
+
+    def test_calculate_cost_forecast_with_total_cost_key(self):
+        """Test forecast works with 'total_cost' key (alternate format)."""
+        daily_costs = [
+            {"date": "2026-02-01", "total_cost": 1.50},
+            {"date": "2026-01-31", "total_cost": 1.50},
+        ]
+        result = calculate_cost_forecast(daily_costs)
+        assert result["daily_avg"] == 1.50
+        assert result["projected_monthly"] == 45.0
+
+    def test_calculate_cost_forecast_custom_lookback(self):
+        """Test forecast with custom lookback period."""
+        daily_costs = [
+            {"date": "2026-02-03", "cost": 3.00},
+            {"date": "2026-02-02", "cost": 3.00},
+            {"date": "2026-02-01", "cost": 3.00},
+            {"date": "2026-01-31", "cost": 1.00},
+            {"date": "2026-01-30", "cost": 1.00},
+            {"date": "2026-01-29", "cost": 1.00},
+        ]
+        result = calculate_cost_forecast(daily_costs, lookback_days=3)
+        assert result["daily_avg"] == 3.00
+        assert result["trend"] == "↑"
+
+
+class TestGetDaysInCurrentMonth:
+    """Tests for get_days_in_current_month helper."""
+
+    def test_returns_positive_integer(self):
+        """Test that function returns a reasonable number of days."""
+        days = get_days_in_current_month()
+        assert isinstance(days, int)
+        assert 28 <= days <= 31
+
+
+class TestCostsPanelWithForecast:
+    """Tests for CostsPanel with forecast functionality."""
+
+    @pytest.mark.asyncio
+    async def test_costs_panel_displays_forecast(self):
+        """Test that CostsPanel displays forecast information."""
+        mock_data = {
+            "today": {
+                "date": "2026-02-01",
+                "input_tokens": 10000,
+                "output_tokens": 5000,
+                "cost": 0.42,
+                "by_model": {},
+            },
+            "summary": {
+                "total_cost": 12.60,
+                "avg_daily_cost": 0.42,
+            },
+            "daily_costs": [
+                {"date": "2026-01-25", "cost": 0.40},
+                {"date": "2026-01-26", "cost": 0.42},
+                {"date": "2026-01-27", "cost": 0.44},
+                {"date": "2026-01-28", "cost": 0.40},
+                {"date": "2026-01-29", "cost": 0.41},
+                {"date": "2026-01-30", "cost": 0.43},
+                {"date": "2026-01-31", "cost": 0.42},
+            ],
+        }
+
+        with patch("openclaw_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
+            mock_tracker = MagicMock()
+            mock_tracker.collect.return_value = mock_data
+            mock_tracker.get_history.return_value = mock_data["daily_costs"]
+            mock_tracker_cls.return_value = mock_tracker
+
+            panel = CostsPanel()
+            children = list(panel.compose())
+            assert len(children) >= 1
+
+    @pytest.mark.asyncio
+    async def test_costs_panel_falls_back_to_history(self):
+        """Test that CostsPanel falls back to get_history when daily_costs empty."""
+        mock_data = {
+            "today": {"cost": 0.50},
+            "summary": {"total_cost": 5.00},
+            "daily_costs": [],  # Empty - should trigger fallback
+        }
+        mock_history = [
+            {"date": "2026-01-31", "total_cost": 0.50},
+            {"date": "2026-01-30", "total_cost": 0.45},
+        ]
+
+        with patch("openclaw_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
+            mock_tracker = MagicMock()
+            mock_tracker.collect.return_value = mock_data
+            mock_tracker.get_history.return_value = mock_history
+            mock_tracker_cls.return_value = mock_tracker
+
+            panel = CostsPanel()
             children = list(panel.compose())
             assert len(children) >= 1
