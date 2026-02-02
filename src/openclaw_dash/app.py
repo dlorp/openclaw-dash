@@ -9,6 +9,7 @@ from openclaw_dash.commands import DashboardCommands
 from openclaw_dash.config import Config, load_config
 from openclaw_dash.themes import THEMES, next_theme
 from openclaw_dash.version import get_version_info
+from openclaw_dash.widgets.agents import AgentsPanel
 from openclaw_dash.widgets.alerts import AlertsPanel
 from openclaw_dash.widgets.ascii_art import (
     STATUS_SYMBOLS,
@@ -266,6 +267,7 @@ class DashboardApp(App):
         "code-group",
         "cron-panel",
         "sessions-panel",
+        "agents-panel",
         "channels-panel",
         "activity-panel",
         "task-panel",
@@ -276,7 +278,7 @@ class DashboardApp(App):
 
     # Tab groups mapping group ID to contained panel IDs
     TAB_GROUPS = {
-        "runtime-group": ["sessions-panel", "cron-panel", "channels-panel"],
+        "runtime-group": ["sessions-panel", "agents-panel", "cron-panel", "channels-panel"],
         "code-group": ["repos-panel", "activity-panel"],
     }
 
@@ -348,6 +350,7 @@ class DashboardApp(App):
     #activity-panel { row-span: 2; }
     #cron-panel { }
     #sessions-panel { }
+    #agents-panel { }
     #metrics-panel { column-span: 2; }
     #security-panel { column-span: 2; row-span: 1; }
     #logs-panel { column-span: 3; row-span: 1; }
@@ -397,6 +400,7 @@ class DashboardApp(App):
         ("c", "focus_panel('cron-panel')", "Cron"),
         ("p", "focus_panel('repos-panel')", "Repos"),
         ("l", "focus_panel('logs-panel')", "Logs"),
+        ("n", "focus_panel('agents-panel')", "Agents"),
         ("x", "toggle_resources", "Resources"),
         # Jump mode
         ("f", "enter_jump_mode", "Jump"),
@@ -487,6 +491,16 @@ class DashboardApp(App):
                 id="sessions-panel-collapsible",
             ):
                 yield SessionsPanel()
+
+        with Container(id="agents-panel", classes="panel"):
+            with Collapsible(
+                title="🤖 Agents",
+                collapsed=False,
+                collapsed_symbol="▸",
+                expanded_symbol="▾",
+                id="agents-panel-collapsible",
+            ):
+                yield AgentsPanel()
 
         with Container(id="channels-panel", classes="panel"):
             with Collapsible(
@@ -612,6 +626,7 @@ class DashboardApp(App):
             ReposPanel,
             CronPanel,
             SessionsPanel,
+            AgentsPanel,
             ChannelsPanel,
             MetricsPanel,
             SecurityPanel,
@@ -650,6 +665,7 @@ class DashboardApp(App):
             ReposPanel,
             CronPanel,
             SessionsPanel,
+            AgentsPanel,
             ChannelsPanel,
             MetricsPanel,
             SecurityPanel,
