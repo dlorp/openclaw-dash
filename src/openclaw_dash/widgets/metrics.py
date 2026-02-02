@@ -6,6 +6,7 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.widgets import Static
 
+from openclaw_dash.collectors.billing import BillingCollector
 from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
 from openclaw_dash.widgets.ascii_art import (
     STATUS_SYMBOLS,
@@ -98,7 +99,7 @@ def get_days_in_current_month() -> int:
 
 
 class CostsPanel(Static):
-    """Token costs display."""
+    """Token costs display with API and estimated cost sources."""
 
     def compose(self) -> ComposeResult:
         yield Static("Loading...", id="costs-content")
@@ -116,6 +117,12 @@ class CostsPanel(Static):
         if not daily_history:
             daily_history = tracker.get_history(days=14)
 
+        # Try to fetch real billing data from APIs
+        billing_collector = BillingCollector()
+        billing_data = billing_collector.collect()
+        has_api_data = billing_data.get("has_api_data", False)
+        api_cost = billing_data.get("total_api_cost", 0.0)
+
         # Build sparkline from daily history if available
         cost_values = (
             [d.get("cost", d.get("total_cost", 0)) for d in daily_history[-14:]]
@@ -125,13 +132,27 @@ class CostsPanel(Static):
 
         lines = []
 
-        # Today's cost with sparkline
+        # Today's cost with sparkline and source indicator
         today_cost = today.get("cost", 0)
-        if cost_values:
-            spark = sparkline(cost_values, width=12)
-            lines.append(f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${today_cost:.4f}  {spark}")
+
+        # Determine display cost and source
+        if has_api_data and api_cost > 0:
+            display_cost = api_cost
+            source_indicator = "[green]API[/]"
         else:
-            lines.append(f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${today_cost:.4f}")
+            display_cost = today_cost
+            source_indicator = "[yellow]Est[/]"
+
+        if cost_values:
+            spark = sparkline(cost_values, width=10)
+            lines.append(
+                f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${display_cost:.4f} "
+                f"{source_indicator}  {spark}"
+            )
+        else:
+            lines.append(
+                f"[bold]{STATUS_SYMBOLS['diamond']} Today:[/] ${display_cost:.4f} {source_indicator}"
+            )
 
         lines.append(
             f"  {STATUS_SYMBOLS['arrow_right']} Input: {today.get('input_tokens', 0):,} tokens"
@@ -140,11 +161,23 @@ class CostsPanel(Static):
             f"  {STATUS_SYMBOLS['arrow_right']} Output: {today.get('output_tokens', 0):,} tokens"
         )
 
+        # Show API availability status
+        api_status = billing_data.get("api_available", {})
+        api_indicators = []
+        if api_status.get("openai"):
+            api_indicators.append("[green]OpenAI✓[/]")
+        else:
+            api_indicators.append("[dim]OpenAI[/]")
+        # Anthropic never has API (no billing endpoint)
+        api_indicators.append("[dim]Anthropic[/]")
+        lines.append(f"  [dim]APIs:[/] {' '.join(api_indicators)}")
+
         lines.append(separator(30, style="dotted"))
 
-        # Cost Forecast section
+        # Cost Forecast section with source-aware data
         forecast = calculate_cost_forecast(daily_history)
-        lines.append("[bold]💰 Forecast:[/]")
+        forecast_source = "[green]API[/]" if has_api_data else "[yellow]Est[/]"
+        lines.append(f"[bold]💰 Forecast:[/] {forecast_source}")
         lines.append(f"  Proj/Mo: ${forecast['projected_monthly']:.2f} {forecast['trend']}")
         lines.append(f"  Avg/Day: ${forecast['daily_avg']:.2f}")
 
@@ -337,7 +370,7 @@ class MetricsPanel(Static):
 
         lines = []
 
-        # Costs summary with sparkline and forecast
+        # Costs summary with sparkline, forecast, and source indicator
         try:
             tracker = CostTracker()
             costs = tracker.collect()
@@ -351,10 +384,24 @@ class MetricsPanel(Static):
                 else []
             )
 
+            # Try to fetch real billing data from APIs
+            billing_collector = BillingCollector()
+            billing_data = billing_collector.collect()
+            has_api_data = billing_data.get("has_api_data", False)
+            api_cost = billing_data.get("total_api_cost", 0.0)
+
+            # Use API cost if available, otherwise estimated
+            if has_api_data and api_cost > 0:
+                display_cost = api_cost
+                source_indicator = "[green]API[/]"
+            else:
+                display_cost = today_cost
+                source_indicator = "[yellow]Est[/]"
+
             # Calculate forecast
             forecast = calculate_cost_forecast(daily_history)
 
-            cost_line = f"[bold]💰 Costs:[/] ${today_cost:.2f} today"
+            cost_line = f"[bold]💰 Costs:[/] ${display_cost:.2f} {source_indicator}"
             if cost_values:
                 cost_line += f"  {sparkline(cost_values, width=10)}"
             lines.append(cost_line)
