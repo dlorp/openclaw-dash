@@ -1,5 +1,13 @@
 """Custom widgets."""
 
+from openclaw_dash.widgets.activity import (
+    ActivityPanel,
+    ActivitySummaryPanel,
+    ActivityType,
+    get_activity_color,
+    get_activity_icon,
+    get_activity_type,
+)
 from openclaw_dash.widgets.ascii_art import (
     DOUBLE,
     ROUNDED,
@@ -65,6 +73,14 @@ from openclaw_dash.widgets.tool_harness import (
 )
 
 __all__ = [
+    # Activity
+    "ActivityPanel",
+    "ActivitySummaryPanel",
+    "ActivityType",
+    "get_activity_type",
+    "get_activity_icon",
+    "get_activity_color",
+    # ASCII Art
     "SINGLE",
     "DOUBLE",
     "ROUNDED",

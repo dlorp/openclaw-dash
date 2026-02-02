@@ -152,6 +152,15 @@ show_notifications = true   # show toast notifications
 collapsed_panels = []       # panels to start collapsed
 ```
 
+## Documentation
+
+Comprehensive guides in the `docs/` folder:
+
+- **[Installation Guide](docs/INSTALLATION.md)** — Detailed install guide (pip, source, dev setup)
+- **[Configuration](docs/CONFIGURATION.md)** — Config options, themes, and demo mode
+- **[Widgets Reference](docs/WIDGETS.md)** — Every panel explained with examples
+- **[Development Guide](docs/DEVELOPMENT.md)** — Add widgets, run tests, contribute
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
