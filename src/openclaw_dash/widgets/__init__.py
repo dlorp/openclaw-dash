@@ -45,6 +45,13 @@ from openclaw_dash.widgets.tabbed_groups import (
     prev_tab,
     switch_tab,
 )
+from openclaw_dash.widgets.tool_harness import (
+    CompactToolHarnessPanel,
+    Tool,
+    ToolHarnessData,
+    ToolHarnessPanel,
+    ToolState,
+)
 
 __all__ = [
     "SINGLE",
@@ -88,4 +95,10 @@ __all__ = [
     # Metric boxes
     "MetricBox",
     "MetricBoxesBar",
+    # Tool harness
+    "ToolHarnessPanel",
+    "CompactToolHarnessPanel",
+    "ToolHarnessData",
+    "Tool",
+    "ToolState",
 ]
