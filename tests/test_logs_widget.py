@@ -1,6 +1,5 @@
 """Comprehensive tests for the LogsPanel and LogsSummaryPanel widgets."""
 
-from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -257,10 +256,30 @@ class TestLogsPanelIntegration:
         """Test that refresh_data handles all log levels."""
         mock_data = {
             "entries": [
-                {"timestamp": "2026-02-01T08:09:41.000Z", "tag": "a", "message": "m", "level": "error"},
-                {"timestamp": "2026-02-01T08:09:42.000Z", "tag": "b", "message": "m", "level": "warning"},
-                {"timestamp": "2026-02-01T08:09:43.000Z", "tag": "c", "message": "m", "level": "info"},
-                {"timestamp": "2026-02-01T08:09:44.000Z", "tag": "d", "message": "m", "level": "debug"},
+                {
+                    "timestamp": "2026-02-01T08:09:41.000Z",
+                    "tag": "a",
+                    "message": "m",
+                    "level": "error",
+                },
+                {
+                    "timestamp": "2026-02-01T08:09:42.000Z",
+                    "tag": "b",
+                    "message": "m",
+                    "level": "warning",
+                },
+                {
+                    "timestamp": "2026-02-01T08:09:43.000Z",
+                    "tag": "c",
+                    "message": "m",
+                    "level": "info",
+                },
+                {
+                    "timestamp": "2026-02-01T08:09:44.000Z",
+                    "tag": "d",
+                    "message": "m",
+                    "level": "debug",
+                },
             ],
             "collected_at": "2026-02-01T12:00:00",
             "total": 4,
@@ -418,8 +437,18 @@ class TestLogsSummaryPanelIntegration:
         """Test refresh_data with both errors and warnings."""
         mock_data = {
             "entries": [
-                {"timestamp": "2026-02-01T08:09:41.000Z", "tag": "a", "message": "err", "level": "error"},
-                {"timestamp": "2026-02-01T08:09:42.000Z", "tag": "b", "message": "warn", "level": "warning"},
+                {
+                    "timestamp": "2026-02-01T08:09:41.000Z",
+                    "tag": "a",
+                    "message": "err",
+                    "level": "error",
+                },
+                {
+                    "timestamp": "2026-02-01T08:09:42.000Z",
+                    "tag": "b",
+                    "message": "warn",
+                    "level": "warning",
+                },
             ],
             "collected_at": "2026-02-01T12:00:00",
             "total": 2,

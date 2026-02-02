@@ -106,18 +106,14 @@ channels:
         mock_path_obj = MagicMock()
         mock_path_obj.exists.return_value = True
         mock_path_obj.read_text.return_value = mock_config
-        mock_path.return_value.__truediv__.return_value.__truediv__.return_value = (
-            mock_path_obj
-        )
+        mock_path.return_value.__truediv__.return_value.__truediv__.return_value = mock_path_obj
         mock_path.home.return_value.__truediv__.return_value.__truediv__.return_value = (
             mock_path_obj
         )
 
         # Since collect() uses Path.home(), we need to patch at that level
         with patch.object(channels.Path, "home", return_value=MagicMock()) as mock_home:
-            mock_home.return_value.__truediv__.return_value.__truediv__.return_value = (
-                mock_path_obj
-            )
+            mock_home.return_value.__truediv__.return_value.__truediv__.return_value = mock_path_obj
             result = channels.collect()
             # Should have at least attempted collection
             assert isinstance(result["channels"], list)
@@ -254,8 +250,7 @@ class TestChannelsPanelIntegration:
         """Test that refresh_data handles many channels (limits to 6)."""
         mock_data = {
             "channels": [
-                {"type": f"channel{i}", "status": "connected", "enabled": True}
-                for i in range(10)
+                {"type": f"channel{i}", "status": "connected", "enabled": True} for i in range(10)
             ],
             "connected": 10,
             "total": 10,
