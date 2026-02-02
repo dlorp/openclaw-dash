@@ -1,7 +1,5 @@
 """Tests for CollapsiblePanel widget."""
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 from textual.app import App, ComposeResult
 from textual.containers import Container
@@ -70,7 +68,10 @@ class TestCollapsiblePanelInit:
 
     def test_init_with_summary_fn(self):
         """Test initialization with summary function."""
-        summary_fn = lambda: "Summary text"
+
+        def summary_fn():
+            return "Summary text"
+
         panel = CollapsiblePanel(
             Static("content"),
             title="Test Panel",
@@ -229,6 +230,7 @@ class TestCollapsiblePanelMethods:
 
     def test_get_summary_handles_exception(self):
         """Test _get_summary returns default on exception."""
+
         def failing_summary():
             raise ValueError("Oops")
 
