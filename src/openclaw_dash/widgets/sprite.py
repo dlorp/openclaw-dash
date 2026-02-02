@@ -87,6 +87,17 @@ SPRITES: dict[str, list[str]] = {
     ],
 }
 
+# State icons (emoji-style, for alternative compact mode or external use)
+STATE_ICONS: dict[SpriteState, str] = {
+    SpriteState.IDLE: "😊",
+    SpriteState.SLEEP: "😴",
+    SpriteState.THINK: "🤔",
+    SpriteState.WORK: "⚡",
+    SpriteState.SPAWN: "👥",
+    SpriteState.DONE: "✅",
+    SpriteState.ALERT: "⚠️",
+}
+
 # State colors for Textual rich markup
 STATE_COLORS: dict[SpriteState, str] = {
     SpriteState.IDLE: "white",
@@ -136,6 +147,18 @@ def get_sprite_art(state: SpriteState | str) -> str:
         ASCII art string for the sprite
     """
     return "\n".join(get_sprite(state))
+
+
+def get_state_icon(state: SpriteState) -> str:
+    """Get the emoji icon for a state.
+
+    Args:
+        state: The sprite state
+
+    Returns:
+        Emoji character for the state
+    """
+    return STATE_ICONS.get(state, "●")
 
 
 def get_state_color(state: SpriteState) -> str:
