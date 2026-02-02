@@ -161,3 +161,40 @@ def mock_resources() -> dict[str, Any]:
         "network_sent_mb": 12.4,
         "network_recv_mb": 45.8,
     }
+
+
+def mock_agents() -> list[dict[str, Any]]:
+    """Mock sub-agents data."""
+    now = datetime.now()
+    return [
+        {
+            "key": "agent:main:subagent:blorp",
+            "label": "blorp",
+            "status": "active",
+            "started_at": (now - timedelta(minutes=15)).isoformat(),
+            "running_time": "15m 23s",
+            "task_summary": "PR review for feature branch",
+            "context_pct": 22.5,
+            "tokens_used": 45000,
+        },
+        {
+            "key": "agent:main:subagent:slorp",
+            "label": "slorp",
+            "status": "active",
+            "started_at": (now - timedelta(minutes=8)).isoformat(),
+            "running_time": "8m 12s",
+            "task_summary": "Code cleanup and tests",
+            "context_pct": 12.0,
+            "tokens_used": 24000,
+        },
+        {
+            "key": "agent:main:subagent:research-1",
+            "label": "research-1",
+            "status": "idle",
+            "started_at": (now - timedelta(hours=1)).isoformat(),
+            "running_time": "1h 2m",
+            "task_summary": "Documentation research",
+            "context_pct": 45.0,
+            "tokens_used": 90000,
+        },
+    ]

@@ -2,6 +2,7 @@
 
 from openclaw_dash.collectors import (
     activity,
+    agents,
     alerts,
     channels,
     cron,
@@ -22,4 +23,5 @@ __all__ = [
     "alerts",
     "logs",
     "resources",
+    "agents",
 ]

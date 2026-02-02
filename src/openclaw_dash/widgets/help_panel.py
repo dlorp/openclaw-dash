@@ -42,6 +42,7 @@ STATIC_SHORTCUTS: list[tuple[str, list[tuple[str, str]]]] = [
             ("m", "Focus Metrics panel"),
             ("a", "Focus Alerts panel"),
             ("l", "Focus Logs panel"),
+            ("n", "Focus Agents panel"),
         ],
     ),
     (
