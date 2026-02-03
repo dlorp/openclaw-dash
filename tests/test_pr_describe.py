@@ -852,6 +852,51 @@ class TestBuildMultiCommitSummary:
         assert result == "various updates"
 
 
+class TestExtractActionPhrase:
+    """Tests for _extract_action_phrase helper function."""
+
+    def test_extracts_remove_action(self):
+        result = pr_describe._extract_action_phrase("remove bullet points from summary")
+        assert result is not None
+        assert result[0] == "remove"
+        assert "bullet points" in result[1]
+
+    def test_extracts_add_action(self):
+        result = pr_describe._extract_action_phrase("add validation for inputs")
+        assert result is not None
+        assert result[0] == "add"
+        assert "validation" in result[1]
+
+    def test_extracts_filter_action(self):
+        result = pr_describe._extract_action_phrase("filter empty commits")
+        assert result is not None
+        assert result[0] == "filter"
+        assert "empty commits" in result[1]
+
+    def test_extracts_improve_action(self):
+        result = pr_describe._extract_action_phrase("improve section headers")
+        assert result is not None
+        assert result[0] == "improve"
+        assert "section headers" in result[1]
+
+    def test_strips_trailing_adverbs(self):
+        result = pr_describe._extract_action_phrase("handle errors gracefully")
+        assert result is not None
+        assert result[0] == "handle"
+        assert "gracefully" not in result[1]
+        assert "errors" in result[1]
+
+    def test_returns_none_for_no_action(self):
+        result = pr_describe._extract_action_phrase("bullet points improvements")
+        assert result is None
+
+    def test_handles_prepositions(self):
+        result = pr_describe._extract_action_phrase("remove spaces from output")
+        assert result is not None
+        assert result[0] == "remove"
+        assert result[1] == "spaces"  # Stops at "from"
+
+
 class TestExtractBranchType:
     """Tests for extract_branch_type function."""
 

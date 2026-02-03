@@ -91,6 +91,15 @@ FILE_CATEGORIES = {
     "ci": [r"\.github/", r"\.gitlab-ci", r"\.circleci/", r"Jenkinsfile", r"\.travis"],
 }
 
+# Action verbs for extracting meaningful title summaries
+# Priority order: more specific first
+ACTION_VERBS = {
+    "remove", "add", "prevent", "filter", "generate", "extract",
+    "validate", "handle", "parse", "format", "replace", "skip", "ignore",
+    "enable", "disable", "support", "implement", "fix", "improve",
+    "refactor", "simplify", "optimize", "cache", "update", "create",
+}
+
 # Incidental nouns - generic terms that don't describe domain/feature
 # These are WHERE/HOW things happen, not WHAT the change is about
 INCIDENTAL_NOUNS = {
@@ -526,16 +535,40 @@ def _extract_bigrams(text: str) -> list[str]:
     return bigrams
 
 
+def _extract_action_phrase(text: str) -> tuple[str, str] | None:
+    """
+    Extract action verb and its direct object from a summary.
+
+    Returns (verb, object) tuple or None if no action pattern found.
+    E.g., "remove bullet points from summary" -> ("remove", "bullet points")
+    """
+    text_lower = text.lower()
+    for verb in ACTION_VERBS:
+        # Match "verb X" or "verb X from/in/for Y"
+        pattern = rf"\b{verb}\s+(.+?)(?:\s+(?:from|in|for|to|on|when|if)\s+|$)"
+        match = re.search(pattern, text_lower)
+        if match:
+            obj = match.group(1).strip()
+            # Clean up trailing punctuation and common suffixes
+            obj = re.sub(r"[.,;:!?]+$", "", obj)
+            # Remove trailing adverbs (words ending in -ly)
+            obj = re.sub(r"\s+\w+ly$", "", obj)
+            if obj and len(obj) < 40:  # Sanity check
+                return (verb, obj)
+    return None
+
+
 def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
     """
     Build a meaningful summary from multiple commit summaries.
 
     Strategy:
     1. If there's a single summary, use it
-    2. Look for common phrases (bigrams) across summaries
-    3. If all commits share a scope, describe improvements to that scope
-    4. Find common action verbs + domain words
-    5. Fall back to listing key changes briefly
+    2. Extract action phrases (verb + object) and combine them
+    3. Look for common phrases (bigrams) across summaries
+    4. If all commits share a scope, describe improvements to that scope
+    5. Find common action verbs + domain words
+    6. Fall back to listing key changes briefly
     """
     if not summaries:
         return "various updates"
@@ -548,7 +581,49 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
     if len(clean_summaries) == 1:
         return clean_summaries[0]
 
-    # Strategy 1: Look for bigrams appearing in MAJORITY (>50%) of summaries
+    # Strategy 1: Extract action phrases from summaries
+    # This gives us specific "verb + object" descriptions instead of vague "improvements"
+    action_phrases = []
+    for s in clean_summaries:
+        phrase = _extract_action_phrase(s)
+        if phrase:
+            action_phrases.append(phrase)
+
+    if action_phrases:
+        # Group by verb
+        verbs_to_objects: dict[str, list[str]] = defaultdict(list)
+        for verb, obj in action_phrases:
+            verbs_to_objects[verb].append(obj)
+
+        # Helper to add scope suffix when available
+        scope_suffix = f" in {list(scopes)[0]}" if len(scopes) == 1 else ""
+
+        # If all actions share the same verb, combine objects
+        if len(verbs_to_objects) == 1:
+            verb = list(verbs_to_objects.keys())[0]
+            objects = verbs_to_objects[verb]
+            if len(set(objects)) == 1:
+                return f"{verb} {objects[0]}{scope_suffix}"
+            # Multiple different objects - mention first two
+            unique_objs = list(dict.fromkeys(objects))[:2]
+            if len(unique_objs) == 2:
+                return f"{verb} {unique_objs[0]} and {unique_objs[1]}{scope_suffix}"
+            return f"{verb} {unique_objs[0]}{scope_suffix}"
+
+        # Multiple verbs - use the most common one, or combine two
+        sorted_verbs = sorted(verbs_to_objects.keys(), key=lambda v: len(verbs_to_objects[v]), reverse=True)
+        main_verb = sorted_verbs[0]
+        main_obj = verbs_to_objects[main_verb][0]
+
+        if len(sorted_verbs) >= 2 and len(verbs_to_objects[sorted_verbs[1]]) > 0:
+            # Two different actions - mention both
+            second_verb = sorted_verbs[1]
+            second_obj = verbs_to_objects[second_verb][0]
+            return f"{main_verb} {main_obj} and {second_verb} {second_obj}{scope_suffix}"
+
+        return f"{main_verb} {main_obj}{scope_suffix}"
+
+    # Strategy 2: Look for bigrams appearing in MAJORITY (>50%) of summaries
     # (e.g., "structured output" in 2/3 commits should still match)
     bigrams_per_summary = [set(_extract_bigrams(s)) for s in clean_summaries]
     if len(bigrams_per_summary) > 1:
@@ -560,35 +635,41 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
         if common_bigrams:
             # Use the longest common bigram (most descriptive)
             phrase = sorted(common_bigrams, key=len, reverse=True)[0]
-            return f"{phrase} improvements"
+            # Check if phrase contains an action verb - if so, use it directly
+            phrase_words = phrase.split()
+            if phrase_words and phrase_words[0] in ACTION_VERBS:
+                return phrase
+            return f"improve {phrase}"
 
-    # Strategy 2: If all commits share a single scope, describe improvements
+    # Strategy 3: If all commits share a single scope, describe improvements
     if len(scopes) == 1:
         scope = list(scopes)[0]
         words_per_summary = [set(_extract_key_words(s)) for s in clean_summaries]
         if words_per_summary:
             common = set.intersection(*words_per_summary)
             if common:
-                # Find verbs/actions (add, fix, improve, handle, etc.)
-                action_words = {"add", "fix", "improve", "handle", "support", "implement", "enable"}
-                actions = [w for w in common if w in action_words]
-                nouns = [w for w in common if w not in action_words]
+                # Find verbs/actions using ACTION_VERBS constant
+                actions = [w for w in common if w in ACTION_VERBS]
+                nouns = [w for w in common if w not in ACTION_VERBS]
                 if actions and nouns:
-                    return f"{actions[0]} {nouns[0]} {scope}"
+                    return f"{actions[0]} {nouns[0]} in {scope}"
+                if actions:
+                    return f"{actions[0]} {scope} handling"
                 if nouns:
-                    return f"{nouns[0]} {scope}"
-        return f"{scope} improvements"
+                    return f"improve {nouns[0]} in {scope}"
+        # Fall back to scope with improve verb instead of vague "improvements"
+        return f"improve {scope} handling"
 
     # Strategy 3: Find common theme words and build natural phrase
     words_per_summary = [set(_extract_key_words(s)) for s in clean_summaries]
     if len(words_per_summary) > 1:
         common = set.intersection(*words_per_summary)
         if common:
-            action_words = {"add", "fix", "improve", "handle", "support", "implement", "enable"}
-            actions = [w for w in common if w in action_words]
+            # Use ACTION_VERBS constant for consistency
+            actions = [w for w in common if w in ACTION_VERBS]
             # Filter out incidental nouns
             nouns = sorted(
-                [w for w in common if w not in action_words and w not in INCIDENTAL_NOUNS],
+                [w for w in common if w not in ACTION_VERBS and w not in INCIDENTAL_NOUNS],
                 key=len,
                 reverse=True,
             )
@@ -597,12 +678,12 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
                 # "add scanner support", "improve error handling"
                 return f"{actions[0]} {nouns[0]}"
             if len(nouns) >= 2:
-                # "scanner and parser improvements"
-                return f"{nouns[0]} and {nouns[1]} improvements"
+                # "improve scanner and parser" instead of vague "improvements"
+                return f"improve {nouns[0]} and {nouns[1]}"
             if nouns:
-                return f"{nouns[0]} improvements"
+                return f"improve {nouns[0]} handling"
 
-    # Strategy 4: Find words in at least half the summaries
+    # Strategy 5: Find words in at least half the summaries
     word_counts: dict[str, int] = defaultdict(int)
     for word_set in words_per_summary:
         for word in word_set:
@@ -611,11 +692,11 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
     threshold = max(2, len(clean_summaries) // 2)
     frequent = [w for w, c in word_counts.items() if c >= threshold]
     if frequent:
-        action_words = {"add", "fix", "improve", "handle", "support", "implement", "enable"}
-        actions = [w for w in frequent if w in action_words]
+        # Use ACTION_VERBS constant
+        actions = [w for w in frequent if w in ACTION_VERBS]
         # Filter out incidental nouns
         nouns = sorted(
-            [w for w in frequent if w not in action_words and w not in INCIDENTAL_NOUNS],
+            [w for w in frequent if w not in ACTION_VERBS and w not in INCIDENTAL_NOUNS],
             key=lambda w: word_counts[w],
             reverse=True,
         )
@@ -623,12 +704,12 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
         if actions and nouns:
             return f"{actions[0]} {nouns[0]}"
         if len(nouns) >= 2:
-            return f"{nouns[0]} and {nouns[1]} improvements"
+            return f"improve {nouns[0]} and {nouns[1]}"
         if nouns:
-            return f"{nouns[0]} improvements"
+            return f"improve {nouns[0]} handling"
         if actions:
-            # Common action found but no specific nouns - use action alone
-            return f"{actions[0]} improvements"
+            # Common action found but no specific nouns
+            return f"{actions[0]} various components"
 
     # Strategy 5: Extract key nouns from each summary and list domains
     # Filter out common verbs/adjectives to find actual domain nouns
@@ -699,15 +780,18 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
                     domains.append(domain)
 
     if len(domains) >= 2:
-        return f"{domains[0]} and {domains[1]} improvements"
+        return f"improve {domains[0]} and {domains[1]}"
     if domains:
-        return f"{domains[0]} improvements"
+        return f"improve {domains[0]} handling"
 
     # Absolute last resort: use first summary with adverbs stripped
     # Use _extract_key_words to get words without adverbs
     fallback_words = _extract_key_words(clean_summaries[0])
     if fallback_words:
-        return " ".join(fallback_words)
+        # Try to form "verb noun" if first word is a verb
+        if fallback_words[0] in ACTION_VERBS:
+            return " ".join(fallback_words[:3])  # Verb + up to 2 more words
+        return f"improve {' '.join(fallback_words[:2])}"
     return clean_summaries[0]
 
 
