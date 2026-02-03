@@ -262,17 +262,113 @@ def scan_file(filepath: Path) -> list[TodoItem]:
     return todos
 
 
+def should_skip_directory(path: Path) -> bool:
+    """Check if a directory should be skipped during scanning."""
+    # Common directories to skip
+    SKIP_DIRS = {
+        # Python
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        "build",
+        "dist",
+        "*.egg-info",
+        
+        # Node.js
+        "node_modules",
+        ".npm",
+        ".yarn",
+        
+        # Version control
+        ".git",
+        ".svn",
+        ".hg",
+        
+        # IDEs
+        ".vscode",
+        ".idea",
+        ".vs",
+        
+        # Build/cache
+        ".cache",
+        "target",
+        "out",
+        "bin",
+        
+        # OS
+        ".DS_Store",
+        "Thumbs.db",
+    }
+    
+    name = path.name.lower()
+    
+    # Exact match
+    if name in SKIP_DIRS:
+        return True
+        
+    # Pattern match (for things like *.egg-info)
+    if name.endswith(".egg-info") or name.startswith("."):
+        return True
+        
+    return False
+
+
 def scan_directory(path: Path, extensions: list[str]) -> list[TodoItem]:
-    """Scan a directory recursively."""
+    """Scan a directory recursively with better filtering and progress indication."""
     todos = []
-
-    for ext in extensions:
-        for filepath in path.rglob(f"*{ext}"):
-            # Skip common ignore patterns
-            if any(p in str(filepath) for p in ["node_modules", "__pycache__", ".git", "venv"]):
+    files_scanned = 0
+    
+    print(f"Scanning directory: {path}")
+    
+    try:
+        # First, collect all files to scan
+        files_to_scan = []
+        
+        for ext in extensions:
+            for filepath in path.rglob(f"*{ext}"):
+                # Skip if any parent directory should be skipped
+                skip = False
+                for parent in filepath.parents:
+                    if should_skip_directory(parent):
+                        skip = True
+                        break
+                
+                # Skip if file itself is in a directory we should skip
+                if should_skip_directory(filepath.parent):
+                    skip = True
+                    
+                # Skip symlinks to avoid infinite loops
+                if filepath.is_symlink():
+                    skip = True
+                    
+                if not skip:
+                    files_to_scan.append(filepath)
+        
+        print(f"Found {len(files_to_scan)} files to scan...")
+        
+        # Scan files with progress indication
+        for filepath in files_to_scan:
+            try:
+                todos.extend(scan_file(filepath))
+                files_scanned += 1
+                
+                # Progress indication every 50 files
+                if files_scanned % 50 == 0:
+                    print(f"Scanned {files_scanned}/{len(files_to_scan)} files...")
+                    
+            except Exception as e:
+                # Continue scanning even if one file fails
+                print(f"Warning: Failed to scan {filepath}: {e}")
                 continue
-            todos.extend(scan_file(filepath))
-
+                
+    except Exception as e:
+        print(f"Error during directory scan: {e}")
+        return todos
+    
+    print(f"Completed scanning {files_scanned} files.")
     return todos
 
 
