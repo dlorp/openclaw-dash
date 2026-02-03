@@ -127,9 +127,7 @@ INCIDENTAL_NOUNS = {
     "updates",
     "modifications",
     "adjustments",
-    # Generic problem terms
-    "errors",
-    "error",
+    # Generic problem terms (but not error/errors - those are meaningful)
     "issues",
     "issue",
     "problems",
@@ -628,6 +626,9 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
             return f"{nouns[0]} and {nouns[1]} improvements"
         if nouns:
             return f"{nouns[0]} improvements"
+        if actions:
+            # Common action found but no specific nouns - use action alone
+            return f"{actions[0]} improvements"
 
     # Strategy 5: Extract key nouns from each summary and list domains
     # Filter out common verbs/adjectives to find actual domain nouns
@@ -702,7 +703,11 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
     if domains:
         return f"{domains[0]} improvements"
 
-    # Absolute last resort: use first summary
+    # Absolute last resort: use first summary with adverbs stripped
+    # Use _extract_key_words to get words without adverbs
+    fallback_words = _extract_key_words(clean_summaries[0])
+    if fallback_words:
+        return " ".join(fallback_words)
     return clean_summaries[0]
 
 
