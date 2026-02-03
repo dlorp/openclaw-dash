@@ -42,7 +42,7 @@
       "mergedAt": null,
       "number": 56,
       "state": "OPEN",
-      "title": "\ud83d\udd12 Security: Replace pickle with JSON for CGRAG metadata",
+      "title": "security: replace pickle with JSON for CGRAG metadata",
       "repo": "synapse-engine"
     },
     "synapse-engine#55": {
@@ -901,5 +901,5 @@
       "repo": "t3rra1n"
     }
   },
-  "last_check": "2026-02-02T23:07:04.066228"
+  "last_check": "2026-02-02T23:22:55.333853"
 }

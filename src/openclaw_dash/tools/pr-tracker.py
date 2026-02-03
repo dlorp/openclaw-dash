@@ -41,7 +41,7 @@ def get_prs(org: str, repo: str, state: str = "all") -> list[dict]:
             "--state",
             state,
             "--json",
-            "number,title,state,createdAt,mergedAt,closedAt,author",
+            "number,title,state,createdAt,mergedAt,closedAt,author,headRefName",
             "--limit",
             "20",
         ]
