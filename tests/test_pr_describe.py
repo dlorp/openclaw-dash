@@ -364,7 +364,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Summary" in result
         assert "Test summary" in result
 
@@ -377,7 +377,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 2, "additions": 10, "deletions": 5, "commits": 1},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Changes" in result
         assert "**Added:**" in result
         assert "`new.py`" in result
@@ -393,7 +393,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Testing" in result
         assert "- [ ] Run unit tests" in result
         assert "- [ ] Test API endpoints" in result
@@ -407,7 +407,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Notes" in result
         assert "Breaking Changes" in result
 
@@ -420,7 +420,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 5, "additions": 100, "deletions": 50, "commits": 3},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "3 commits" in result
         assert "5 files changed" in result
         assert "+100/-50" in result
@@ -434,7 +434,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 20, "additions": 0, "deletions": 0, "commits": 1},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "... and" in result
         assert "more" in result
 
