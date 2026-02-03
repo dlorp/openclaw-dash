@@ -83,7 +83,7 @@ def count_todos(repo_path: Path) -> dict:
     # Use grep on just the tracked source files
     try:
         grep_result = subprocess.run(
-            ["grep", "-Hn", r"TODO\|FIXME\|HACK\|XXX", *source_files],
+            ["grep", "-Hn", r"TODO\|FIXME\|HACK\|XXX", "--", *source_files],
             capture_output=True,
             text=True,
             cwd=repo_path,
