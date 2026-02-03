@@ -53,47 +53,29 @@ TODO_COMMENT_PATTERN = re.compile(
 )
 
 
-def is_in_docstring(lines: list[str], line_idx: int) -> bool:
-    """Check if a line is inside a docstring.
+def compute_docstring_state(lines: list[str]) -> list[bool]:
+    """Precompute docstring state for all lines in O(n) time.
 
-    Properly handles multi-line docstrings by tracking open/close state.
-    Also detects single-line docstrings (e.g., '''TODO: note''').
+    Returns a list where result[i] is True if line i is inside a docstring.
+    This replaces the O(n²) approach of checking each line independently.
     """
-    current_line = lines[line_idx]
-
-    # Check if current line is a single-line docstring (opens and closes on same line)
-    # Must have at least 2 sets of triple quotes
-    double_count = current_line.count('"""')
-    single_count = current_line.count("'''")
-    if double_count >= 2 or single_count >= 2:
-        # It's a single-line docstring - check if TODO is between the quotes
-        for quote in ['"""', "'''"]:
-            if current_line.count(quote) >= 2:
-                first = current_line.find(quote)
-                second = current_line.find(quote, first + 3)
-                if first != -1 and second != -1:
-                    # Check if there's a TODO between the quotes
-                    between = current_line[first + 3 : second]
-                    if re.search(r"(TODO|FIXME|HACK)", between, re.IGNORECASE):
-                        return True
-
-    # Check if we're inside a multi-line docstring (opened on a previous line)
+    n = len(lines)
+    in_docstring = [False] * n
     in_single_docstring = False
     in_double_docstring = False
 
-    for i in range(line_idx):
-        line = lines[i]
+    for i, line in enumerate(lines):
+        # Track state at start of this line (before processing quotes on this line)
+        was_in_docstring = in_single_docstring or in_double_docstring
 
-        # Track state transitions through triple quotes
+        # Process all triple quotes on this line
         j = 0
         while j < len(line):
-            # Check for triple double quotes
             if line[j : j + 3] == '"""':
                 if not in_single_docstring:
                     in_double_docstring = not in_double_docstring
                 j += 3
                 continue
-            # Check for triple single quotes
             if line[j : j + 3] == "'''":
                 if not in_double_docstring:
                     in_single_docstring = not in_single_docstring
@@ -101,7 +83,27 @@ def is_in_docstring(lines: list[str], line_idx: int) -> bool:
                 continue
             j += 1
 
-    return in_single_docstring or in_double_docstring
+        # Line is in docstring if it started in one, or contains content inside quotes
+        is_in_now = in_single_docstring or in_double_docstring
+        in_docstring[i] = was_in_docstring or is_in_now
+
+    return in_docstring
+
+
+def is_single_line_docstring_with_todo(line: str) -> bool:
+    """Check if line is a single-line docstring containing a TODO.
+
+    Detects patterns like: '''TODO: note''' or \"\"\"FIXME: something\"\"\"
+    """
+    for quote in ['"""', "'''"]:
+        if line.count(quote) >= 2:
+            first = line.find(quote)
+            second = line.find(quote, first + 3)
+            if first != -1 and second != -1:
+                between = line[first + 3 : second]
+                if re.search(r"(TODO|FIXME|HACK)", between, re.IGNORECASE):
+                    return True
+    return False
 
 
 def is_in_string_literal(line: str, match_start: int) -> bool:
@@ -162,12 +164,12 @@ def find_todo_in_comment(line: str) -> tuple[str, str] | None:
     return None
 
 
-def categorize_todo(lines: list[str], line_idx: int, line: str) -> str:
+def categorize_todo(line: str, is_in_docstring: bool) -> str:
     """Categorize a TODO based on context."""
     stripped = line.strip()
 
     # Check if inside docstring
-    if is_in_docstring(lines, line_idx):
+    if is_in_docstring:
         return "DOCSTRING"
 
     # Check if it's a pure comment line (starts with # or //)
@@ -206,7 +208,10 @@ def find_todo_in_docstring(line: str) -> tuple[str, str] | None:
 
 
 def scan_file(filepath: Path) -> list[TodoItem]:
-    """Scan a file for TODOs."""
+    """Scan a file for TODOs.
+
+    Uses O(n) precomputation for docstring detection instead of O(n²).
+    """
     todos = []
 
     try:
@@ -215,9 +220,17 @@ def scan_file(filepath: Path) -> list[TodoItem]:
     except Exception:
         return []
 
+    # Precompute docstring state for all lines in O(n)
+    docstring_state = compute_docstring_state(lines)
+
     for i, line in enumerate(lines):
-        # Check if we're inside a docstring first
-        if is_in_docstring(lines, i):
+        line_in_docstring = docstring_state[i]
+
+        # Also check for single-line docstrings with TODOs
+        if is_single_line_docstring_with_todo(line):
+            line_in_docstring = True
+
+        if line_in_docstring:
             # In docstrings, match TODO directly (no comment marker needed)
             todo_match = find_todo_in_docstring(line)
             if todo_match:
@@ -235,7 +248,7 @@ def scan_file(filepath: Path) -> list[TodoItem]:
             todo_match = find_todo_in_comment(line)
             if todo_match:
                 keyword, text = todo_match
-                category = categorize_todo(lines, i, line)
+                category = categorize_todo(line, line_in_docstring)
 
                 todos.append(
                     TodoItem(
