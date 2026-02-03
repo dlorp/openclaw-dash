@@ -42,9 +42,7 @@ class UpdateResult:
 def run(cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> tuple[int, str, str]:
     """Run a command and return (returncode, stdout, stderr)."""
     try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout)
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
@@ -168,7 +166,9 @@ class DepsAutomation:
             )
 
         # Also check remote
-        _, remote_branches, _ = run(["git", "ls-remote", "--heads", "origin", branch_name], cwd=repo_path)
+        _, remote_branches, _ = run(
+            ["git", "ls-remote", "--heads", "origin", branch_name], cwd=repo_path
+        )
         if remote_branches.strip():
             return UpdateResult(
                 repo=repo,
@@ -246,7 +246,8 @@ class DepsAutomation:
             # Create PR
             pr_body = self._generate_pr_body(package, current, latest, is_security, test_output)
             code, stdout, stderr = run(
-                ["gh", "pr", "create", "--title", commit_msg, "--body", pr_body, "--base", "main"], cwd=repo_path
+                ["gh", "pr", "create", "--title", commit_msg, "--body", pr_body, "--base", "main"],
+                cwd=repo_path,
             )
 
             if code != 0:
@@ -333,7 +334,9 @@ class DepsAutomation:
 
     def _update_npm_dep(self, repo_path: Path, package: str, version: str) -> bool:
         """Update an npm dependency."""
-        code, _, stderr = run(["npm", "install", f"{package}@{version}", "--save"], cwd=repo_path, timeout=180)
+        code, _, stderr = run(
+            ["npm", "install", f"{package}@{version}", "--save"], cwd=repo_path, timeout=180
+        )
         return code == 0
 
     def _run_tests(self, repo_path: Path) -> tuple[bool, str]:
