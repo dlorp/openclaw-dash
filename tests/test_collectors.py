@@ -7,17 +7,21 @@ from openclaw_dash.collectors import activity, channels, cron, gateway, repos, s
 
 
 class TestGatewayCollector:
-    def test_collect_returns_dict(self):
+    """Tests for the gateway status collector."""
+
+    def test_collect_returns_dict(self) -> None:
+        """Collect returns a dictionary with required keys."""
         result = gateway.collect()
         assert isinstance(result, dict)
         assert "collected_at" in result
         assert "healthy" in result
 
-    def test_healthy_is_bool(self):
+    def test_healthy_is_bool(self) -> None:
+        """The healthy field is always a boolean."""
         result = gateway.collect()
         assert isinstance(result["healthy"], bool)
 
-    def test_collect_with_demo_mode(self):
+    def test_collect_with_demo_mode(self) -> None:
         """Gateway collector returns mock data in demo mode."""
         with patch("openclaw_dash.collectors.gateway.is_demo_mode", return_value=True):
             with patch(
@@ -28,24 +32,20 @@ class TestGatewayCollector:
                 assert result["healthy"] is True
                 assert result.get("mode") == "demo"
 
-    def test_collect_fallback_to_http_health(self):
+    def test_collect_fallback_to_http_health(self) -> None:
         """Gateway falls back to HTTP health check when CLI unavailable."""
         with patch("openclaw_dash.collectors.gateway.is_demo_mode", return_value=False):
-            with patch(
-                "openclaw_dash.collectors.gateway.get_openclaw_status", return_value=None
-            ):
+            with patch("openclaw_dash.collectors.gateway.get_openclaw_status", return_value=None):
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 with patch("httpx.get", return_value=mock_response):
                     result = gateway.collect()
                     assert result["healthy"] is True
 
-    def test_collect_returns_unhealthy_on_failure(self):
+    def test_collect_returns_unhealthy_on_failure(self) -> None:
         """Gateway returns unhealthy when all methods fail."""
         with patch("openclaw_dash.collectors.gateway.is_demo_mode", return_value=False):
-            with patch(
-                "openclaw_dash.collectors.gateway.get_openclaw_status", return_value=None
-            ):
+            with patch("openclaw_dash.collectors.gateway.get_openclaw_status", return_value=None):
                 with patch("httpx.get", side_effect=Exception("Connection refused")):
                     result = gateway.collect()
                     assert result["healthy"] is False
@@ -53,38 +53,52 @@ class TestGatewayCollector:
 
 
 class TestSessionsCollector:
-    def test_collect_returns_dict(self):
+    """Tests for the sessions collector."""
+
+    def test_collect_returns_dict(self) -> None:
+        """Collect returns a dictionary with sessions list."""
         result = sessions.collect()
         assert isinstance(result, dict)
         assert "sessions" in result
         assert isinstance(result["sessions"], list)
 
-    def test_has_counts(self):
+    def test_has_counts(self) -> None:
+        """Result includes total and active session counts."""
         result = sessions.collect()
         assert "total" in result
         assert "active" in result
 
 
 class TestCronCollector:
-    def test_collect_returns_dict(self):
+    """Tests for the cron jobs collector."""
+
+    def test_collect_returns_dict(self) -> None:
+        """Collect returns a dictionary with jobs list."""
         result = cron.collect()
         assert isinstance(result, dict)
         assert "jobs" in result
 
 
 class TestReposCollector:
-    def test_collect_returns_dict(self):
+    """Tests for the repository status collector."""
+
+    def test_collect_returns_dict(self) -> None:
+        """Collect returns a dictionary with repos list."""
         result = repos.collect()
         assert isinstance(result, dict)
         assert "repos" in result
 
-    def test_custom_repos_list(self):
+    def test_custom_repos_list(self) -> None:
+        """Collecting with non-existent repos returns zero total."""
         result = repos.collect(repos=["nonexistent-xyz-123"])
         assert result["total"] == 0
 
 
 class TestActivityCollector:
-    def test_collect_returns_dict(self):
+    """Tests for the activity collector."""
+
+    def test_collect_returns_dict(self) -> None:
+        """Collect returns a dictionary with current_task and recent."""
         result = activity.collect()
         assert isinstance(result, dict)
         assert "current_task" in result
@@ -92,46 +106,52 @@ class TestActivityCollector:
 
 
 class TestChannelsCollector:
-    def test_collect_returns_dict(self):
+    """Tests for the channels collector."""
+
+    def test_collect_returns_dict(self) -> None:
+        """Collect returns a dictionary with required keys."""
         result = channels.collect()
         assert isinstance(result, dict)
         assert "channels" in result
         assert "connected" in result
         assert "total" in result
 
-    def test_channels_is_list(self):
+    def test_channels_is_list(self) -> None:
+        """The channels field is always a list."""
         result = channels.collect()
         assert isinstance(result["channels"], list)
 
-    def test_get_channel_icon(self):
+    def test_get_channel_icon(self) -> None:
+        """Channel icons are returned correctly for known types."""
         assert channels.get_channel_icon("discord") == "🎮"
         assert channels.get_channel_icon("telegram") == "✈️"
         assert channels.get_channel_icon("unknown") == "📱"
 
-    def test_get_status_icon(self):
+    def test_get_status_icon(self) -> None:
+        """Status icons are returned correctly for known statuses."""
         assert channels.get_status_icon("connected") == "✓"
         assert channels.get_status_icon("disabled") == "—"
 
-    def test_get_channel_icon_all_types(self):
+    def test_get_channel_icon_all_types(self) -> None:
         """Test all known channel type icons."""
         assert channels.get_channel_icon("signal") == "🔒"
         assert channels.get_channel_icon("slack") == "💼"
         assert channels.get_channel_icon("whatsapp") == "💬"
         assert channels.get_channel_icon("imessage") == "🍎"
 
-    def test_get_status_icon_all_types(self):
+    def test_get_status_icon_all_types(self) -> None:
         """Test all known status icons."""
         assert channels.get_status_icon("configured") == "○"
         assert channels.get_status_icon("error") == "✗"
         assert channels.get_status_icon("unknown_status") == "?"
 
-    def test_collected_at_is_iso_format(self):
+    def test_collected_at_is_iso_format(self) -> None:
         """Verify collected_at timestamp is valid ISO format."""
         result = channels.collect()
         # Should not raise - valid ISO format
         datetime.fromisoformat(result["collected_at"])
 
-    def test_counts_are_non_negative(self):
+    def test_counts_are_non_negative(self) -> None:
         """Channel counts should never be negative."""
         result = channels.collect()
         assert result["connected"] >= 0
@@ -142,7 +162,7 @@ class TestChannelsCollector:
 class TestActivityCollectorFunctions:
     """Test activity collector helper functions."""
 
-    def test_set_current_task(self, tmp_path, monkeypatch):
+    def test_set_current_task(self, tmp_path, monkeypatch) -> None:
         """Test setting current task writes to activity log."""
         # Point to temp directory
         mock_workspace = tmp_path / ".openclaw" / "workspace"
@@ -160,7 +180,7 @@ class TestActivityCollectorFunctions:
         data = json.loads(log_file.read_text())
         assert data["current_task"] == "Testing the dashboard"
 
-    def test_log_activity(self, tmp_path, monkeypatch):
+    def test_log_activity(self, tmp_path, monkeypatch) -> None:
         """Test logging activity appends to recent list."""
         mock_workspace = tmp_path / ".openclaw" / "workspace"
         mock_workspace.mkdir(parents=True)

@@ -31,7 +31,11 @@ def get_metrics() -> dict[str, Any]:
 
 
 def print_metrics_text(metrics: dict[str, Any]) -> None:
-    """Print metrics in human-readable format."""
+    """Print metrics in human-readable format.
+
+    Args:
+        metrics: Dictionary containing costs, performance, and github metrics.
+    """
     from rich import box
     from rich.console import Console
     from rich.panel import Panel
@@ -91,7 +95,11 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
 
 
 def print_status_text(status: dict[str, Any]) -> None:
-    """Print status in human-readable format."""
+    """Print status in human-readable format.
+
+    Args:
+        status: Dictionary containing gateway, sessions, repos, and activity data.
+    """
     from rich import box
     from rich.console import Console
     from rich.panel import Panel
@@ -279,7 +287,14 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
 
 
 def cmd_auto(args: argparse.Namespace) -> int:
-    """Handle auto subcommands."""
+    """Handle auto subcommands.
+
+    Args:
+        args: Parsed command-line arguments containing auto_command.
+
+    Returns:
+        Exit code (0 for success, 1 for failure).
+    """
     if args.auto_command == "merge":
         return cmd_auto_merge(args)
     elif args.auto_command == "cleanup":
@@ -294,7 +309,14 @@ def cmd_auto(args: argparse.Namespace) -> int:
 
 
 def cmd_auto_merge(args: argparse.Namespace) -> int:
-    """Auto-merge approved PRs."""
+    """Auto-merge approved PRs.
+
+    Args:
+        args: Parsed arguments with dry_run and repo options.
+
+    Returns:
+        Exit code (0 for success).
+    """
     from pathlib import Path
 
     from openclaw_dash.automation.pr_auto import (
@@ -321,7 +343,14 @@ def cmd_auto_merge(args: argparse.Namespace) -> int:
 
 
 def cmd_auto_cleanup(args: argparse.Namespace) -> int:
-    """Clean up stale branches."""
+    """Clean up stale branches.
+
+    Args:
+        args: Parsed arguments with dry_run and repo options.
+
+    Returns:
+        Exit code (0 for success).
+    """
     from pathlib import Path
 
     from openclaw_dash.automation.pr_auto import (
@@ -348,7 +377,14 @@ def cmd_auto_cleanup(args: argparse.Namespace) -> int:
 
 
 def cmd_auto_deps(args: argparse.Namespace) -> int:
-    """Run dependency updates."""
+    """Run dependency updates.
+
+    Args:
+        args: Parsed arguments with dry_run option.
+
+    Returns:
+        Exit code (0 for success).
+    """
     from openclaw_dash.automation.deps_auto import (
         DepsAutomation,
         DepsConfig,
@@ -363,7 +399,14 @@ def cmd_auto_deps(args: argparse.Namespace) -> int:
 
 
 def cmd_auto_backup(args: argparse.Namespace) -> int:
-    """Verify backup status."""
+    """Verify backup status.
+
+    Args:
+        args: Parsed arguments with backup_json option.
+
+    Returns:
+        Exit code (0 for success).
+    """
     from openclaw_dash.automation.backup import BackupVerifier, format_backup_report
 
     verifier = BackupVerifier()
@@ -377,7 +420,14 @@ def cmd_auto_backup(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    """Main entry point."""
+    """Main entry point for openclaw-dash CLI.
+
+    Parses command-line arguments and dispatches to appropriate handlers.
+    Supports TUI mode, status queries, metrics, security audits, and automation.
+
+    Returns:
+        Exit code (0 for success, non-zero for failure).
+    """
     parser = argparse.ArgumentParser(
         prog="openclaw-dash",
         description="TUI dashboard for OpenClaw gateway monitoring",
