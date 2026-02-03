@@ -26,7 +26,7 @@ import json
 import re
 import subprocess
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -473,12 +473,17 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
     if len(clean_summaries) == 1:
         return clean_summaries[0]
 
-    # Strategy 1: Look for common bigrams (phrases like "structured output")
+    # Strategy 1: Look for bigrams appearing in MAJORITY (>50%) of summaries
+    # (e.g., "structured output" in 2/3 commits should still match)
     bigrams_per_summary = [set(_extract_bigrams(s)) for s in clean_summaries]
     if len(bigrams_per_summary) > 1:
-        common_bigrams = set.intersection(*bigrams_per_summary)
+        # Count how many summaries contain each bigram
+        all_bigrams = [bg for bgs in bigrams_per_summary for bg in bgs]
+        bigram_counts = Counter(all_bigrams)
+        threshold = len(clean_summaries) / 2
+        common_bigrams = [bg for bg, count in bigram_counts.items() if count > threshold]
         if common_bigrams:
-            # Use the first common bigram (they're all equally valid)
+            # Use the longest common bigram (most descriptive)
             phrase = sorted(common_bigrams, key=len, reverse=True)[0]
             return f"{phrase} improvements"
 
