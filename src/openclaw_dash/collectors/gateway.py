@@ -63,7 +63,7 @@ def _try_http_health() -> dict[str, Any] | None:
         elif "timed out" in error_msg.lower():
             return {
                 "healthy": False,
-                "error": "Gateway not responding",
+                "error": "Gateway timed out unexpectedly (this may be a bug)",
                 "error_type": "timeout",
             }
         return None

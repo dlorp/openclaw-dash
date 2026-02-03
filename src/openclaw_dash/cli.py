@@ -2,8 +2,68 @@
 
 import argparse
 import json
+import multiprocessing
 import sys
 from typing import Any
+
+
+class GatewayTimeoutError(Exception):
+    """Raised when gateway connection times out."""
+
+    pass
+
+
+GATEWAY_TIMEOUT_MSG = (
+    "Command timed out unexpectedly. The gateway should respond instantly. "
+    "This may be a bug — please report it at https://github.com/dlorp/openclaw-dash/issues"
+)
+
+GATEWAY_TIMEOUT_SECONDS = 10
+
+
+def _run_in_process(func: Any, result_queue: multiprocessing.Queue) -> None:
+    """Helper function to run in a subprocess and return result via queue."""
+    try:
+        result = func()
+        result_queue.put(("success", result))
+    except Exception as e:
+        result_queue.put(("error", e))
+
+
+def with_gateway_timeout(func: Any, timeout: int = GATEWAY_TIMEOUT_SECONDS) -> Any:
+    """Execute a function with a timeout for gateway operations.
+
+    Uses multiprocessing to properly terminate hanging operations.
+
+    Args:
+        func: Callable to execute.
+        timeout: Timeout in seconds (default: 10).
+
+    Returns:
+        Result of the function call.
+
+    Raises:
+        GatewayTimeoutError: If the operation times out.
+    """
+    result_queue: multiprocessing.Queue = multiprocessing.Queue()
+    process = multiprocessing.Process(target=_run_in_process, args=(func, result_queue))
+    process.start()
+    process.join(timeout=timeout)
+
+    if process.is_alive():
+        process.terminate()
+        process.join(timeout=1)
+        if process.is_alive():
+            process.kill()
+        raise GatewayTimeoutError("Gateway connection timed out")
+
+    if result_queue.empty():
+        raise GatewayTimeoutError("Gateway operation failed")
+
+    status, result = result_queue.get_nowait()
+    if status == "error":
+        raise result
+    return result
 
 
 def get_status() -> dict[str, Any]:
@@ -667,12 +727,20 @@ def main() -> int:
 
     # Handle export command
     if args.command == "export":
+        from functools import partial
+
         from openclaw_dash.exporter import export_to_file
 
-        filepath, _ = export_to_file(
+        export_func = partial(
+            export_to_file,
             output_path=args.output,
             format=args.format,
         )
+        try:
+            filepath, _ = with_gateway_timeout(export_func)
+        except GatewayTimeoutError:
+            print(GATEWAY_TIMEOUT_MSG, file=sys.stderr)
+            return 1
         print(f"Exported to: {filepath}")
         return 0
 
@@ -706,7 +774,11 @@ def main() -> int:
         return 0
 
     if args.status or args.json:
-        status = get_status()
+        try:
+            status = with_gateway_timeout(get_status)
+        except GatewayTimeoutError:
+            print(GATEWAY_TIMEOUT_MSG, file=sys.stderr)
+            return 1
         if args.json:
             print(json.dumps(status, indent=2, default=str))
         else:
