@@ -561,57 +561,60 @@ class TestFormatCollectorStatusLine:
 class TestGatewayCollectorErrors:
     """Integration tests for gateway collector error handling."""
 
+    @patch("openclaw_dash.collectors.gateway._try_http_health")
+    @patch("openclaw_dash.collectors.gateway._try_cli_status")
     @patch("openclaw_dash.collectors.gateway.is_demo_mode")
-    def test_cli_unavailable_uses_http_fallback(self, mock_demo):
+    def test_cli_unavailable_uses_http_fallback(self, mock_demo, mock_cli, mock_http):
         """Test HTTP fallback when CLI fails."""
         mock_demo.return_value = False
+        mock_cli.return_value = None
+        mock_http.return_value = {"healthy": True, "mode": "test"}
 
         from openclaw_dash.collectors import gateway
         from openclaw_dash.collectors.cache import get_cache
 
-        # Reset cache and connection state
-        get_cache().invalidate("gateway")
-        gateway._connection_failures = 0
-        gateway._last_healthy = None
-
-        with patch("openclaw_dash.collectors.gateway._try_cli_status") as mock_cli:
-            mock_cli.return_value = None
-            with patch("openclaw_dash.collectors.gateway._try_http_health") as mock_http:
-                mock_http.return_value = {"healthy": True, "mode": "test"}
-
-                result = gateway.collect()
-                assert result["healthy"] is True
-
-    @patch("openclaw_dash.collectors.gateway.get_openclaw_status")
-    @patch("openclaw_dash.collectors.gateway.is_demo_mode")
-    def test_tracks_connection_failures(self, mock_demo, mock_status):
-        """Test connection failure tracking."""
-        mock_demo.return_value = False
-        mock_status.return_value = None
-
-        from openclaw_dash.collectors import gateway
-        from openclaw_dash.collectors.cache import get_cache
-
-        # Reset cache and state
+        # Reset cache, circuit breaker, and connection state
         cache = get_cache()
         cache.invalidate("gateway")
+        cache.reset_circuit("gateway")
         gateway._connection_failures = 0
         gateway._last_healthy = None
 
-        with patch("openclaw_dash.collectors.gateway._try_http_health") as mock_http:
-            mock_http.return_value = None  # Both methods fail
+        result = gateway.collect()
+        assert result["healthy"] is True
+        mock_cli.assert_called_once()
+        mock_http.assert_called_once()
 
-            # First failure
-            result1 = gateway.collect()
-            assert result1["healthy"] is False
-            assert result1["_consecutive_failures"] == 1
+    @patch("openclaw_dash.collectors.gateway._try_http_health")
+    @patch("openclaw_dash.collectors.gateway._try_cli_status")
+    @patch("openclaw_dash.collectors.gateway.is_demo_mode")
+    def test_tracks_connection_failures(self, mock_demo, mock_cli, mock_http):
+        """Test connection failure tracking."""
+        mock_demo.return_value = False
+        mock_cli.return_value = None
+        mock_http.return_value = None  # Both methods fail
 
-            # Invalidate cache to allow second collection
-            cache.invalidate("gateway")
+        from openclaw_dash.collectors import gateway
+        from openclaw_dash.collectors.cache import get_cache
 
-            # Second failure
-            result2 = gateway.collect()
-            assert result2["_consecutive_failures"] == 2
+        # Reset cache, circuit breaker, and state completely
+        cache = get_cache()
+        cache.invalidate("gateway")
+        cache.reset_circuit("gateway")
+        gateway._connection_failures = 0
+        gateway._last_healthy = None
+
+        # First failure
+        result1 = gateway.collect()
+        assert result1["healthy"] is False
+        assert result1["_consecutive_failures"] == 1
+
+        # Invalidate cache to allow second collection
+        cache.invalidate("gateway")
+
+        # Second failure
+        result2 = gateway.collect()
+        assert result2["_consecutive_failures"] == 2
 
 
 class TestSessionsCollectorErrors:
