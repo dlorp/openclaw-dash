@@ -170,16 +170,6 @@ def find_todo_in_comment(line: str) -> tuple[str, str] | None:
     return None
 
 
-def get_priority(category: str) -> str:
-    """Get priority level based on category."""
-    priority_map = {
-        "INLINE": "HIGH",
-        "COMMENT": "MEDIUM",
-        "DOCSTRING": "LOW"
-    }
-    return priority_map.get(category, "MEDIUM")
-
-
 def categorize_todo(line: str, is_in_docstring: bool) -> str:
     """Categorize a TODO based on context."""
     stripped = line.strip()
@@ -210,6 +200,12 @@ def categorize_todo(line: str, is_in_docstring: bool) -> str:
             return "INLINE"
 
     return "COMMENT"
+
+
+def get_priority(category: str) -> str:
+    """Get priority level based on category."""
+    priority_map = {"INLINE": "HIGH", "COMMENT": "MEDIUM", "DOCSTRING": "LOW"}
+    return priority_map.get(category, "MEDIUM")
 
 
 def find_todo_in_docstring(line: str) -> tuple[str, str] | None:
@@ -281,113 +277,17 @@ def scan_file(filepath: Path) -> list[TodoItem]:
     return todos
 
 
-def should_skip_directory(path: Path) -> bool:
-    """Check if a directory should be skipped during scanning."""
-    # Common directories to skip
-    SKIP_DIRS = {
-        # Python
-        "__pycache__",
-        ".venv",
-        "venv",
-        ".tox",
-        ".mypy_cache",
-        ".pytest_cache",
-        "build",
-        "dist",
-        "*.egg-info",
-        
-        # Node.js
-        "node_modules",
-        ".npm",
-        ".yarn",
-        
-        # Version control
-        ".git",
-        ".svn",
-        ".hg",
-        
-        # IDEs
-        ".vscode",
-        ".idea",
-        ".vs",
-        
-        # Build/cache
-        ".cache",
-        "target",
-        "out",
-        "bin",
-        
-        # OS
-        ".DS_Store",
-        "Thumbs.db",
-    }
-    
-    name = path.name.lower()
-    
-    # Exact match
-    if name in SKIP_DIRS:
-        return True
-        
-    # Pattern match (for things like *.egg-info)
-    if name.endswith(".egg-info") or name.startswith("."):
-        return True
-        
-    return False
-
-
 def scan_directory(path: Path, extensions: list[str]) -> list[TodoItem]:
-    """Scan a directory recursively with better filtering and progress indication."""
+    """Scan a directory recursively."""
     todos = []
-    files_scanned = 0
-    
-    print(f"Scanning directory: {path}")
-    
-    try:
-        # First, collect all files to scan
-        files_to_scan = []
-        
-        for ext in extensions:
-            for filepath in path.rglob(f"*{ext}"):
-                # Skip if any parent directory should be skipped
-                skip = False
-                for parent in filepath.parents:
-                    if should_skip_directory(parent):
-                        skip = True
-                        break
-                
-                # Skip if file itself is in a directory we should skip
-                if should_skip_directory(filepath.parent):
-                    skip = True
-                    
-                # Skip symlinks to avoid infinite loops
-                if filepath.is_symlink():
-                    skip = True
-                    
-                if not skip:
-                    files_to_scan.append(filepath)
-        
-        print(f"Found {len(files_to_scan)} files to scan...")
-        
-        # Scan files with progress indication
-        for filepath in files_to_scan:
-            try:
-                todos.extend(scan_file(filepath))
-                files_scanned += 1
-                
-                # Progress indication every 50 files
-                if files_scanned % 50 == 0:
-                    print(f"Scanned {files_scanned}/{len(files_to_scan)} files...")
-                    
-            except Exception as e:
-                # Continue scanning even if one file fails
-                print(f"Warning: Failed to scan {filepath}: {e}")
+
+    for ext in extensions:
+        for filepath in path.rglob(f"*{ext}"):
+            # Skip common ignore patterns
+            if any(p in str(filepath) for p in ["node_modules", "__pycache__", ".git", "venv"]):
                 continue
-                
-    except Exception as e:
-        print(f"Error during directory scan: {e}")
-        return todos
-    
-    print(f"Completed scanning {files_scanned} files.")
+            todos.extend(scan_file(filepath))
+
     return todos
 
 
@@ -420,9 +320,9 @@ def main() -> int:
         help="Output in JSON format for machine processing",
     )
     parser.add_argument(
-        "--actionable",
+        "--skip-docstrings",
         action="store_true",
-        help="Only show actionable TODOs (exclude DOCSTRING category)",
+        help="Filter out TODOs inside docstrings (shows only actionable TODOs)",
     )
 
     args = parser.parse_args()
@@ -438,8 +338,13 @@ def main() -> int:
     else:
         todos = scan_directory(path, args.extensions)
 
-    # Apply actionable filter if requested
-    if args.actionable:
+    # Calculate totals BEFORE filtering (for summary breakdown)
+    total_count = len(todos)
+    docstring_count = sum(1 for t in todos if t.category == "DOCSTRING")
+    actionable_count = total_count - docstring_count
+
+    # Apply --skip-docstrings filter if requested
+    if args.skip_docstrings:
         todos = [todo for todo in todos if todo.category != "DOCSTRING"]
 
     # Group by category
@@ -457,37 +362,44 @@ def main() -> int:
             "scan_info": {
                 "path": str(path),
                 "extensions": args.extensions,
-                "actionable_only": args.actionable
+                "skip_docstrings": args.skip_docstrings,
             },
             "todos": [todo.to_dict() for todo in todos],
             "summary": {
-                "total": len(todos),
+                "total": total_count,
+                "actionable": actionable_count,
+                "in_docstrings": docstring_count,
                 "by_category": {
                     "INLINE": len(by_category["INLINE"]),
                     "COMMENT": len(by_category["COMMENT"]),
-                    "DOCSTRING": len(by_category["DOCSTRING"])
+                    "DOCSTRING": len(by_category["DOCSTRING"]),
                 },
                 "by_priority": {
                     "HIGH": len([t for t in todos if t.priority == "HIGH"]),
                     "MEDIUM": len([t for t in todos if t.priority == "MEDIUM"]),
-                    "LOW": len([t for t in todos if t.priority == "LOW"])
+                    "LOW": len([t for t in todos if t.priority == "LOW"]),
                 },
-                "actionable": len([t for t in todos if t.category in ["INLINE", "COMMENT"]])
-            }
+            },
         }
         print(json.dumps(output, indent=2))
     else:
         # Human-readable prose output
-        filter_note = " (actionable only)" if args.actionable else ""
+        filter_note = " (actionable only)" if args.skip_docstrings else ""
         print(f"## 📝 Smart TODO Scan{filter_note}")
         print(f"**Path:** {path}")
-        print(f"**Total:** {len(todos)} TODOs found")
+        # Show breakdown format: "116 TODOs (21 actionable, 95 in docstrings)"
+        print(
+            f"**Total:** {total_count} TODOs "
+            f"({actionable_count} actionable, {docstring_count} in docstrings)"
+        )
         print()
 
         print("### ⚠️ INLINE (code TODOs - high priority)")
         if by_category["INLINE"]:
             for t in by_category["INLINE"][:10]:
                 print(f"  {t.file}:{t.line} — {t.text}")
+            if len(by_category["INLINE"]) > 10:
+                print(f"  ... and {len(by_category['INLINE']) - 10} more")
         else:
             print("  *None*")
         print()
@@ -502,22 +414,25 @@ def main() -> int:
             print("  *None*")
         print()
 
-        if not args.actionable:
+        if not args.skip_docstrings:
             print(f"### 📚 DOCSTRING ({len(by_category['DOCSTRING'])} items - documentation notes)")
             if by_category["DOCSTRING"]:
                 print(f"  {len(by_category['DOCSTRING'])} documentation notes (low priority)")
             else:
                 print("  *None*")
+            print()
 
-        # Summary
-        actionable = len(by_category["INLINE"]) + len(by_category["COMMENT"])
-        docs = len(by_category["DOCSTRING"])
-        print()
+        # Summary line
         print("---")
-        if args.actionable:
-            print(f"**Actionable TODOs:** {actionable}")
+        if args.skip_docstrings:
+            print(
+                f"**Showing:** {len(todos)} actionable TODOs "
+                f"(filtered {docstring_count} docstrings)"
+            )
         else:
-            print(f"**Actionable:** {actionable} | **Documentation notes:** {docs}")
+            print(
+                f"**Actionable:** {actionable_count} | **Documentation notes:** {docstring_count}"
+            )
 
     return 0
 
