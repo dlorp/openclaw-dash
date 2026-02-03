@@ -9,30 +9,31 @@ from typing import Any
 def get_status() -> dict[str, Any]:
     """Collect current status from all sources.
 
-    In offline mode, gateway-dependent collectors return placeholder data
-    with helpful offline alternative suggestions.
+    The gateway runs locally, so all features should work after setup.
+    If --skip-gateway is passed, gateway-dependent collectors return
+    placeholder data (useful for testing or when gateway is being restarted).
     """
     from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
     from openclaw_dash.offline import format_gateway_error_short, is_offline_mode
 
     if is_offline_mode():
-        offline_hint = format_gateway_error_short()
+        hint = format_gateway_error_short()
         return {
             "gateway": {
                 "healthy": False,
-                "error": "Offline mode enabled",
-                "_offline_hint": offline_hint,
+                "error": "Gateway checks skipped",
+                "_hint": hint,
             },
             "sessions": {
                 "sessions": [],
                 "total": 0,
-                "_offline_hint": offline_hint,
+                "_hint": hint,
             },
-            "cron": cron.collect(),  # Cron may work partially offline
-            "repos": repos.collect(),  # Repos work offline (local git)
+            "cron": cron.collect(),  # Works without gateway
+            "repos": repos.collect(),  # Works without gateway (local git)
             "activity": {
                 "recent": [],
-                "_offline_hint": offline_hint,
+                "_hint": hint,
             },
         }
 
@@ -144,9 +145,9 @@ def print_status_text(status: dict[str, Any]) -> None:
         f"Uptime: {gw.get('uptime', 'unknown')}"
     )
 
-    # Add offline hint if present
-    if gw.get("_offline_hint"):
-        gw_content += f"\n\n[dim]{gw['_offline_hint']}[/]"
+    # Add hint if present
+    if gw.get("_hint"):
+        gw_content += f"\n\n[dim]{gw['_hint']}[/]"
 
     console.print(
         Panel(
@@ -613,9 +614,9 @@ def main() -> int:
         help="Run with mock data (no gateway connection required)",
     )
     parser.add_argument(
-        "--offline",
+        "--skip-gateway",
         action="store_true",
-        help="Run in offline mode (skip gateway-dependent features, show alternatives)",
+        help="Skip gateway-dependent features (for testing or during gateway restart)",
     )
 
     # Subparsers for commands
@@ -759,8 +760,8 @@ def main() -> int:
 
         enable_demo_mode()
 
-    # Enable offline mode if requested
-    if args.offline:
+    # Skip gateway checks if requested
+    if args.skip_gateway:
         from openclaw_dash.offline import enable_offline_mode
 
         enable_offline_mode()

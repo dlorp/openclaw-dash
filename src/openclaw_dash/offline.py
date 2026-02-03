@@ -1,8 +1,11 @@
-"""Offline mode utilities and error messaging.
+"""Gateway-independent features and error handling.
 
-This module provides utilities for detecting offline mode and generating
-helpful error messages that guide users to features that work without
-a gateway connection.
+The OpenClaw gateway runs LOCALLY on the user's machine. After initial setup
+(pip install, git clone), everything should work without network access.
+
+This module identifies which features require the gateway to be running
+vs which work independently. If the gateway is unavailable, it's likely
+because it hasn't been started — not because of network issues.
 """
 
 from __future__ import annotations
@@ -10,11 +13,12 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-# Global offline mode flag (set via --offline CLI flag)
-_offline_mode: bool = False
+# Global flag to skip gateway checks (for testing/development)
+_skip_gateway: bool = False
 
-# Features that work without gateway connection
-OFFLINE_FEATURES = {
+# Features that work without the gateway running
+# (These are local operations that don't need gateway connectivity)
+GATEWAY_INDEPENDENT_FEATURES = {
     "security": {
         "command": "openclaw-dash security",
         "description": "Security audit (scans config files, dependencies)",
@@ -41,12 +45,15 @@ OFFLINE_FEATURES = {
     },
     "pr_tracker": {
         "command": "python3 tools/pr-tracker.py --org YOUR_ORG",
-        "description": "PR tracking without gateway",
+        "description": "PR tracking (local tool)",
     },
 }
 
-# Features that require gateway
-GATEWAY_FEATURES = {
+# For backwards compatibility
+OFFLINE_FEATURES = GATEWAY_INDEPENDENT_FEATURES
+
+# Features that require the gateway to be running
+GATEWAY_REQUIRED_FEATURES = {
     "sessions": "Active sessions and agents",
     "activity": "Real-time activity monitoring",
     "gateway_status": "Gateway health and context",
@@ -55,49 +62,59 @@ GATEWAY_FEATURES = {
     "logs": "Live log streaming",
 }
 
+# For backwards compatibility
+GATEWAY_FEATURES = GATEWAY_REQUIRED_FEATURES
+
 
 @dataclass
-class OfflineHint:
-    """A hint about what works offline when a feature fails."""
+class GatewayErrorHint:
+    """A hint about what to do when gateway is unavailable."""
 
     feature_name: str
     error_message: str
-    offline_alternatives: list[str]
-    primary_alternative: str | None = None
+    independent_commands: list[str]
+    primary_suggestion: str | None = None
 
-    def format_message(self, include_alternatives: bool = True) -> str:
+    def format_message(self, include_commands: bool = True) -> str:
         """Format the hint as a user-friendly message.
 
         Args:
-            include_alternatives: Whether to include alternative commands.
+            include_commands: Whether to include command suggestions.
 
         Returns:
-            Formatted error message with offline hints.
+            Formatted error message with suggestions.
         """
         lines = [self.error_message]
 
-        if include_alternatives and self.offline_alternatives:
+        if include_commands and self.independent_commands:
             lines.append("")
-            lines.append("Offline alternatives:")
-            for alt in self.offline_alternatives[:3]:  # Show top 3
-                lines.append(f"  • {alt}")
+            lines.append("These commands don't require the gateway:")
+            for cmd in self.independent_commands[:3]:  # Show top 3
+                lines.append(f"  • {cmd}")
 
         return "\n".join(lines)
 
     def format_short(self) -> str:
         """Format a short version for compact displays."""
-        if self.primary_alternative:
-            return f"{self.error_message} Try: {self.primary_alternative}"
+        if self.primary_suggestion:
+            return f"{self.error_message} Try: {self.primary_suggestion}"
         return self.error_message
 
 
+# Backwards compatibility alias
+OfflineHint = GatewayErrorHint
+
+
 def is_offline_mode() -> bool:
-    """Check if offline mode is enabled.
+    """Check if gateway checks should be skipped.
+
+    Note: This is primarily for testing/development. The gateway runs
+    locally, so "offline mode" is not really a thing in normal use.
 
     Returns:
-        True if offline mode is explicitly enabled via flag or environment.
+        True if gateway checks should be skipped.
     """
-    return _offline_mode or os.environ.get("OPENCLAW_DASH_OFFLINE", "").lower() in (
+    return _skip_gateway or os.environ.get("OPENCLAW_DASH_SKIP_GATEWAY", "").lower() in (
         "1",
         "true",
         "yes",
@@ -105,64 +122,63 @@ def is_offline_mode() -> bool:
 
 
 def enable_offline_mode() -> None:
-    """Enable offline mode globally."""
-    global _offline_mode
-    _offline_mode = True
+    """Enable skipping gateway checks (for testing)."""
+    global _skip_gateway
+    _skip_gateway = True
 
 
 def disable_offline_mode() -> None:
-    """Disable offline mode globally."""
-    global _offline_mode
-    _offline_mode = False
+    """Disable skipping gateway checks."""
+    global _skip_gateway
+    _skip_gateway = False
 
 
-def get_offline_hint(feature: str, error: str | None = None) -> OfflineHint:
-    """Get an offline hint for a failed feature.
+def get_offline_hint(feature: str, error: str | None = None) -> GatewayErrorHint:
+    """Get a hint for when a gateway-dependent feature fails.
+
+    The gateway runs locally, so failures are typically either:
+    - Gateway not started yet (run `openclaw gateway start`)
+    - A bug (unexpected timeout or hang)
 
     Args:
         feature: Name of the feature that failed.
         error: Optional error message from the failure.
 
     Returns:
-        OfflineHint with alternatives.
+        GatewayErrorHint with suggestions.
     """
-    # Build the error message
+    # Check if this is a timeout (likely a bug since gateway is local)
+    is_timeout = error and ("timeout" in error.lower() or "timed out" in error.lower())
+
+    if is_timeout:
+        return GatewayErrorHint(
+            feature_name=feature,
+            error_message="Command timed out unexpectedly — this may be a bug",
+            independent_commands=[
+                "Run `openclaw gateway status` to check gateway health",
+                "Run `openclaw gateway restart` if the gateway is stuck",
+                "Report at: https://github.com/dlorp/openclaw-dash/issues",
+            ],
+            primary_suggestion="openclaw gateway status",
+        )
+
+    # Build the error message for non-timeout errors
     if error:
-        error_msg = f"Gateway not available: {error}"
+        error_msg = f"Gateway error: {error}"
     else:
-        error_msg = "Gateway not available"
+        error_msg = "Gateway not responding"
 
-    # Get relevant alternatives based on the failed feature
-    alternatives = []
+    commands = [
+        "Run `openclaw gateway start` to start the gateway",
+        f"`{GATEWAY_INDEPENDENT_FEATURES['security']['command']}` - "
+        f"{GATEWAY_INDEPENDENT_FEATURES['security']['description']}",
+    ]
 
-    # Always suggest these core offline features
-    alternatives.append(
-        f"`{OFFLINE_FEATURES['security']['command']}` - "
-        f"{OFFLINE_FEATURES['security']['description']}"
-    )
-    alternatives.append(
-        f"`{OFFLINE_FEATURES['auto_backup']['command']}` - "
-        f"{OFFLINE_FEATURES['auto_backup']['description']}"
-    )
-
-    # Add feature-specific suggestions
-    if feature in ("sessions", "activity", "gateway"):
-        alternatives.append(
-            f"`{OFFLINE_FEATURES['metrics_github']['command']}` - "
-            f"{OFFLINE_FEATURES['metrics_github']['description']}"
-        )
-
-    if feature == "repos":
-        alternatives.append(
-            f"`{OFFLINE_FEATURES['auto_cleanup']['command']}` - "
-            f"{OFFLINE_FEATURES['auto_cleanup']['description']}"
-        )
-
-    return OfflineHint(
+    return GatewayErrorHint(
         feature_name=feature,
         error_message=error_msg,
-        offline_alternatives=alternatives,
-        primary_alternative=OFFLINE_FEATURES["security"]["command"],
+        independent_commands=commands,
+        primary_suggestion="openclaw gateway start",
     )
 
 
@@ -171,81 +187,98 @@ def format_gateway_error(
     context: str | None = None,
     verbose: bool = False,
 ) -> str:
-    """Format a gateway connection error with offline hints.
+    """Format a gateway error message.
+
+    The gateway runs locally, so errors are typically either:
+    - Gateway not started yet (run `openclaw gateway start`)
+    - A bug (unexpected timeout or hang)
 
     Args:
         error: The error message from the connection attempt.
         context: Additional context about what was being attempted.
-        verbose: Whether to include full command examples.
+        verbose: Whether to include additional troubleshooting info.
 
     Returns:
-        Formatted error message with offline alternatives.
+        Formatted error message with suggestions.
     """
     lines = []
 
-    # Main error
-    if error:
-        lines.append(f"⊘ Gateway not available: {error}")
-    else:
-        lines.append("⊘ Gateway not available")
+    # Check if this looks like a timeout (potential bug since gateway is local)
+    is_timeout = error and ("timeout" in error.lower() or "timed out" in error.lower())
 
-    if context:
-        lines.append(f"  ({context})")
-
-    lines.append("")
-    lines.append("These features work offline:")
-    lines.append("  • `openclaw-dash security`     - Security audit")
-    lines.append("  • `openclaw-dash auto backup`  - Backup verification")
-    lines.append("  • `openclaw-dash metrics --github` - GitHub stats")
-
-    if verbose:
+    if is_timeout:
+        lines.append("⊘ Command timed out unexpectedly")
+        if context:
+            lines.append(f"  ({context})")
         lines.append("")
-        lines.append("For PR tracking without gateway:")
-        lines.append("  python3 tools/pr-tracker.py --org YOUR_ORG")
+        lines.append("The gateway runs locally — this may be a bug.")
+        lines.append("Please report: https://github.com/dlorp/openclaw-dash/issues")
+    else:
+        if error:
+            lines.append(f"⊘ Gateway error: {error}")
+        else:
+            lines.append("⊘ Gateway not responding")
+
+        if context:
+            lines.append(f"  ({context})")
+
+        lines.append("")
+        lines.append("Try: `openclaw gateway start`")
+
+        if verbose:
+            lines.append("")
+            lines.append("If this persists, please report the issue:")
+            lines.append("  https://github.com/dlorp/openclaw-dash/issues")
 
     return "\n".join(lines)
 
 
-def format_gateway_error_short() -> str:
+def format_gateway_error_short(error: str | None = None) -> str:
     """Format a short gateway error for compact displays.
+
+    Args:
+        error: Optional error message to check for timeout indication.
 
     Returns:
         Short error message.
     """
-    return "Gateway offline. Try: `openclaw-dash security`, `openclaw-dash auto backup`"
+    # Check if this is a timeout (potential bug since gateway is local)
+    if error and ("timeout" in error.lower() or "timed out" in error.lower()):
+        return "Command timed out unexpectedly — this may be a bug"
+    return "Gateway not responding. Try: `openclaw gateway start`"
 
 
 def should_skip_feature(feature: str) -> bool:
-    """Check if a feature should be skipped in offline mode.
+    """Check if a feature should be skipped when gateway is unavailable.
 
     Args:
         feature: Name of the feature to check.
 
     Returns:
-        True if the feature requires gateway and we're in offline mode.
+        True if the feature requires gateway and checks are being skipped.
     """
     if not is_offline_mode():
         return False
 
-    return feature in GATEWAY_FEATURES
+    return feature in GATEWAY_REQUIRED_FEATURES
 
 
 def get_available_offline_commands() -> list[dict[str, str]]:
-    """Get list of commands available in offline mode.
+    """Get list of commands that don't require the gateway.
 
     Returns:
         List of dicts with 'command' and 'description' keys.
     """
     return [
         {"command": info["command"], "description": info["description"]}
-        for info in OFFLINE_FEATURES.values()
+        for info in GATEWAY_INDEPENDENT_FEATURES.values()
     ]
 
 
 def check_gateway_available() -> tuple[bool, str | None]:
-    """Quick check if gateway is likely available.
+    """Quick check if gateway is running.
 
-    Does a fast check without full connection attempt.
+    The gateway runs locally, so this checks the local service status.
 
     Returns:
         Tuple of (is_available, error_message).
@@ -261,10 +294,10 @@ def check_gateway_available() -> tuple[bool, str | None]:
         )
         if result.returncode == 0 and "running" in result.stdout.lower():
             return True, None
-        return False, "Gateway not running"
+        return False, "Gateway not running. Start with: openclaw gateway start"
     except subprocess.TimeoutExpired:
-        return False, "Gateway check timed out"
+        return False, "Gateway check timed out (this may be a bug)"
     except FileNotFoundError:
-        return False, "OpenClaw CLI not found"
+        return False, "OpenClaw CLI not found. Install with: pip install openclaw"
     except Exception as e:
-        return False, str(e)
+        return False, f"Unexpected error: {e}"
