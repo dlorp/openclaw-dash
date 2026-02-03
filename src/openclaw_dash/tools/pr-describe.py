@@ -1318,7 +1318,7 @@ def format_markdown(desc: PRDescription, config: Config) -> str:
     lines = []
 
     # Summary
-    lines.append("## Summary")
+    lines.append("## What")
     lines.append("")
     lines.append(desc.summary)
     lines.append("")
@@ -1331,7 +1331,7 @@ def format_markdown(desc: PRDescription, config: Config) -> str:
         max_files = config.max_files_shown if config.output_style == "verbose" else 10
 
         if desc.changes.get("added"):
-            lines.append("**Added:**")
+            lines.append("**Additional files added:**")
             for f in desc.changes["added"][:max_files]:
                 lines.append(f"- `{f}`")
             if len(desc.changes["added"]) > max_files:
@@ -1339,7 +1339,7 @@ def format_markdown(desc: PRDescription, config: Config) -> str:
             lines.append("")
 
         if desc.changes.get("modified"):
-            lines.append("**Modified:**")
+            lines.append("**Additional files modified:**")
             for f in desc.changes["modified"][:max_files]:
                 lines.append(f"- `{f}`")
             if len(desc.changes["modified"]) > max_files:
