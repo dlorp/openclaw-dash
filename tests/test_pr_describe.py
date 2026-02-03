@@ -777,6 +777,20 @@ class TestExtractKeyWords:
         assert "ui" not in result  # too short
         assert "add" in result
 
+    def test_filters_adverbs(self):
+        """Adverbs (words ending in -ly) should be filtered out."""
+        result = pr_describe._extract_key_words("handle errors gracefully and properly")
+        assert "gracefully" not in result
+        assert "properly" not in result
+        assert "handle" in result
+        assert "errors" in result
+
+    def test_keeps_short_ly_words(self):
+        """Short -ly words (4 chars or less) should be kept as they're often not adverbs."""
+        result = pr_describe._extract_key_words("fix the fly and ply issues")
+        assert "fly" in result  # Short -ly word, not an adverb
+        assert "ply" in result
+
     def test_handles_empty_string(self):
         result = pr_describe._extract_key_words("")
         assert result == []
@@ -803,6 +817,35 @@ class TestBuildMultiCommitSummary:
         )
         # Should find "handle" or "error" as common themes
         assert "handle" in result.lower() or "error" in result.lower()
+
+    def test_finds_common_bigrams(self):
+        """Common bigrams like 'structured output' should be found across commits."""
+        result = pr_describe._build_multi_commit_summary(
+            ["add structured output to scanner", "structured output support for tools"],
+            set(),
+        )
+        assert "structured output" in result.lower()
+
+    def test_handles_hyphenated_words(self):
+        """Hyphenated words should be split for better domain extraction."""
+        result = pr_describe._build_multi_commit_summary(
+            ["prevent smart-todo-scanner hanging", "handle security audit tools"],
+            set(),
+        )
+        # Should extract "scanner" from "smart-todo-scanner", not use the whole thing
+        # and should not include adverbs
+        assert "gracefully" not in result.lower()
+        # Should find meaningful domains like "scanner" or "security"
+        assert "scanner" in result.lower() or "security" in result.lower()
+
+    def test_filters_adverbs_from_domains(self):
+        """Adverbs should not appear in generated titles."""
+        result = pr_describe._build_multi_commit_summary(
+            ["handle errors gracefully", "process data efficiently"],
+            set(),
+        )
+        assert "gracefully" not in result.lower()
+        assert "efficiently" not in result.lower()
 
     def test_empty_summaries_returns_fallback(self):
         result = pr_describe._build_multi_commit_summary([], set())

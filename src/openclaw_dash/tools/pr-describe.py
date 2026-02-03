@@ -390,7 +390,7 @@ def detect_config_changes(files: list[FileChange]) -> list[str]:
 
 
 def _extract_key_words(text: str) -> list[str]:
-    """Extract meaningful words from text, filtering stop words."""
+    """Extract meaningful words from text, filtering stop words and adverbs."""
     stop_words = {
         "the",
         "a",
@@ -430,7 +430,12 @@ def _extract_key_words(text: str) -> list[str]:
         "updates",
     }
     words = re.findall(r"\b[a-zA-Z][a-zA-Z0-9_-]*\b", text.lower())
-    return [w for w in words if w not in stop_words and len(w) > 2]
+    # Filter stop words, short words, and adverbs (ending in -ly)
+    return [
+        w
+        for w in words
+        if w not in stop_words and len(w) > 2 and not (w.endswith("ly") and len(w) > 4)
+    ]
 
 
 def _extract_bigrams(text: str) -> list[str]:
@@ -576,10 +581,21 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
         # Filter to likely nouns (not common verbs/adjectives)
         nouns = [w for w in words if w not in common_verbs]
         if nouns:
-            # Take the longest noun as the likely domain
-            domain = sorted(nouns, key=len, reverse=True)[0]
-            if domain not in domains:
-                domains.append(domain)
+            # Prefer simple words over hyphenated compound identifiers
+            # Split hyphenated words and consider their parts too
+            simple_nouns = []
+            for w in nouns:
+                if "-" in w:
+                    # Extract meaningful parts from hyphenated words (e.g., "smart-todo-scanner" -> "scanner")
+                    parts = [p for p in w.split("-") if len(p) > 3 and p not in common_verbs]
+                    simple_nouns.extend(parts)
+                else:
+                    simple_nouns.append(w)
+            if simple_nouns:
+                # Take the longest simple noun as the likely domain
+                domain = sorted(simple_nouns, key=len, reverse=True)[0]
+                if domain not in domains:
+                    domains.append(domain)
 
     if len(domains) >= 2:
         return f"{domains[0]} and {domains[1]} improvements"
