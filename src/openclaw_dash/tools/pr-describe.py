@@ -820,6 +820,53 @@ def format_json(desc: PRDescription) -> str:
     return json.dumps(asdict(desc), indent=2)
 
 
+def format_squash(desc: PRDescription, config: Config) -> str:
+    """Format PRDescription as a compact squash commit message.
+    
+    Designed for large PRs - short, scannable, no fluff.
+    """
+    lines = []
+    
+    # Summary - max 2 sentences
+    summary_text = desc.summary.replace("\n", " ").strip()
+    # Take first sentence or first 150 chars
+    if ". " in summary_text:
+        summary_text = summary_text.split(". ")[0] + "."
+    if len(summary_text) > 150:
+        summary_text = summary_text[:147] + "..."
+    lines.append(summary_text)
+    lines.append("")
+    
+    # Key changes as brief bullets (max 5)
+    all_files = (
+        desc.changes.get("added", []) +
+        desc.changes.get("modified", []) +
+        desc.changes.get("removed", [])
+    )
+    if all_files:
+        lines.append("Changes:")
+        for f in all_files[:5]:
+            lines.append(f"- {Path(f).name}")
+        if len(all_files) > 5:
+            lines.append(f"- +{len(all_files) - 5} more files")
+        lines.append("")
+    
+    # Stats
+    stats = desc.stats
+    lines.append(
+        f"{stats['files_changed']} files, "
+        f"+{stats['additions']}/-{stats['deletions']}"
+    )
+    
+    # Breaking changes (critical - always show)
+    breaking = [n for n in desc.notes if "Breaking" in n or "⚠️" in n]
+    if breaking:
+        lines.append("")
+        lines.append("⚠️ BREAKING: " + breaking[0].replace("⚠️ ", "").replace("**Breaking Changes:**", "").strip())
+    
+    return "\n".join(lines)
+
+
 def copy_to_clipboard(text: str) -> bool:
     """Copy text to clipboard. Returns True on success."""
     # Try pbcopy (macOS)
@@ -898,6 +945,11 @@ Config file: ~/.config/openclaw-dash/pr-describe.yaml
         "--clipboard",
         action="store_true",
         help="copy output to clipboard",
+    )
+    parser.add_argument(
+        "--squash",
+        action="store_true",
+        help="compact format optimized for squash commit messages",
     )
     parser.add_argument(
         "--no-testing",
@@ -988,7 +1040,9 @@ Config file: ~/.config/openclaw-dash/pr-describe.yaml
     print(f"Analyzing {head_branch} vs {base_branch}...", file=sys.stderr)
 
     # Format output
-    if output_format == "json":
+    if args.squash:
+        output = format_squash(desc, config)
+    elif output_format == "json":
         output = format_json(desc)
     elif output_format == "plain":
         output = format_plain(desc, config)
