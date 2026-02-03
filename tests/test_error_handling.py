@@ -567,8 +567,10 @@ class TestGatewayCollectorErrors:
         mock_demo.return_value = False
 
         from openclaw_dash.collectors import gateway
+        from openclaw_dash.collectors.cache import get_cache
 
-        # Reset connection state
+        # Reset cache and connection state
+        get_cache().invalidate("gateway")
         gateway._connection_failures = 0
         gateway._last_healthy = None
 
@@ -588,8 +590,11 @@ class TestGatewayCollectorErrors:
         mock_status.return_value = None
 
         from openclaw_dash.collectors import gateway
+        from openclaw_dash.collectors.cache import get_cache
 
-        # Reset state
+        # Reset cache and state
+        cache = get_cache()
+        cache.invalidate("gateway")
         gateway._connection_failures = 0
         gateway._last_healthy = None
 
@@ -600,6 +605,9 @@ class TestGatewayCollectorErrors:
             result1 = gateway.collect()
             assert result1["healthy"] is False
             assert result1["_consecutive_failures"] == 1
+
+            # Invalidate cache to allow second collection
+            cache.invalidate("gateway")
 
             # Second failure
             result2 = gateway.collect()
