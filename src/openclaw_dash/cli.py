@@ -419,6 +419,135 @@ def cmd_auto_backup(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_collectors(args: argparse.Namespace) -> int:
+    """Show collector health and performance stats.
+
+    Args:
+        args: Parsed arguments with collectors_json, reset, warm options.
+
+    Returns:
+        Exit code (0 for success).
+    """
+    from openclaw_dash.collectors import (
+        activity,
+        cron,
+        gateway,
+        get_cache,
+        repos,
+        reset_cache,
+        sessions,
+    )
+
+    cache = get_cache()
+
+    # Handle reset
+    if hasattr(args, "reset") and args.reset:
+        reset_cache()
+        print("Cache and circuit breakers reset.")
+        return 0
+
+    # Handle warm (run all collectors to populate cache)
+    if hasattr(args, "warm") and args.warm:
+        collectors = [
+            ("gateway", gateway.collect),
+            ("sessions", sessions.collect),
+            ("cron", cron.collect),
+            ("repos", repos.collect),
+            ("activity", activity.collect),
+        ]
+        print("Warming cache...")
+        for name, collect_fn in collectors:
+            try:
+                collect_fn()
+                print(f"  ✓ {name}")
+            except Exception as e:
+                print(f"  ✗ {name}: {e}")
+        print("Cache warmed.")
+        return 0
+
+    # Run collectors once to populate stats
+    gateway.collect()
+    sessions.collect()
+    cron.collect()
+    repos.collect()
+    activity.collect()
+
+    # Get stats
+    all_stats = cache.get_all_stats()
+    health = cache.get_health_summary()
+
+    if hasattr(args, "collectors_json") and args.collectors_json:
+        print(json.dumps({"health": health, "collectors": all_stats}, indent=2, default=str))
+    else:
+        print_collectors_text(health, all_stats)
+
+    return 0
+
+
+def print_collectors_text(health: dict[str, Any], stats: dict[str, Any]) -> None:
+    """Print collector stats in human-readable format.
+
+    Args:
+        health: Health summary dictionary.
+        stats: Per-collector statistics dictionary.
+    """
+    from rich import box
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+
+    console = Console()
+
+    # Health summary panel
+    healthy = health.get("healthy_count", 0)
+    degraded = health.get("degraded_count", 0)
+    failed = health.get("failed_count", 0)
+
+    status_icon = "✓" if failed == 0 else "⚠" if degraded > 0 else "✗"
+    status_color = "green" if failed == 0 and degraded == 0 else "yellow" if failed == 0 else "red"
+
+    health_text = (
+        f"[{status_color}]{status_icon} Status:[/] "
+        f"[green]{healthy}[/] healthy, "
+        f"[yellow]{degraded}[/] degraded, "
+        f"[red]{failed}[/] failed\n"
+        f"[bold]Cache hit rate:[/] {health.get('avg_cache_hit_rate', 0):.1f}%\n"
+        f"[bold]Slowest:[/] {health.get('slowest_collector', 'N/A')} "
+        f"({health.get('slowest_time_ms', 0):.0f}ms)"
+    )
+    console.print(Panel(health_text, title="🔍 Collector Health", box=box.ROUNDED))
+
+    # Detailed stats table
+    if stats:
+        table = Table(title="Collector Statistics", box=box.SIMPLE)
+        table.add_column("Collector")
+        table.add_column("Calls", justify="right")
+        table.add_column("Cache %", justify="right")
+        table.add_column("Avg (ms)", justify="right")
+        table.add_column("Errors", justify="right")
+        table.add_column("Status")
+
+        for name, s in sorted(stats.items()):
+            status = "✓" if not s.get("circuit_open") and s.get("error_count", 0) == 0 else "⚠"
+            if s.get("circuit_open"):
+                status = "[red]⛔[/]"
+            elif s.get("error_count", 0) > 0:
+                status = "[yellow]⚠[/]"
+            else:
+                status = "[green]✓[/]"
+
+            table.add_row(
+                name,
+                str(s.get("call_count", 0)),
+                f"{s.get('hit_rate_pct', 0):.0f}%",
+                f"{s.get('avg_time_ms', 0):.1f}",
+                str(s.get("error_count", 0)),
+                status,
+            )
+
+        console.print(table)
+
+
 def main() -> int:
     """Main entry point for openclaw-dash CLI.
 
@@ -512,11 +641,29 @@ def main() -> int:
         help="Output file path (default: auto-generated)",
     )
 
+    # Collectors subcommand (timing/cache/health stats)
+    collectors_parser = subparsers.add_parser(
+        "collectors", help="Show collector health and performance stats"
+    )
+    collectors_parser.add_argument(
+        "--json", dest="collectors_json", action="store_true", help="JSON output"
+    )
+    collectors_parser.add_argument(
+        "--reset", action="store_true", help="Reset cache and circuit breakers"
+    )
+    collectors_parser.add_argument(
+        "--warm", action="store_true", help="Warm the cache by running all collectors"
+    )
+
     args = parser.parse_args()
 
     # Handle auto command
     if args.command == "auto":
         return cmd_auto(args)
+
+    # Handle collectors command
+    if args.command == "collectors":
+        return cmd_collectors(args)
 
     # Handle export command
     if args.command == "export":
