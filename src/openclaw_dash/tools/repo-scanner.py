@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
 """
-repo-scanner.py — Scan repos for health metrics with structured output.
+repo-scanner.py — Scan repos for health metrics.
 
 Tracks:
 - TODO/FIXME counts by file
 - Test counts
 - Open PRs
 - Last commit activity
-- Health status (green/yellow/red) based on configurable thresholds
-
-Features:
-- Machine-readable JSON output with consistent structure
-- Human-readable markdown and plain text formats
-- Configurable status thresholds
-- Summary statistics across all repos
 
 Usage:
     python3 repo-scanner.py [--format FORMAT] [--save] [--repo-base PATH] [--org ORG]
@@ -26,6 +19,7 @@ Configuration:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import subprocess
 import sys
@@ -40,6 +34,33 @@ from config import get_config_path, get_repo_base
 GIT_TIMEOUT = 30
 
 
+# -----------------------------------------------------------------------------
+# Smart TODO categorization (dynamically loaded from smart-todo-scanner)
+# -----------------------------------------------------------------------------
+def _load_smart_todo_scanner():
+    """Dynamically load smart-todo-scanner module (hyphenated filename)."""
+    scanner_path = Path(__file__).parent / "smart-todo-scanner.py"
+    if not scanner_path.exists():
+        return None
+    spec = importlib.util.spec_from_file_location("smart_todo_scanner", scanner_path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    # Register module in sys.modules before exec (required for dataclasses)
+    sys.modules["smart_todo_scanner"] = module
+    try:
+        spec.loader.exec_module(module)
+        return module
+    except Exception:
+        # Clean up on failure
+        sys.modules.pop("smart_todo_scanner", None)
+        return None
+
+
+# Try to load smart-todo-scanner for advanced categorization
+_smart_scanner = _load_smart_todo_scanner()
+
+
 def load_config() -> dict[str, Any]:
     # Get shared config with tool-specific overrides
     shared = get_shared_config("repo-scanner")
@@ -49,12 +70,6 @@ def load_config() -> dict[str, Any]:
         "repo_base": str(get_repo_base()),
         "github_org": shared.get("github_org", ""),
         "output_style": shared.get("output_format", "text"),
-        "status_thresholds": shared.get("status_thresholds", {
-            "green_max_todos": 10,
-            "green_max_prs": 2,
-            "yellow_max_todos": 25,
-            "yellow_max_prs": 5,
-        }),
     }
 
 
@@ -67,10 +82,18 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = GIT_TIMEOUT) -> 
         return -1, f"Command timed out after {timeout}s"
 
 
-def count_todos(repo_path: Path) -> dict:
-    """Count TODOs and FIXMEs in tracked files only (via git ls-files)."""
+def count_todos(repo_path: Path, *, skip_docstrings: bool = False) -> dict:
+    """Count TODOs and FIXMEs in tracked files only (via git ls-files).
+
+    Args:
+        repo_path: Path to the repository
+        skip_docstrings: If True, use smart categorization to separate
+            actionable TODOs from docstring TODOs
+    """
     todos = {"TODO": 0, "FIXME": 0, "HACK": 0, "XXX": 0}
     files_with_todos: list[str] = []
+    docstring_count = 0
+    actionable_count = 0
 
     # Get list of tracked files from git
     try:
@@ -82,7 +105,13 @@ def count_todos(repo_path: Path) -> dict:
             timeout=GIT_TIMEOUT,
         )
     except subprocess.TimeoutExpired:
-        return {"counts": todos, "total": 0, "files_affected": 0}
+        return {
+            "counts": todos,
+            "total": 0,
+            "files_affected": 0,
+            "actionable": 0,
+            "in_docstrings": 0,
+        }
 
     tracked_files = ls_result.stdout.strip().split("\n") if ls_result.stdout.strip() else []
 
@@ -91,9 +120,51 @@ def count_todos(repo_path: Path) -> dict:
     source_files = [f for f in tracked_files if Path(f).suffix in extensions]
 
     if not source_files:
-        return {"counts": todos, "total": 0, "files_affected": 0}
+        return {
+            "counts": todos,
+            "total": 0,
+            "files_affected": 0,
+            "actionable": 0,
+            "in_docstrings": 0,
+        }
 
-    # Use grep on just the tracked source files
+    # If smart categorization is available and requested, use it
+    if skip_docstrings and _smart_scanner is not None:
+        for rel_path in source_files:
+            filepath = repo_path / rel_path
+            if not filepath.exists():
+                continue
+            items = _smart_scanner.scan_file(filepath)
+            for item in items:
+                # Count by keyword based on the TODO match
+                text_upper = (item.text or "").upper()
+                matched = False
+                for kw in ["FIXME", "HACK", "XXX", "TODO"]:
+                    if kw in text_upper:
+                        todos[kw] += 1
+                        matched = True
+                        break
+                if not matched:
+                    todos["TODO"] += 1
+
+                if item.category == "DOCSTRING":
+                    docstring_count += 1
+                else:
+                    actionable_count += 1
+
+                if rel_path not in files_with_todos:
+                    files_with_todos.append(rel_path)
+
+        total = sum(todos.values())
+        return {
+            "counts": todos,
+            "total": total,
+            "files_affected": len(files_with_todos),
+            "actionable": actionable_count,
+            "in_docstrings": docstring_count,
+        }
+
+    # Fallback: Use grep on just the tracked source files
     try:
         grep_result = subprocess.run(
             ["grep", "-Hn", r"TODO\|FIXME\|HACK\|XXX", "--", *source_files],
@@ -103,7 +174,13 @@ def count_todos(repo_path: Path) -> dict:
             timeout=GIT_TIMEOUT,
         )
     except subprocess.TimeoutExpired:
-        return {"counts": todos, "total": 0, "files_affected": 0}
+        return {
+            "counts": todos,
+            "total": 0,
+            "files_affected": 0,
+            "actionable": 0,
+            "in_docstrings": 0,
+        }
 
     output = grep_result.stdout.strip()
     if output:
@@ -121,10 +198,13 @@ def count_todos(repo_path: Path) -> dict:
                 if fname not in files_with_todos:
                     files_with_todos.append(fname)
 
+    total = sum(todos.values())
     return {
         "counts": todos,
-        "total": sum(todos.values()),
+        "total": total,
         "files_affected": len(files_with_todos),
+        "actionable": total,  # Without smart scan, all are "actionable"
+        "in_docstrings": 0,
     }
 
 
@@ -187,25 +267,9 @@ def get_last_commit(repo_path: Path) -> str:
     return output or "Unknown"
 
 
-def determine_status(todo_count: int, pr_count: int, thresholds: dict) -> str:
-    """Determine repo status (green/yellow/red) based on TODO and PR counts."""
-    green_todos = thresholds.get("green_max_todos", 10)
-    green_prs = thresholds.get("green_max_prs", 2)
-    yellow_todos = thresholds.get("yellow_max_todos", 25)
-    yellow_prs = thresholds.get("yellow_max_prs", 5)
-
-    # Green: both metrics under green thresholds
-    if todo_count <= green_todos and pr_count <= green_prs:
-        return "green"
-    # Red: either metric above yellow threshold
-    elif todo_count > yellow_todos or pr_count > yellow_prs:
-        return "red"
-    # Yellow: everything else
-    else:
-        return "yellow"
-
-
-def scan_repo(repo: str, repo_base: Path, github_org: str, thresholds: dict) -> dict:
+def scan_repo(
+    repo: str, repo_base: Path, github_org: str, *, skip_docstrings: bool = False
+) -> dict:
     """Scan a single repo for health metrics."""
     repo_path = repo_base / repo
 
@@ -214,28 +278,33 @@ def scan_repo(repo: str, repo_base: Path, github_org: str, thresholds: dict) -> 
 
     run(["git", "fetch", "--quiet"], cwd=repo_path)
 
-    todos = count_todos(repo_path)
-    prs = get_open_prs(repo, github_org)
-    status = determine_status(todos["total"], len(prs), thresholds)
-
     return {
         "name": repo,
         "path": str(repo_path),
-        "status": status,
-        "todos": todos,
+        "todos": count_todos(repo_path, skip_docstrings=skip_docstrings),
         "test_files": count_tests(repo_path),
-        "open_prs": prs,
+        "open_prs": get_open_prs(repo, github_org),
         "last_commit": get_last_commit(repo_path),
         "scanned_at": datetime.now().isoformat(),
     }
 
 
-def format_todo_counts(todos: dict, style: str = "verbose") -> str:
+def format_todo_counts(
+    todos: dict, style: str = "verbose", *, show_breakdown: bool = False
+) -> str:
     total = todos["total"]
     counts = todos["counts"]
+    actionable = todos.get("actionable", total)
+    in_docstrings = todos.get("in_docstrings", 0)
 
     if style == "concise":
+        if show_breakdown and in_docstrings > 0:
+            return f"{actionable} actionable"
         return str(total)
+
+    # Show actionable breakdown when we have docstring data
+    if show_breakdown and in_docstrings > 0:
+        return f"{actionable} actionable ({in_docstrings} in docstrings)"
 
     parts = []
     for key in ["TODO", "FIXME", "HACK", "XXX"]:
@@ -247,43 +316,47 @@ def format_todo_counts(todos: dict, style: str = "verbose") -> str:
     return f"{total} TODOs"
 
 
-def format_markdown(results: list[dict], style: str = "verbose") -> str:
+def format_markdown(
+    results: list[dict], style: str = "verbose", *, show_breakdown: bool = False
+) -> str:
     lines = ["## Repo Status", ""]
     lines.append(f"**Scanned:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
 
-    # Collect summary statistics
-    summary = {
-        "total_repos": len(results),
-        "total_todos": 0,
-        "total_prs": 0,
-        "total_test_files": 0,
-        "status_counts": {"green": 0, "yellow": 0, "red": 0, "error": 0},
-    }
-
-    status_icons = {"green": "✅", "yellow": "🟡", "red": "🔴", "error": "❌"}
+    total_todos = 0
+    total_actionable = 0
+    total_docstrings = 0
+    total_prs = 0
 
     for r in results:
         if "error" in r:
             lines.append(f"### ❌ {r.get('name', 'Unknown')}")
-            lines.append(f"**Error:** {r['error']}")
+            lines.append(f"Error: {r['error']}")
             lines.append("")
-            summary["status_counts"]["error"] += 1
             continue
 
         name = r["name"]
-        status = r["status"]
         todos = r["todos"]
         prs = r["open_prs"]
 
-        summary["total_todos"] += todos["total"]
-        summary["total_prs"] += len(prs)
-        summary["total_test_files"] += r["test_files"]
-        summary["status_counts"][status] += 1
+        total_todos += todos["total"]
+        total_actionable += todos.get("actionable", todos["total"])
+        total_docstrings += todos.get("in_docstrings", 0)
+        total_prs += len(prs)
 
-        icon = status_icons[status]
-        lines.append(f"### {icon} {name} ({status.upper()})")
-        lines.append(f"- **TODOs:** {format_todo_counts(todos, style)}")
+        # Status based on open PR count
+        pr_count = len(prs)
+        if pr_count == 0:
+            status = "✅"
+        elif pr_count <= 3:
+            status = "🟡"
+        else:
+            status = "🔴"
+
+        lines.append(f"### {status} {name}")
+        lines.append(
+            f"- **TODOs:** {format_todo_counts(todos, style, show_breakdown=show_breakdown)}"
+        )
         lines.append(f"- **Test files:** {r['test_files']}")
         lines.append(f"- **Open PRs:** {len(prs)}")
 
@@ -294,57 +367,58 @@ def format_markdown(results: list[dict], style: str = "verbose") -> str:
         lines.append(f"- **Last commit:** {r['last_commit']}")
         lines.append("")
 
-    # Add summary section
     lines.append("---")
-    lines.append("## Summary")
-    lines.append("")
-    lines.append(f"**Total Repos:** {summary['total_repos']}")
-    lines.append(f"**Total TODOs:** {summary['total_todos']}")
-    lines.append(f"**Total Open PRs:** {summary['total_prs']}")
-    lines.append(f"**Total Test Files:** {summary['total_test_files']}")
-    lines.append("")
-    lines.append("**Status Breakdown:**")
-    for status, count in summary["status_counts"].items():
-        if count > 0:
-            icon = status_icons[status]
-            lines.append(f"- {icon} {status.title()}: {count}")
+    if show_breakdown and total_docstrings > 0:
+        lines.append(
+            f"**Totals:** {total_actionable} actionable TODOs "
+            f"({total_docstrings} in docstrings), {total_prs} open PRs"
+        )
+    else:
+        lines.append(f"**Totals:** {total_todos} TODOs, {total_prs} open PRs")
 
     return "\n".join(lines)
 
 
-def format_plain(results: list[dict], style: str = "verbose") -> str:
+def format_plain(
+    results: list[dict], style: str = "verbose", *, show_breakdown: bool = False
+) -> str:
     lines = ["REPO STATUS", "=" * 40]
     lines.append(f"Scanned: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
 
-    # Collect summary statistics
-    summary = {
-        "total_repos": len(results),
-        "total_todos": 0,
-        "total_prs": 0,
-        "total_test_files": 0,
-        "status_counts": {"green": 0, "yellow": 0, "red": 0, "error": 0},
-    }
+    total_todos = 0
+    total_actionable = 0
+    total_docstrings = 0
+    total_prs = 0
 
     for r in results:
         if "error" in r:
             lines.append(f"[ERROR] {r.get('name', 'Unknown')}: {r['error']}")
             lines.append("")
-            summary["status_counts"]["error"] += 1
             continue
 
         name = r["name"]
-        status = r["status"].upper()
         todos = r["todos"]
         prs = r["open_prs"]
 
-        summary["total_todos"] += todos["total"]
-        summary["total_prs"] += len(prs)
-        summary["total_test_files"] += r["test_files"]
-        summary["status_counts"][r["status"]] += 1
+        total_todos += todos["total"]
+        total_actionable += todos.get("actionable", todos["total"])
+        total_docstrings += todos.get("in_docstrings", 0)
+        total_prs += len(prs)
+
+        # Status based on open PR count
+        pr_count = len(prs)
+        if pr_count == 0:
+            status = "OK"
+        elif pr_count <= 3:
+            status = "WARN"
+        else:
+            status = "ALERT"
 
         lines.append(f"[{status}] {name}")
-        lines.append(f"  TODOs: {format_todo_counts(todos, style)}")
+        lines.append(
+            f"  TODOs: {format_todo_counts(todos, style, show_breakdown=show_breakdown)}"
+        )
         lines.append(f"  Tests: {r['test_files']} files")
         lines.append(f"  PRs:   {len(prs)} open")
 
@@ -355,80 +429,20 @@ def format_plain(results: list[dict], style: str = "verbose") -> str:
         lines.append(f"  Last:  {r['last_commit']}")
         lines.append("")
 
-    # Add summary section
     lines.append("-" * 40)
-    lines.append("SUMMARY")
-    lines.append("")
-    lines.append(f"Total Repos:      {summary['total_repos']}")
-    lines.append(f"Total TODOs:      {summary['total_todos']}")
-    lines.append(f"Total Open PRs:   {summary['total_prs']}")
-    lines.append(f"Total Test Files: {summary['total_test_files']}")
-    lines.append("")
-    lines.append("Status Breakdown:")
-    for status, count in summary["status_counts"].items():
-        if count > 0:
-            lines.append(f"  {status.title()}: {count}")
+    if show_breakdown and total_docstrings > 0:
+        lines.append(
+            f"TOTALS: {total_actionable} actionable TODOs "
+            f"({total_docstrings} in docstrings), {total_prs} open PRs"
+        )
+    else:
+        lines.append(f"TOTALS: {total_todos} TODOs, {total_prs} open PRs")
 
     return "\n".join(lines)
 
 
 def format_json(results: list[dict], _style: str = "verbose") -> str:
-    """Format results as structured JSON with consistent fields."""
-    repos = []
-    summary = {
-        "total_repos": 0,
-        "total_todos": 0,
-        "total_prs": 0,
-        "total_test_files": 0,
-        "status_counts": {"green": 0, "yellow": 0, "red": 0, "error": 0},
-        "scanned_at": datetime.now().isoformat(),
-    }
-
-    for result in results:
-        if "error" in result:
-            repos.append({
-                "repo_name": result["name"],
-                "status": "error",
-                "error": result["error"],
-                "pr_count": 0,
-                "todo_count": 0,
-                "test_file_count": 0,
-                "last_commit": None,
-            })
-            summary["status_counts"]["error"] += 1
-        else:
-            repo_data = {
-                "repo_name": result["name"],
-                "status": result["status"],
-                "pr_count": len(result["open_prs"]),
-                "todo_count": result["todos"]["total"],
-                "test_file_count": result["test_files"],
-                "last_commit": result["last_commit"],
-                "todo_breakdown": result["todos"]["counts"],
-                "files_with_todos": result["todos"]["files_affected"],
-            }
-
-            # Add PR details if available
-            if result["open_prs"]:
-                repo_data["open_prs"] = [
-                    {"number": pr["number"], "title": pr["title"]}
-                    for pr in result["open_prs"]
-                ]
-
-            repos.append(repo_data)
-
-            # Update summary
-            summary["total_todos"] += result["todos"]["total"]
-            summary["total_prs"] += len(result["open_prs"])
-            summary["total_test_files"] += result["test_files"]
-            summary["status_counts"][result["status"]] += 1
-
-        summary["total_repos"] += 1
-
-    return json.dumps({
-        "repos": repos,
-        "summary": summary
-    }, indent=2)
+    return json.dumps(results, indent=2)
 
 
 def save_snapshot(results: list[dict], path: Path) -> Path:
@@ -467,6 +481,7 @@ Examples:
   %(prog)s --repo-base ~/code     # Use custom repo directory
   %(prog)s --org myorg            # Override GitHub org
   %(prog)s --save                 # Save snapshot for trending
+  %(prog)s --all-todos            # Include TODOs in docstrings
 
 Configuration:
   Config file: {get_config_path()}
@@ -477,11 +492,6 @@ Configuration:
       - repo2
     repo_base: ~/repos
     output_format: text  # or json
-    status_thresholds:
-      green_max_todos: 10    # Green if TODOs <= 10 AND PRs <= 2
-      green_max_prs: 2
-      yellow_max_todos: 25   # Red if TODOs > 25 OR PRs > 5
-      yellow_max_prs: 5      # Yellow otherwise
 
 Environment:
   GITHUB_ORG    GitHub username/org (can be set in config or via --org)
@@ -517,7 +527,22 @@ Environment:
         choices=["verbose", "concise"],
         default=None,
         metavar="STYLE",
-        help="Output style: verbose (default) shows PR details and full TODO breakdown; concise shows only totals",
+        help="Output style: verbose (default) shows PR details and full TODO breakdown; "
+        "concise shows only totals",
+    )
+
+    # TODO filtering options (mutually exclusive)
+    todo_group = parser.add_mutually_exclusive_group()
+    todo_group.add_argument(
+        "--skip-docstrings",
+        action="store_true",
+        default=True,
+        help="Filter out TODOs in docstrings, show only actionable (default)",
+    )
+    todo_group.add_argument(
+        "--all-todos",
+        action="store_true",
+        help="Count all TODOs including those in docstrings",
     )
     args = parser.parse_args()
 
@@ -546,24 +571,26 @@ Environment:
         print(f"Error: Repo base directory not found: {repo_base}", file=sys.stderr)
         sys.exit(1)
 
+    # Determine TODO filtering mode
+    skip_docstrings = not args.all_todos  # Default is to skip docstrings
+
     results = []
     total = len(repos)
-    status_thresholds = config["status_thresholds"]
     for i, repo in enumerate(repos, 1):
         progress(f"Scanning {repo}", i, total)
-        results.append(scan_repo(repo, repo_base, github_org, status_thresholds))
+        results.append(scan_repo(repo, repo_base, github_org, skip_docstrings=skip_docstrings))
 
     if args.save:
         snapshot = save_snapshot(results, Path(__file__))
         print(f"Saved snapshot: {snapshot}", file=sys.stderr)
 
     # Format output
-    formatters = {
-        "markdown": format_markdown,
-        "plain": format_plain,
-        "json": format_json,
-    }
-    print(formatters[output_format](results, output_style))
+    if output_format == "json":
+        print(format_json(results, output_style))
+    elif output_format == "plain":
+        print(format_plain(results, output_style, show_breakdown=skip_docstrings))
+    else:
+        print(format_markdown(results, output_style, show_breakdown=skip_docstrings))
 
 
 if __name__ == "__main__":
