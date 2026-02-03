@@ -321,7 +321,7 @@ class TestChannelsPanelAppIntegration:
 
         from openclaw_dash.app import DashboardApp
 
-        source = inspect.getsource(DashboardApp._auto_refresh)
+        source = inspect.getsource(DashboardApp._do_auto_refresh)
         assert "ChannelsPanel" in source
 
     def test_channels_panel_in_compose(self):

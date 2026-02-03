@@ -498,7 +498,7 @@ class TestLogsPanelAppIntegration:
 
         from openclaw_dash.app import DashboardApp
 
-        source = inspect.getsource(DashboardApp._auto_refresh)
+        source = inspect.getsource(DashboardApp._do_auto_refresh)
         assert "LogsPanel" in source
 
     def test_logs_panel_in_compose(self):
