@@ -850,3 +850,112 @@ class TestBuildMultiCommitSummary:
     def test_empty_summaries_returns_fallback(self):
         result = pr_describe._build_multi_commit_summary([], set())
         assert result == "various updates"
+
+
+class TestExtractBranchType:
+    """Tests for extract_branch_type function."""
+
+    def test_extracts_feat_type(self):
+        assert pr_describe.extract_branch_type("feat/add-login") == "feat"
+        assert pr_describe.extract_branch_type("feat-add-login") == "feat"
+
+    def test_extracts_fix_type(self):
+        assert pr_describe.extract_branch_type("fix/null-pointer") == "fix"
+        assert pr_describe.extract_branch_type("fix-null-pointer") == "fix"
+
+    def test_extracts_chore_type(self):
+        assert pr_describe.extract_branch_type("chore/update-deps") == "chore"
+
+    def test_normalizes_feature_to_feat(self):
+        assert pr_describe.extract_branch_type("feature/new-thing") == "feat"
+
+    def test_returns_empty_for_no_prefix(self):
+        assert pr_describe.extract_branch_type("main") == ""
+        assert pr_describe.extract_branch_type("develop") == ""
+        assert pr_describe.extract_branch_type("random-branch") == ""
+
+    def test_handles_empty_string(self):
+        assert pr_describe.extract_branch_type("") == ""
+
+    def test_case_insensitive(self):
+        assert pr_describe.extract_branch_type("FEAT/uppercase") == "feat"
+        assert pr_describe.extract_branch_type("Fix/Mixed") == "fix"
+
+
+class TestGeneratePrTitleWithBranch:
+    """Tests for generate_pr_title with branch name support."""
+
+    def test_single_commit_ignores_branch(self):
+        """Single commit should use commit type directly."""
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: add login", commit_type="feat")
+        ]
+        result = pr_describe.generate_pr_title(commits, config, "fix/something-else")
+        assert result.startswith("feat:")
+
+    def test_branch_type_as_tiebreaker(self):
+        """Branch type should break ties between equal commit type counts."""
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: add login", commit_type="feat"),
+            pr_describe.CommitInfo(hash="def", subject="fix: handle error", commit_type="fix"),
+        ]
+        # With feat branch, should prefer feat
+        result = pr_describe.generate_pr_title(commits, config, "feat/login-feature")
+        assert result.startswith("feat:")
+
+        # With fix branch, should prefer fix
+        result = pr_describe.generate_pr_title(commits, config, "fix/handle-errors")
+        assert result.startswith("fix:")
+
+    def test_first_commit_weighted_more(self):
+        """First commit should be weighted more heavily."""
+        config = pr_describe.Config()
+        # First commit is feat, then two fix commits
+        # Without weighting: fix wins 2-1
+        # With weighting: feat=2, fix=2, tie broken by branch or sort
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: main feature", commit_type="feat"),
+            pr_describe.CommitInfo(hash="def", subject="fix: small fix 1", commit_type="fix"),
+            pr_describe.CommitInfo(hash="ghi", subject="fix: small fix 2", commit_type="fix"),
+        ]
+        # With a feat branch, should definitely be feat
+        result = pr_describe.generate_pr_title(commits, config, "feat/main-feature")
+        assert result.startswith("feat:")
+
+    def test_test_type_deprioritized(self):
+        """Test type should be deprioritized unless ALL commits are tests."""
+        config = pr_describe.Config()
+        # Main feature commit + test commits
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: add feature", commit_type="feat"),
+            pr_describe.CommitInfo(hash="def", subject="test: add tests", commit_type="test"),
+            pr_describe.CommitInfo(hash="ghi", subject="test: more tests", commit_type="test"),
+        ]
+        result = pr_describe.generate_pr_title(commits, config, "feat/new-feature")
+        # Should be feat, not test, even though test has more commits (2 vs 1)
+        assert result.startswith("feat:")
+
+    def test_all_tests_uses_test_type(self):
+        """If ALL commits are tests, should use test type."""
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="test: add unit tests", commit_type="test"),
+            pr_describe.CommitInfo(
+                hash="def", subject="test: add integration tests", commit_type="test"
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config, "test/add-tests")
+        assert result.startswith("test:")
+
+    def test_branch_override_with_close_counts(self):
+        """Branch type should win when commit counts are close."""
+        config = pr_describe.Config()
+        # feat branch with mostly feat commits but one fix
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: main feature", commit_type="feat"),
+            pr_describe.CommitInfo(hash="def", subject="fix: related fix", commit_type="fix"),
+        ]
+        result = pr_describe.generate_pr_title(commits, config, "feat/new-feature")
+        assert result.startswith("feat:")

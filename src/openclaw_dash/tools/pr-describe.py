@@ -711,7 +711,34 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
     return clean_summaries[0]
 
 
-def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
+def extract_branch_type(branch_name: str) -> str:
+    """
+    Extract conventional commit type from branch name prefix.
+
+    Examples:
+        feat/add-login -> feat
+        fix/null-pointer -> fix
+        chore/update-deps -> chore
+        feature/xyz -> feat (normalize "feature" to "feat")
+    """
+    if not branch_name:
+        return ""
+
+    # Match common branch prefixes: type/description or type-description
+    match = re.match(
+        r"^(feat|fix|docs|style|refactor|test|chore|ci|perf|build|feature)[/-]",
+        branch_name.lower(),
+    )
+    if match:
+        branch_type = match.group(1)
+        # Normalize "feature" to "feat"
+        if branch_type == "feature":
+            return "feat"
+        return branch_type
+    return ""
+
+
+def generate_pr_title(commits: list[CommitInfo], config: Config, branch_name: str = "") -> str:
     """
     Generate a PR title from commits using conventional commit format.
 
@@ -719,16 +746,24 @@ def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
     - Single commit: use its subject directly
     - Multiple commits: extract meaningful description from commit messages
     - Never just count commits - always describe WHAT changed
+    - Branch name prefix (feat/, fix/) is used as tiebreaker or override
+    - First commit is weighted more heavily (it's usually the main change)
+    - "test:" type is deprioritized unless ALL commits are tests
     """
     if not commits:
         return "Untitled PR"
 
-    # Count commit types
+    # Extract type from branch name for tiebreaking/override
+    branch_type = extract_branch_type(branch_name)
+
+    # Count commit types with weighting: first commit counts double
     type_counts: dict[str, int] = defaultdict(int)
     typed_commits = []
-    for commit in commits:
+    for i, commit in enumerate(commits):
         if commit.commit_type:
-            type_counts[commit.commit_type] += 1
+            # First commit gets weight of 2, others get 1
+            weight = 2 if i == 0 else 1
+            type_counts[commit.commit_type] += weight
             typed_commits.append(commit)
 
     # Single commit - use it directly
@@ -743,9 +778,48 @@ def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
             )
         return commit.subject
 
-    # Multiple commits - find dominant type and build meaningful summary
+    # Multiple commits - find dominant type with smart selection
     if type_counts:
-        dominant_type = max(type_counts, key=lambda k: type_counts[k])
+        # Check if ALL commits are tests - only then use "test" type
+        all_tests = all(c.commit_type == "test" for c in typed_commits) if typed_commits else False
+
+        # Deprioritize "test" type unless all commits are tests
+        if not all_tests and "test" in type_counts and len(type_counts) > 1:
+            # Remove test from consideration for dominant type
+            type_counts_filtered = {k: v for k, v in type_counts.items() if k != "test"}
+        else:
+            type_counts_filtered = type_counts
+
+        # Find dominant type from filtered counts
+        if type_counts_filtered:
+            # Get max count
+            max_count = max(type_counts_filtered.values())
+            # Find all types with max count (potential ties)
+            top_types = [t for t, c in type_counts_filtered.items() if c == max_count]
+
+            if len(top_types) == 1:
+                dominant_type = top_types[0]
+            elif branch_type and branch_type in top_types:
+                # Use branch type as tiebreaker
+                dominant_type = branch_type
+            elif branch_type and branch_type in COMMIT_TYPES:
+                # Branch type overrides when there's a tie and branch has valid type
+                dominant_type = branch_type
+            else:
+                # Default to first in sorted order for consistency
+                dominant_type = sorted(top_types)[0]
+        else:
+            # Fall back to test if that's all we have
+            dominant_type = "test"
+
+        # If branch type strongly suggests a different type and counts are close,
+        # prefer branch type
+        if branch_type and branch_type != dominant_type and branch_type in type_counts:
+            branch_count = type_counts[branch_type]
+            dominant_count = type_counts_filtered.get(dominant_type, 0)
+            # If branch type has at least 50% of dominant count, prefer branch type
+            if branch_count >= dominant_count * 0.5:
+                dominant_type = branch_type
 
         # Collect scopes and summaries for the dominant type
         scopes = set()
@@ -757,6 +831,12 @@ def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
                 _, _, summary = parse_conventional_commit(c.subject)
                 if summary:
                     summaries.append(summary.strip())
+
+        # If no commits match dominant type (e.g., branch override), use first commit
+        if not summaries and commits:
+            _, _, summary = parse_conventional_commit(commits[0].subject)
+            if summary:
+                summaries.append(summary.strip())
 
         # Build a descriptive summary (never just count commits)
         summary_text = _build_multi_commit_summary(summaries, scopes)
@@ -929,7 +1009,7 @@ def generate_pr_description(
     diff_text = get_diff_text(repo_path, base_branch, head_branch)
 
     # Analyze
-    title = generate_pr_title(commits, config)
+    title = generate_pr_title(commits, config, branch_name=head_branch)
     summary = generate_summary(commits, files, config)
     testing = generate_testing_suggestions(files, commits) if config.include_testing else []
 
