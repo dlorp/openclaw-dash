@@ -65,9 +65,7 @@ class BackupReport:
 def run(cmd: list[str], cwd: Path | None = None, timeout: int = 30) -> tuple[int, str, str]:
     """Run a command and return (returncode, stdout, stderr)."""
     try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout)
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
