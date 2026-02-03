@@ -356,6 +356,7 @@ class TestFormatMarkdown:
     """Tests for format_markdown function."""
 
     def test_includes_summary_section(self):
+        config = pr_describe.Config()
         desc = pr_describe.PRDescription(
             summary="Test summary",
             changes={},
@@ -364,11 +365,12 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, config)
         assert "## Summary" in result
         assert "Test summary" in result
 
     def test_includes_changes_section(self):
+        config = pr_describe.Config()
         desc = pr_describe.PRDescription(
             summary="Summary",
             changes={"added": ["new.py"], "modified": ["old.py"], "removed": [], "renamed": []},
@@ -377,7 +379,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 2, "additions": 10, "deletions": 5, "commits": 1},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, config)
         assert "## Changes" in result
         assert "**Added:**" in result
         assert "`new.py`" in result
@@ -385,6 +387,7 @@ class TestFormatMarkdown:
         assert "`old.py`" in result
 
     def test_includes_testing_section(self):
+        config = pr_describe.Config()
         desc = pr_describe.PRDescription(
             summary="Summary",
             changes={},
@@ -393,12 +396,13 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, config)
         assert "## Testing" in result
         assert "- [ ] Run unit tests" in result
         assert "- [ ] Test API endpoints" in result
 
     def test_includes_notes_section(self):
+        config = pr_describe.Config()
         desc = pr_describe.PRDescription(
             summary="Summary",
             changes={},
@@ -407,11 +411,12 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, config)
         assert "## Notes" in result
         assert "Breaking Changes" in result
 
     def test_includes_stats_footer(self):
+        config = pr_describe.Config()
         desc = pr_describe.PRDescription(
             summary="Summary",
             changes={},
@@ -420,12 +425,13 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 5, "additions": 100, "deletions": 50, "commits": 3},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, config)
         assert "3 commits" in result
         assert "5 files changed" in result
         assert "+100/-50" in result
 
     def test_truncates_many_files(self):
+        config = pr_describe.Config()
         desc = pr_describe.PRDescription(
             summary="Summary",
             changes={"modified": [f"file{i}.py" for i in range(20)]},
@@ -434,7 +440,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 20, "additions": 0, "deletions": 0, "commits": 1},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, config)
         assert "... and" in result
         assert "more" in result
 
