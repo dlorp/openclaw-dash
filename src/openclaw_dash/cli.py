@@ -67,8 +67,35 @@ def with_gateway_timeout(func: Any, timeout: int = GATEWAY_TIMEOUT_SECONDS) -> A
 
 
 def get_status() -> dict[str, Any]:
-    """Collect current status from all sources."""
+    """Collect current status from all sources.
+
+    The gateway runs locally, so all features should work after setup.
+    If --skip-gateway is passed, gateway-dependent collectors return
+    placeholder data (useful for testing or when gateway is being restarted).
+    """
     from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
+    from openclaw_dash.offline import format_gateway_error_short, is_offline_mode
+
+    if is_offline_mode():
+        hint = format_gateway_error_short()
+        return {
+            "gateway": {
+                "healthy": False,
+                "error": "Gateway checks skipped",
+                "_hint": hint,
+            },
+            "sessions": {
+                "sessions": [],
+                "total": 0,
+                "_hint": hint,
+            },
+            "cron": cron.collect(),  # Works without gateway
+            "repos": repos.collect(),  # Works without gateway (local git)
+            "activity": {
+                "recent": [],
+                "_hint": hint,
+            },
+        }
 
     return {
         "gateway": gateway.collect(),
@@ -171,11 +198,20 @@ def print_status_text(status: dict[str, Any]) -> None:
     gw = status["gateway"]
     gw_icon = "✓" if gw.get("healthy") else "✗"
     gw_color = "green" if gw.get("healthy") else "red"
+
+    gw_content = (
+        f"[{gw_color}]{gw_icon} {'ONLINE' if gw.get('healthy') else 'OFFLINE'}[/]\n"
+        f"Context: {gw.get('context_pct', '?')}%\n"
+        f"Uptime: {gw.get('uptime', 'unknown')}"
+    )
+
+    # Add hint if present
+    if gw.get("_hint"):
+        gw_content += f"\n\n[dim]{gw['_hint']}[/]"
+
     console.print(
         Panel(
-            f"[{gw_color}]{gw_icon} {'ONLINE' if gw.get('healthy') else 'OFFLINE'}[/]\n"
-            f"Context: {gw.get('context_pct', '?')}%\n"
-            f"Uptime: {gw.get('uptime', 'unknown')}",
+            gw_content,
             title="Gateway",
             box=box.ROUNDED,
         )
@@ -637,6 +673,11 @@ def main() -> int:
         action="store_true",
         help="Run with mock data (no gateway connection required)",
     )
+    parser.add_argument(
+        "--skip-gateway",
+        action="store_true",
+        help="Skip gateway-dependent features (for testing or during gateway restart)",
+    )
 
     # Subparsers for commands
     subparsers = parser.add_subparsers(dest="command", help="Commands")
@@ -790,6 +831,12 @@ def main() -> int:
         from openclaw_dash.demo import enable_demo_mode
 
         enable_demo_mode()
+
+    # Skip gateway checks if requested
+    if args.skip_gateway:
+        from openclaw_dash.offline import enable_offline_mode
+
+        enable_offline_mode()
 
     # Watch mode uses 5s refresh interval
     refresh_interval = 5 if args.watch else None

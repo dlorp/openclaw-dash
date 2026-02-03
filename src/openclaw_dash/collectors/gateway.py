@@ -140,10 +140,13 @@ def _collect_gateway_impl() -> dict[str, Any]:
             error_data["_last_healthy"] = _last_healthy.isoformat()
 
         # Add helpful hints based on failure count
-        if _connection_failures >= 3:
-            error_data["_hint"] = "Gateway may need to be started"
-        elif _connection_failures >= 5:
-            error_data["_hint"] = "Run 'openclaw gateway start'"
+        # The gateway runs locally, so failures are unexpected
+        if _connection_failures >= 5:
+            error_data["_hint"] = "Run 'openclaw gateway start' to start the local gateway"
+        elif _connection_failures >= 3:
+            error_data["_hint"] = "Gateway may need to be started: openclaw gateway start"
+        else:
+            error_data["_hint"] = "Checking local gateway connection..."
 
         result = CollectorResult(
             data=error_data,
