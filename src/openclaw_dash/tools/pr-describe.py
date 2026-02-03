@@ -9,13 +9,17 @@ Examples:
     pr-describe.py                      # Current branch vs main
     pr-describe.py feature-xyz          # Compare feature-xyz vs main
     pr-describe.py --base develop       # Compare against develop
-    pr-describe.py --json               # Output as JSON
+    pr-describe.py --format json        # Output as JSON
     pr-describe.py --clipboard          # Copy to clipboard
+    pr-describe.py --title              # Just output suggested PR title
+    pr-describe.py --include-comments   # Include existing PR discussion
 
 Module usage:
     from pr_describe import generate_pr_description
     desc = generate_pr_description("/path/to/repo", "main", "feature-branch")
 """
+
+from __future__ import annotations
 
 import argparse
 import json
@@ -23,8 +27,45 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+# Try to import yaml, fall back gracefully
+try:
+    import yaml
+
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
+
+# Config file location
+CONFIG_DIR = Path.home() / ".config" / "openclaw-dash"
+CONFIG_FILE = CONFIG_DIR / "pr-describe.yaml"
+
+# Default configuration
+DEFAULT_CONFIG = {
+    "output_style": "verbose",  # verbose|concise|minimal
+    "include_testing": True,
+    "include_breaking_changes": True,
+    "title_format": "{type}: {summary}",  # Template for PR titles
+    "max_files_shown": 15,
+    "max_commits_shown": 7,
+}
+
+# Conventional commit types
+COMMIT_TYPES = {
+    "feat": "feature",
+    "fix": "fix",
+    "docs": "docs",
+    "style": "style",
+    "refactor": "refactor",
+    "test": "test",
+    "chore": "chore",
+    "ci": "ci",
+    "perf": "perf",
+    "build": "build",
+    "revert": "revert",
+}
 
 # File categorization patterns
 FILE_CATEGORIES = {
@@ -61,14 +102,17 @@ BREAKING_PATTERNS = [
     r"deprecated",
 ]
 
-# Dependency patterns
-DEP_FILES = [
-    "requirements.txt",
-    "requirements-dev.txt",
-    "pyproject.toml",
-    "package.json",
-    "Cargo.toml",
-]
+
+@dataclass
+class Config:
+    """Configuration for pr-describe."""
+
+    output_style: str = "verbose"
+    include_testing: bool = True
+    include_breaking_changes: bool = True
+    title_format: str = "{type}: {summary}"
+    max_files_shown: int = 15
+    max_commits_shown: int = 7
 
 
 @dataclass
@@ -85,6 +129,15 @@ class CommitInfo:
     hash: str
     subject: str
     body: str = ""
+    commit_type: str = ""  # feat, fix, etc.
+    scope: str = ""  # Optional scope from conventional commits
+
+
+@dataclass
+class PRComment:
+    author: str
+    body: str
+    created_at: str = ""
 
 
 @dataclass
@@ -93,8 +146,36 @@ class PRDescription:
     changes: dict[str, list[str]]
     testing: list[str]
     notes: list[str]
-    commits: list[CommitInfo] | list[dict]
+    commits: list[CommitInfo | dict]
     stats: dict[str, int]
+    title: str = ""
+    comments: list[PRComment] = field(default_factory=list)
+
+
+def load_config() -> Config:
+    """Load configuration from file, creating defaults if needed."""
+    config_dict = DEFAULT_CONFIG.copy()
+
+    if CONFIG_FILE.exists() and HAS_YAML:
+        try:
+            with open(CONFIG_FILE) as f:
+                user_config = yaml.safe_load(f) or {}
+                config_dict.update(user_config)
+        except Exception:
+            pass  # Use defaults on error
+
+    return Config(**config_dict)
+
+
+def ensure_config_exists() -> None:
+    """Create config file with defaults if it doesn't exist."""
+    if not HAS_YAML:
+        return
+
+    if not CONFIG_FILE.exists():
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(CONFIG_FILE, "w") as f:
+            yaml.dump(DEFAULT_CONFIG, f, default_flow_style=False, sort_keys=False)
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
@@ -136,6 +217,23 @@ def get_default_branch(repo_path: Path) -> str:
     return "main"
 
 
+def parse_conventional_commit(subject: str) -> tuple[str, str, str]:
+    """
+    Parse a conventional commit message.
+
+    Returns (type, scope, summary) where type and scope may be empty.
+    """
+    # Pattern: type(scope): summary or type: summary
+    match = re.match(r"^(\w+)(?:\(([^)]+)\))?:\s*(.+)$", subject)
+    if match:
+        commit_type = match.group(1).lower()
+        scope = match.group(2) or ""
+        summary = match.group(3)
+        if commit_type in COMMIT_TYPES:
+            return commit_type, scope, summary
+    return "", "", subject
+
+
 def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
     """Get commits between base and head branches."""
     # Format: hash|||subject|||body
@@ -153,11 +251,15 @@ def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
             continue
         parts = entry.split("|||", 2)
         if len(parts) >= 2:
+            subject = parts[1].strip()
+            commit_type, scope, _ = parse_conventional_commit(subject)
             commits.append(
                 CommitInfo(
                     hash=parts[0][:8],
-                    subject=parts[1].strip(),
+                    subject=subject,
                     body=parts[2].strip() if len(parts) > 2 else "",
+                    commit_type=commit_type,
+                    scope=scope,
                 )
             )
 
@@ -287,7 +389,72 @@ def detect_config_changes(files: list[FileChange]) -> list[str]:
     return changes
 
 
-def generate_summary(commits: list[CommitInfo], files: list[FileChange]) -> str:
+def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
+    """
+    Generate a PR title from commits using conventional commit format.
+
+    If multiple commits, uses the dominant type and summarizes.
+    """
+    if not commits:
+        return "Untitled PR"
+
+    # Count commit types
+    type_counts: dict[str, int] = defaultdict(int)
+    typed_commits = []
+    for commit in commits:
+        if commit.commit_type:
+            type_counts[commit.commit_type] += 1
+            typed_commits.append(commit)
+
+    # Single commit - use it directly
+    if len(commits) == 1:
+        commit = commits[0]
+        if commit.commit_type:
+            _, _, summary = parse_conventional_commit(commit.subject)
+            return config.title_format.format(
+                type=commit.commit_type,
+                scope=commit.scope or "",
+                summary=summary.capitalize(),
+            )
+        return commit.subject
+
+    # Multiple commits - find dominant type
+    if type_counts:
+        dominant_type = max(type_counts, key=lambda k: type_counts[k])
+
+        # Get scopes for the dominant type
+        scopes = set()
+        summaries = []
+        for c in typed_commits:
+            if c.commit_type == dominant_type:
+                if c.scope:
+                    scopes.add(c.scope)
+                _, _, summary = parse_conventional_commit(c.subject)
+                summaries.append(summary)
+
+        # Build summary
+        if len(summaries) == 1:
+            summary_text = summaries[0]
+        elif len(scopes) == 1:
+            summary_text = f"multiple {list(scopes)[0]} changes"
+        else:
+            summary_text = (
+                f"{len(typed_commits)} {COMMIT_TYPES.get(dominant_type, dominant_type)} changes"
+            )
+
+        scope_text = list(scopes)[0] if len(scopes) == 1 else ""
+
+        return config.title_format.format(
+            type=dominant_type,
+            scope=scope_text,
+            summary=summary_text,
+        )
+
+    # No conventional commits - use first commit subject
+    return commits[0].subject
+
+
+def generate_summary(commits: list[CommitInfo], files: list[FileChange], config: Config) -> str:
     """Generate a summary based on commits and file changes."""
     if not commits:
         return "No commits found in this branch."
@@ -295,14 +462,15 @@ def generate_summary(commits: list[CommitInfo], files: list[FileChange]) -> str:
     # Use the main commit messages to form summary
     if len(commits) == 1:
         summary = commits[0].subject
-        if commits[0].body:
+        if commits[0].body and config.output_style == "verbose":
             summary += f"\n\n{commits[0].body}"
         return summary
 
     # Multiple commits - list changes directly without intro fluff
     lines = []
+    max_commits = config.max_commits_shown if config.output_style == "verbose" else 3
 
-    for commit in commits[:7]:  # Limit to 7 commits
+    for commit in commits[:max_commits]:
         # Clean up conventional commit prefixes
         subject = commit.subject
         subject = re.sub(
@@ -310,8 +478,8 @@ def generate_summary(commits: list[CommitInfo], files: list[FileChange]) -> str:
         )
         lines.append(f"- {subject}")
 
-    if len(commits) > 7:
-        lines.append(f"- ... and {len(commits) - 7} more commits")
+    if len(commits) > max_commits:
+        lines.append(f"- ... and {len(commits) - max_commits} more commits")
 
     return "\n".join(lines)
 
@@ -375,7 +543,49 @@ def get_diff_text(repo_path: Path, base: str, head: str) -> str:
     return stdout if code == 0 else ""
 
 
-def generate_pr_description(repo_path: str | Path, base_branch: str, head_branch: str) -> str:
+def get_pr_comments(repo_path: Path, head_branch: str) -> list[PRComment]:
+    """
+    Get existing PR comments using gh CLI.
+
+    Returns empty list if no PR exists or gh is not available.
+    """
+    # Check if gh is available
+    code, _, _ = run(["which", "gh"])
+    if code != 0:
+        return []
+
+    # Try to get PR number for this branch
+    code, stdout, _ = run(
+        ["gh", "pr", "view", head_branch, "--json", "comments"],
+        cwd=repo_path,
+    )
+
+    if code != 0 or not stdout:
+        return []
+
+    try:
+        data = json.loads(stdout)
+        comments = []
+        for c in data.get("comments", []):
+            comments.append(
+                PRComment(
+                    author=c.get("author", {}).get("login", "unknown"),
+                    body=c.get("body", ""),
+                    created_at=c.get("createdAt", ""),
+                )
+            )
+        return comments
+    except (json.JSONDecodeError, KeyError):
+        return []
+
+
+def generate_pr_description(
+    repo_path: str | Path,
+    base_branch: str,
+    head_branch: str,
+    config: Config | None = None,
+    include_comments: bool = False,
+) -> PRDescription:
     """
     Generate a PR description for the given branches.
 
@@ -385,11 +595,15 @@ def generate_pr_description(repo_path: str | Path, base_branch: str, head_branch
         repo_path: Path to the git repository
         base_branch: The target branch (e.g., "main")
         head_branch: The source branch (e.g., "feature-xyz")
+        config: Optional configuration (uses defaults if not provided)
+        include_comments: Whether to fetch existing PR comments
 
     Returns:
-        Formatted markdown PR description
+        PRDescription dataclass with all analysis results
     """
     repo_path = Path(repo_path)
+    if config is None:
+        config = load_config()
 
     # Gather data
     commits = get_commits(repo_path, base_branch, head_branch)
@@ -397,12 +611,18 @@ def generate_pr_description(repo_path: str | Path, base_branch: str, head_branch
     diff_text = get_diff_text(repo_path, base_branch, head_branch)
 
     # Analyze
-    summary = generate_summary(commits, files)
-    testing = generate_testing_suggestions(files, commits)
+    title = generate_pr_title(commits, config)
+    summary = generate_summary(commits, files, config)
+    testing = generate_testing_suggestions(files, commits) if config.include_testing else []
 
-    breaking = detect_breaking_changes(commits, diff_text)
+    breaking = (
+        detect_breaking_changes(commits, diff_text) if config.include_breaking_changes else []
+    )
     new_deps = detect_new_dependencies(repo_path, base_branch, head_branch, files)
     config_changes = detect_config_changes(files)
+
+    # Get PR comments if requested
+    comments = get_pr_comments(repo_path, head_branch) if include_comments else []
 
     # Group files by status
     changes = {
@@ -422,7 +642,7 @@ def generate_pr_description(repo_path: str | Path, base_branch: str, head_branch
         notes.append("📦 **New Dependencies:**")
         for d in new_deps:
             notes.append(f"  - {d}")
-    if config_changes:
+    if config_changes and config.output_style != "minimal":
         notes.append("⚙️ **Configuration Changes:**")
         for c in config_changes:
             notes.append(f"  - {c}")
@@ -435,20 +655,19 @@ def generate_pr_description(repo_path: str | Path, base_branch: str, head_branch
         "commits": len(commits),
     }
 
-    # Format markdown
-    return format_markdown(
-        PRDescription(
-            summary=summary,
-            changes=changes,
-            testing=testing,
-            notes=notes,
-            commits=[asdict(c) for c in commits],
-            stats=stats,
-        )
+    return PRDescription(
+        title=title,
+        summary=summary,
+        changes=changes,
+        testing=testing,
+        notes=notes,
+        commits=[asdict(c) for c in commits],
+        stats=stats,
+        comments=[asdict(c) for c in comments],
     )
 
 
-def format_markdown(desc: PRDescription) -> str:
+def format_markdown(desc: PRDescription, config: Config) -> str:
     """Format PRDescription as markdown."""
     lines = []
 
@@ -458,46 +677,50 @@ def format_markdown(desc: PRDescription) -> str:
     lines.append(desc.summary)
     lines.append("")
 
-    # Changes
-    lines.append("## Changes")
-    lines.append("")
-
-    if desc.changes.get("added"):
-        lines.append("**Added:**")
-        for f in desc.changes["added"][:15]:
-            lines.append(f"- `{f}`")
-        if len(desc.changes["added"]) > 15:
-            lines.append(f"- ... and {len(desc.changes['added']) - 15} more")
+    # Changes (skip in minimal mode)
+    if config.output_style != "minimal":
+        lines.append("## Changes")
         lines.append("")
 
-    if desc.changes.get("modified"):
-        lines.append("**Modified:**")
-        for f in desc.changes["modified"][:15]:
-            lines.append(f"- `{f}`")
-        if len(desc.changes["modified"]) > 15:
-            lines.append(f"- ... and {len(desc.changes['modified']) - 15} more")
-        lines.append("")
+        max_files = config.max_files_shown if config.output_style == "verbose" else 10
 
-    if desc.changes.get("removed"):
-        lines.append("**Removed:**")
-        for f in desc.changes["removed"][:10]:
-            lines.append(f"- `{f}`")
-        if len(desc.changes["removed"]) > 10:
-            lines.append(f"- ... and {len(desc.changes['removed']) - 10} more")
-        lines.append("")
+        if desc.changes.get("added"):
+            lines.append("**Added:**")
+            for f in desc.changes["added"][:max_files]:
+                lines.append(f"- `{f}`")
+            if len(desc.changes["added"]) > max_files:
+                lines.append(f"- ... and {len(desc.changes['added']) - max_files} more")
+            lines.append("")
 
-    if desc.changes.get("renamed"):
-        lines.append("**Renamed:**")
-        for f in desc.changes["renamed"][:10]:
-            lines.append(f"- `{f}`")
-        lines.append("")
+        if desc.changes.get("modified"):
+            lines.append("**Modified:**")
+            for f in desc.changes["modified"][:max_files]:
+                lines.append(f"- `{f}`")
+            if len(desc.changes["modified"]) > max_files:
+                lines.append(f"- ... and {len(desc.changes['modified']) - max_files} more")
+            lines.append("")
 
-    # Testing
-    lines.append("## Testing")
-    lines.append("")
-    for t in desc.testing:
-        lines.append(f"- [ ] {t}")
-    lines.append("")
+        if desc.changes.get("removed"):
+            lines.append("**Removed:**")
+            for f in desc.changes["removed"][:10]:
+                lines.append(f"- `{f}`")
+            if len(desc.changes["removed"]) > 10:
+                lines.append(f"- ... and {len(desc.changes['removed']) - 10} more")
+            lines.append("")
+
+        if desc.changes.get("renamed"):
+            lines.append("**Renamed:**")
+            for f in desc.changes["renamed"][:10]:
+                lines.append(f"- `{f}`")
+            lines.append("")
+
+    # Testing (if enabled)
+    if desc.testing and config.include_testing:
+        lines.append("## Testing")
+        lines.append("")
+        for t in desc.testing:
+            lines.append(f"- [ ] {t}")
+        lines.append("")
 
     # Notes (if any)
     if desc.notes:
@@ -507,11 +730,87 @@ def format_markdown(desc: PRDescription) -> str:
             lines.append(note)
         lines.append("")
 
-    # Stats footer
-    lines.append("---")
-    lines.append(
-        f"*{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed (+{desc.stats['additions']}/-{desc.stats['deletions']})*"
-    )
+    # Comments (if any)
+    if desc.comments and config.output_style == "verbose":
+        lines.append("## PR Discussion Context")
+        lines.append("")
+        for comment in desc.comments[:5]:
+            if isinstance(comment, dict):
+                lines.append(f"**@{comment['author']}:** {comment['body'][:200]}")
+            else:
+                lines.append(f"**@{comment.author}:** {comment.body[:200]}")
+            lines.append("")
+
+    # Stats footer (skip in minimal mode)
+    if config.output_style != "minimal":
+        lines.append("---")
+        lines.append(
+            f"*{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed "
+            f"(+{desc.stats['additions']}/-{desc.stats['deletions']})*"
+        )
+
+    return "\n".join(lines)
+
+
+def format_plain(desc: PRDescription, config: Config) -> str:
+    """Format PRDescription as plain text (no markdown)."""
+    lines = []
+
+    # Summary
+    lines.append("SUMMARY")
+    lines.append("-" * 40)
+    lines.append(desc.summary)
+    lines.append("")
+
+    # Changes (skip in minimal mode)
+    if config.output_style != "minimal":
+        lines.append("CHANGES")
+        lines.append("-" * 40)
+
+        if desc.changes.get("added"):
+            lines.append("Added:")
+            for f in desc.changes["added"][: config.max_files_shown]:
+                lines.append(f"  + {f}")
+
+        if desc.changes.get("modified"):
+            lines.append("Modified:")
+            for f in desc.changes["modified"][: config.max_files_shown]:
+                lines.append(f"  ~ {f}")
+
+        if desc.changes.get("removed"):
+            lines.append("Removed:")
+            for f in desc.changes["removed"][:10]:
+                lines.append(f"  - {f}")
+
+        lines.append("")
+
+    # Testing
+    if desc.testing and config.include_testing:
+        lines.append("TESTING")
+        lines.append("-" * 40)
+        for t in desc.testing:
+            # Remove markdown backticks
+            t_plain = t.replace("`", "")
+            lines.append(f"  [ ] {t_plain}")
+        lines.append("")
+
+    # Notes
+    if desc.notes:
+        lines.append("NOTES")
+        lines.append("-" * 40)
+        for note in desc.notes:
+            # Remove markdown formatting
+            note_plain = re.sub(r"\*\*|\`", "", note)
+            lines.append(note_plain)
+        lines.append("")
+
+    # Stats
+    if config.output_style != "minimal":
+        lines.append("-" * 40)
+        lines.append(
+            f"{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed "
+            f"(+{desc.stats['additions']}/-{desc.stats['deletions']})"
+        )
 
     return "\n".join(lines)
 
@@ -556,7 +855,12 @@ Examples:
   %(prog)s                      Compare current branch vs main
   %(prog)s feature-xyz          Compare feature-xyz vs main
   %(prog)s --base develop       Compare current branch vs develop
-  %(prog)s --json --clipboard   Output JSON and copy to clipboard
+  %(prog)s --format json        Output JSON
+  %(prog)s --title              Just output suggested PR title
+  %(prog)s --include-comments   Include PR discussion context
+  %(prog)s --style minimal      Minimal output
+
+Config file: ~/.config/openclaw-dash/pr-describe.yaml
 """,
     )
     parser.add_argument(
@@ -570,17 +874,79 @@ Examples:
         help="base branch to compare against (default: main or master)",
     )
     parser.add_argument(
-        "--json",
+        "--format",
+        choices=["markdown", "plain", "json"],
+        default="markdown",
+        help="output format (default: markdown)",
+    )
+    parser.add_argument(
+        "--style",
+        choices=["verbose", "concise", "minimal"],
+        help="output style (overrides config)",
+    )
+    parser.add_argument(
+        "--title",
         action="store_true",
-        help="output as JSON instead of markdown",
+        help="output just the suggested PR title",
+    )
+    parser.add_argument(
+        "--include-comments",
+        action="store_true",
+        help="include existing PR discussion (requires gh CLI)",
     )
     parser.add_argument(
         "--clipboard",
         action="store_true",
         help="copy output to clipboard",
     )
+    parser.add_argument(
+        "--no-testing",
+        action="store_true",
+        help="omit testing suggestions",
+    )
+    parser.add_argument(
+        "--no-breaking",
+        action="store_true",
+        help="omit breaking change detection",
+    )
+    parser.add_argument(
+        "--init-config",
+        action="store_true",
+        help="create default config file and exit",
+    )
+    # Keep --json for backward compatibility
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help=argparse.SUPPRESS,  # Hidden, use --format json instead
+    )
 
     args = parser.parse_args()
+
+    # Handle --init-config
+    if args.init_config:
+        if not HAS_YAML:
+            print("Error: PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+            sys.exit(1)
+        ensure_config_exists()
+        print(f"Config file created: {CONFIG_FILE}")
+        sys.exit(0)
+
+    # Load config
+    config = load_config()
+
+    # Apply CLI overrides
+    if args.style:
+        config.output_style = args.style
+    if args.no_testing:
+        config.include_testing = False
+    if args.no_breaking:
+        config.include_breaking_changes = False
+
+    # Handle --json backward compatibility
+    output_format = args.format
+    if args.json:
+        output_format = "json"
 
     # Default to current directory
     repo_path = Path.cwd()
@@ -609,54 +975,25 @@ Examples:
         print(f"Error: No commits between {base_branch} and {head_branch}", file=sys.stderr)
         sys.exit(1)
 
+    # Generate description
+    desc = generate_pr_description(
+        repo_path, base_branch, head_branch, config, include_comments=args.include_comments
+    )
+
+    # Handle --title flag
+    if args.title:
+        print(desc.title)
+        return
+
     print(f"Analyzing {head_branch} vs {base_branch}...", file=sys.stderr)
 
-    # Generate description
-    output = generate_pr_description(repo_path, base_branch, head_branch)
-
-    # Handle JSON output
-    if args.json:
-        commits = get_commits(repo_path, base_branch, head_branch)
-        files = get_changed_files(repo_path, base_branch, head_branch)
-        diff_text = get_diff_text(repo_path, base_branch, head_branch)
-
-        summary = generate_summary(commits, files)
-        testing = generate_testing_suggestions(files, commits)
-        breaking = detect_breaking_changes(commits, diff_text)
-        new_deps = detect_new_dependencies(repo_path, base_branch, head_branch, files)
-        config_changes = detect_config_changes(files)
-
-        changes = {
-            "added": [f.path for f in files if f.status == "A"],
-            "modified": [f.path for f in files if f.status == "M"],
-            "removed": [f.path for f in files if f.status == "D"],
-            "renamed": [f.path for f in files if f.status == "R"],
-        }
-
-        notes = []
-        if breaking:
-            notes.extend([f"Breaking: {b}" for b in breaking])
-        if new_deps:
-            notes.extend([f"New dep: {d}" for d in new_deps])
-        if config_changes:
-            notes.extend([f"Config: {c}" for c in config_changes])
-
-        stats = {
-            "files_changed": len(files),
-            "additions": sum(f.additions for f in files),
-            "deletions": sum(f.deletions for f in files),
-            "commits": len(commits),
-        }
-
-        desc = PRDescription(
-            summary=summary,
-            changes=changes,
-            testing=testing,
-            notes=notes,
-            commits=[asdict(c) for c in commits],
-            stats=stats,
-        )
+    # Format output
+    if output_format == "json":
         output = format_json(desc)
+    elif output_format == "plain":
+        output = format_plain(desc, config)
+    else:
+        output = format_markdown(desc, config)
 
     # Copy to clipboard if requested
     if args.clipboard:
