@@ -40,9 +40,19 @@ class UpdateResult:
 
 
 def run(cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> tuple[int, str, str]:
-    """Run a command and return (returncode, stdout, stderr)."""
+    """Run a command and return (returncode, stdout, stderr).
+
+    Uses stdin=DEVNULL to prevent hanging when subprocesses prompt for input.
+    """
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+            timeout=timeout,
+            stdin=subprocess.DEVNULL,
+        )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
