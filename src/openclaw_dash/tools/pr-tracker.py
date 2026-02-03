@@ -7,17 +7,9 @@ Features:
 - Detect merged PRs since last check
 - Detect closed PRs without merge
 - Save state for comparison
-
-Usage:
-    python3 pr-tracker.py           # Show current PR status
-    python3 pr-tracker.py --check   # Check for changes since last run
-    python3 pr-tracker.py --json    # Output as JSON
-
-Configuration:
-    Set GITHUB_ORG environment variable or edit GITHUB_ORG below.
-    Set REPOS list to your repos.
 """
 
+import argparse
 import json
 import os
 import subprocess
@@ -27,8 +19,7 @@ from pathlib import Path
 from typing import Any
 
 # Configuration - customize for your setup
-GITHUB_ORG = os.environ.get("GITHUB_ORG", "")  # Set your GitHub username/org
-REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]  # Your repos
+DEFAULT_REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]
 STATE_FILE = Path(__file__).parent / ".pr_state.json"
 
 
@@ -38,18 +29,23 @@ def run(cmd: list[str]) -> tuple[int, str]:
     return result.returncode, result.stdout.strip()
 
 
-def get_prs(repo: str, state: str = "all") -> list[dict]:
+def get_prs(org: str, repo: str, state: str = "all") -> list[dict]:
     """Get PRs for a repo."""
-    if not GITHUB_ORG:
-        print("Error: Set GITHUB_ORG environment variable or edit the script.", file=sys.stderr)
-        return []
-    _, output = run([
-        "gh", "pr", "list",
-        "-R", f"{GITHUB_ORG}/{repo}",
-        "--state", state,
-        "--json", "number,title,state,createdAt,mergedAt,closedAt,author",
-        "--limit", "20"
-    ])
+    _, output = run(
+        [
+            "gh",
+            "pr",
+            "list",
+            "-R",
+            f"{org}/{repo}",
+            "--state",
+            state,
+            "--json",
+            "number,title,state,createdAt,mergedAt,closedAt,author",
+            "--limit",
+            "20",
+        ]
+    )
     try:
         return json.loads(output) if output else []
     except json.JSONDecodeError:
@@ -107,8 +103,50 @@ def check_changes(old_state: dict, current_prs: dict) -> dict[str, list[Any]]:
 
 
 def main():
-    output_json = "--json" in sys.argv
-    check_mode = "--check" in sys.argv
+    parser = argparse.ArgumentParser(
+        description="Track PR status across configured repos.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  pr-tracker.py                  Show current PR status
+  pr-tracker.py --check          Check for changes since last run
+  pr-tracker.py --json           Output as JSON
+  pr-tracker.py --repo myrepo    Scan a specific repo
+  pr-tracker.py --org myorg      Override GITHUB_ORG
+""",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check for changes since last run",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="output_json",
+        help="Output as JSON",
+    )
+    parser.add_argument(
+        "--repo",
+        action="append",
+        metavar="REPO",
+        help="Repo to scan (can be repeated; defaults to built-in list)",
+    )
+    parser.add_argument(
+        "--org",
+        metavar="ORG",
+        help="GitHub org/user (default: GITHUB_ORG env var)",
+    )
+    args = parser.parse_args()
+
+    # Resolve org
+    org = args.org or os.environ.get("GITHUB_ORG", "")
+    if not org:
+        print("Error: GITHUB_ORG not set. Use --org or set GITHUB_ORG env var.", file=sys.stderr)
+        sys.exit(1)
+
+    # Resolve repos
+    repos = args.repo if args.repo else DEFAULT_REPOS
 
     # Load previous state
     old_state = load_state()
@@ -117,8 +155,8 @@ def main():
     all_prs = {}
     open_prs = []
 
-    for repo in REPOS:
-        prs = get_prs(repo, "all")
+    for repo in repos:
+        prs = get_prs(org, repo, "all")
         for pr in prs:
             pr["repo"] = repo
             pr_key = f"{repo}#{pr['number']}"
@@ -132,7 +170,7 @@ def main():
     # Save new state
     save_state({"prs": all_prs})
 
-    if output_json:
+    if args.output_json:
         print(
             json.dumps(
                 {
@@ -146,12 +184,12 @@ def main():
         return
 
     # Format output
-    lines = ["## 📬 PR Status"]
+    lines = ["## PR Status"]
     lines.append(f"**Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M AKST')}")
     lines.append("")
 
     # Report changes if in check mode
-    if check_mode and old_state.get("last_check"):
+    if args.check and old_state.get("last_check"):
         if changes["merged"]:
             lines.append("### ✅ Merged Since Last Check")
             for pr in changes["merged"]:
@@ -165,20 +203,19 @@ def main():
             lines.append("")
 
         if changes["new"]:
-            lines.append("### 🆕 New PRs")
+            lines.append("### New PRs")
             for pr in changes["new"]:
                 lines.append(f"- **{pr['repo']}#{pr['number']}**: {pr['title']}")
             lines.append("")
 
     # Open PRs
+    lines.append("### Open PRs")
     if open_prs:
-        lines.append("### 🔓 Open PRs")
         for pr in sorted(open_prs, key=lambda x: x["createdAt"]):
             age = format_age(pr["createdAt"])
             lines.append(f"- **{pr['repo']}#{pr['number']}** ({age}): {pr['title'][:50]}")
     else:
-        lines.append("### 🔓 Open PRs")
-        lines.append("*None — all clear!*")
+        lines.append("No open PRs.")
 
     print("\n".join(lines))
 
