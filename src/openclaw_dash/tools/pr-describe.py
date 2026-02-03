@@ -26,7 +26,7 @@ import json
 import re
 import subprocess
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -89,6 +89,113 @@ FILE_CATEGORIES = {
         r"Cargo\.toml$",
     ],
     "ci": [r"\.github/", r"\.gitlab-ci", r"\.circleci/", r"Jenkinsfile", r"\.travis"],
+}
+
+# Action verbs for extracting meaningful title summaries
+# Priority order: more specific first
+ACTION_VERBS = {
+    "remove", "add", "prevent", "filter", "generate", "extract",
+    "validate", "handle", "parse", "format", "replace", "skip", "ignore",
+    "enable", "disable", "support", "implement", "fix", "improve",
+    "refactor", "simplify", "optimize", "cache", "update", "create",
+}
+
+# Technical terms that should preserve their original case when lowercasing
+# These are programming language keywords, type names, and special values
+TECHNICAL_TERMS = {
+    # Python/JavaScript literals
+    "None", "True", "False", "NoneType",
+    # General programming
+    "NULL", "NaN", "undefined", "nil",
+    # Type names (when used as type references)
+    "String", "Integer", "Boolean", "Float", "Double",
+    # Common class/type patterns
+    "TypeError", "ValueError", "KeyError", "AttributeError",
+    "RuntimeError", "IndexError", "IOError", "OSError",
+}
+
+# Pairs of contradictory action verbs (doing both = refactoring, not two separate actions)
+# Format: frozenset({verb1, verb2}) - order doesn't matter
+CONTRADICTORY_VERB_PAIRS = {
+    frozenset({"add", "remove"}),
+    frozenset({"enable", "disable"}),
+    frozenset({"create", "delete"}),
+    frozenset({"show", "hide"}),
+}
+
+# Incidental nouns - generic terms that don't describe domain/feature
+# These are WHERE/HOW things happen, not WHAT the change is about
+INCIDENTAL_NOUNS = {
+    # Location/container nouns
+    "directories",
+    "directory",
+    "files",
+    "file",
+    "folder",
+    "folders",
+    "path",
+    "paths",
+    "code",
+    "codebase",
+    "project",
+    "projects",
+    "repo",
+    "repository",
+    # Generic data terms
+    "data",
+    "items",
+    "item",
+    "things",
+    "thing",
+    "stuff",
+    "content",
+    "contents",
+    "elements",
+    "element",
+    "entries",
+    "entry",
+    # Generic change terms (often in commit msgs)
+    "changes",
+    "updates",
+    "modifications",
+    "adjustments",
+    # Generic problem terms (but not error/errors - those are meaningful)
+    "issues",
+    "issue",
+    "problems",
+    "problem",
+    "bugs",
+    "bug",
+    # Generic technical terms
+    "cases",
+    "case",
+    "options",
+    "option",
+    "values",
+    "value",
+    "types",
+    "type",
+    "results",
+    "result",
+    "objects",
+    "object",
+    "instances",
+    "instance",
+    "requests",
+    "request",
+    "responses",
+    "response",
+    # Process/action nouns
+    "operations",
+    "operation",
+    "processes",
+    "process",
+    "actions",
+    "action",
+    "steps",
+    "step",
+    "tasks",
+    "task",
 }
 
 # Breaking change indicators
@@ -389,21 +496,511 @@ def detect_config_changes(files: list[FileChange]) -> list[str]:
     return changes
 
 
-def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
+def _extract_key_words(text: str) -> list[str]:
+    """Extract meaningful words from text, filtering stop words and adverbs."""
+    stop_words = {
+        "the",
+        "a",
+        "an",
+        "to",
+        "for",
+        "in",
+        "on",
+        "at",
+        "by",
+        "with",
+        "and",
+        "or",
+        "of",
+        "from",
+        "is",
+        "be",
+        "was",
+        "were",
+        "been",
+        "this",
+        "that",
+        "it",
+        "its",
+        "as",
+        "if",
+        "when",
+        "also",
+        "into",
+        "some",
+        "all",
+        "more",
+        "new",
+        "change",
+        "changes",
+        "update",
+        "updates",
+    }
+    words = re.findall(r"\b[a-zA-Z][a-zA-Z0-9_-]*\b", text.lower())
+    # Filter stop words, short words, and adverbs (ending in -ly)
+    return [
+        w
+        for w in words
+        if w not in stop_words and len(w) > 2 and not (w.endswith("ly") and len(w) > 4)
+    ]
+
+
+def _extract_bigrams(text: str) -> list[str]:
+    """Extract meaningful two-word phrases from text."""
+    stop_words = {"the", "a", "an", "to", "for", "in", "on", "at", "by", "with", "and", "or", "of"}
+    words = re.findall(r"\b[a-zA-Z][a-zA-Z0-9_-]*\b", text.lower())
+    bigrams = []
+    for i in range(len(words) - 1):
+        w1, w2 = words[i], words[i + 1]
+        # Skip if either word is a stop word or too short
+        if w1 not in stop_words and w2 not in stop_words and len(w1) > 2 and len(w2) > 2:
+            bigrams.append(f"{w1} {w2}")
+    return bigrams
+
+
+def _extract_action_phrase(text: str) -> tuple[str, str] | None:
+    """
+    Extract action verb and its direct object from a summary.
+
+    Returns (verb, object) tuple or None if no action pattern found.
+    E.g., "remove bullet points from summary" -> ("remove", "bullet points")
+
+    Preserves case for technical terms (None, True, False, etc.) by extracting
+    from the original text at the matched position rather than from lowercased text.
+
+    Prioritizes verbs at the START of text to avoid matching mid-text noun phrases
+    like "format extraction" where "format" is used as a noun, not a verb.
+    """
+    text_lower = text.lower()
+
+    def _extract_match(verb: str, match: re.Match) -> tuple[str, str] | None:
+        """Extract and clean the object from a regex match."""
+        obj_start = match.start(1)
+        obj_end = match.end(1)
+        obj = text[obj_start:obj_end].strip()
+        # Clean up trailing punctuation and common suffixes
+        obj = re.sub(r"[.,;:!?]+$", "", obj)
+        # Remove trailing adverbs (words ending in -ly)
+        obj = re.sub(r"\s+\w+ly$", "", obj)
+        if obj and len(obj) < 40:  # Sanity check
+            return (verb, obj)
+        return None
+
+    # FIRST PASS: Look for verbs at the START of text (most reliable)
+    # This catches "add feature X", "remove bullet points", etc.
+    for verb in ACTION_VERBS:
+        pattern = rf"^{verb}\s+(.+?)(?:\s+(?:from|in|for|to|on|when|if)\s+|$)"
+        match = re.search(pattern, text_lower)
+        if match:
+            result = _extract_match(verb, match)
+            if result:
+                return result
+
+    # SECOND PASS: Look for verbs mid-text (for "scope: verb object" patterns)
+    # Only if no start-of-text verb found, to avoid matching noun phrases
+    # like "format extraction" where "format" is a noun
+    for verb in ACTION_VERBS:
+        pattern = rf"\b{verb}\s+(.+?)(?:\s+(?:from|in|for|to|on|when|if)\s+|$)"
+        match = re.search(pattern, text_lower)
+        if match:
+            # Skip if the verb is followed by a noun-like word ending in -tion, -ment, -ing
+            # These are typically noun phrases like "format extraction", not verb phrases
+            obj_start = match.start(1)
+            obj_text = text_lower[obj_start:].split()[0] if text_lower[obj_start:].split() else ""
+            if obj_text.endswith(("tion", "ment", "ing", "ness", "ity")):
+                continue
+            result = _extract_match(verb, match)
+            if result:
+                return result
+
+    return None
+
+
+def _normalize_object(obj: str) -> str:
+    """
+    Normalize an object string for comparison (singularize, lowercase, strip articles).
+
+    E.g., "bullet points" and "bullet point" should match.
+    """
+    obj = obj.lower().strip()
+    # Remove leading articles
+    obj = re.sub(r"^(the|a|an)\s+", "", obj)
+    # Simple singularization: remove trailing 's' for comparison
+    # (handles "points" -> "point", "bullets" -> "bullet")
+    if obj.endswith("s") and len(obj) > 3:
+        obj_singular = obj[:-1]
+        # Return both forms for comparison flexibility
+        return obj_singular
+    return obj
+
+
+def _detect_contradictory_actions(
+    action_phrases: list[tuple[str, str]],
+) -> tuple[str, str] | None:
+    """
+    Detect if action phrases contain contradictory verb pairs on the same object.
+
+    Returns (verb1, common_object) if contradiction found, None otherwise.
+    E.g., [("add", "bullet points"), ("remove", "bullet points")] -> ("add", "bullet points")
+    """
+    if len(action_phrases) < 2:
+        return None
+
+    # Build mapping: normalized_object -> list of (verb, original_object)
+    obj_to_verbs: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for verb, obj in action_phrases:
+        norm_obj = _normalize_object(obj)
+        obj_to_verbs[norm_obj].append((verb, obj))
+
+    # Check each object for contradictory verb pairs
+    for norm_obj, verb_obj_pairs in obj_to_verbs.items():
+        if len(verb_obj_pairs) < 2:
+            continue
+        verbs = {v for v, _ in verb_obj_pairs}
+        for pair in CONTRADICTORY_VERB_PAIRS:
+            if pair <= verbs:  # Both verbs in pair are present
+                # Return the first verb and object (for the refactor message)
+                return (list(pair)[0], verb_obj_pairs[0][1])
+
+    return None
+
+
+def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
+    """
+    Build a meaningful summary from multiple commit summaries.
+
+    Returns ONLY the summary text - scope formatting is handled by generate_pr_title()
+    using conventional commit format: type(scope): summary
+
+    Strategy:
+    1. If there's a single summary, use it (truncated if needed)
+    2. Extract action phrases (verb + object) and combine max 2
+    3. Look for common phrases (bigrams) across summaries
+    4. Find common action verbs + domain words
+    5. If >2 actions or title too long, summarize generically
+    6. Keep titles concise (~50 chars target for summary portion)
+
+    Grammar rules:
+    - All actions use verb form: "add", "remove", "extract" (not "extraction")
+    - Max 2 actions combined with "and"
+    - If >2 actions, summarize: "improve X generation"
+    - No scope suffix - caller handles conventional commit format
+    """
+    MAX_SUMMARY_LENGTH = 50  # Target length for summary portion
+
+    if not summaries:
+        return "various updates"
+
+    # Clean up summaries
+    clean_summaries = [s.strip() for s in summaries if s.strip()]
+    if not clean_summaries:
+        return "various updates"
+
+    if len(clean_summaries) == 1:
+        summary = clean_summaries[0]
+        # Truncate if too long
+        if len(summary) > MAX_SUMMARY_LENGTH:
+            words = summary.split()
+            truncated = []
+            length = 0
+            for w in words:
+                if length + len(w) + 1 > MAX_SUMMARY_LENGTH:
+                    break
+                truncated.append(w)
+                length += len(w) + 1
+            summary = " ".join(truncated)
+        return summary
+
+    # Strategy 1: Extract action phrases from summaries
+    # This gives us specific "verb + object" descriptions instead of vague "improvements"
+    action_phrases = []
+    for s in clean_summaries:
+        phrase = _extract_action_phrase(s)
+        if phrase:
+            action_phrases.append(phrase)
+
+    if action_phrases:
+        # Check for contradictory actions FIRST (add X + remove X = refactoring)
+        contradiction = _detect_contradictory_actions(action_phrases)
+        if contradiction:
+            _, obj = contradiction
+            # Use "refactor X handling" or "update X" for contradictory actions
+            return f"refactor {obj} handling"
+
+        # Group by verb
+        verbs_to_objects: dict[str, list[str]] = defaultdict(list)
+        for verb, obj in action_phrases:
+            verbs_to_objects[verb].append(obj)
+
+        # If all actions share the same verb, combine objects (max 2)
+        if len(verbs_to_objects) == 1:
+            verb = list(verbs_to_objects.keys())[0]
+            objects = verbs_to_objects[verb]
+            unique_objs = list(dict.fromkeys(objects))
+
+            if len(unique_objs) == 1:
+                result = f"{verb} {unique_objs[0]}"
+            elif len(unique_objs) == 2:
+                result = f"{verb} {unique_objs[0]} and {unique_objs[1]}"
+            else:
+                # >2 objects with same verb - summarize
+                result = f"{verb} {unique_objs[0]} and more"
+
+            # Length check - truncate if too long
+            if len(result) <= MAX_SUMMARY_LENGTH:
+                return result
+            return f"{verb} {unique_objs[0]}"
+
+        # Multiple verbs - combine max 2
+        sorted_verbs = sorted(
+            verbs_to_objects.keys(),
+            key=lambda v: len(verbs_to_objects[v]),
+            reverse=True,
+        )
+
+        if len(sorted_verbs) >= 2:
+            v1, v2 = sorted_verbs[0], sorted_verbs[1]
+            o1, o2 = verbs_to_objects[v1][0], verbs_to_objects[v2][0]
+            combined = f"{v1} {o1} and {v2} {o2}"
+
+            if len(combined) <= MAX_SUMMARY_LENGTH:
+                return combined
+
+            # Too long - just use main action
+            result = f"{v1} {o1}"
+            if len(result) <= MAX_SUMMARY_LENGTH:
+                return result
+
+        # Just use the most common action
+        main_verb = sorted_verbs[0]
+        main_obj = verbs_to_objects[main_verb][0]
+        return f"{main_verb} {main_obj}"
+
+    # Strategy 2: Look for bigrams appearing in MAJORITY (>50%) of summaries
+    # (e.g., "structured output" in 2/3 commits should still match)
+    bigrams_per_summary = [set(_extract_bigrams(s)) for s in clean_summaries]
+    if len(bigrams_per_summary) > 1:
+        # Count how many summaries contain each bigram
+        all_bigrams = [bg for bgs in bigrams_per_summary for bg in bgs]
+        bigram_counts = Counter(all_bigrams)
+        threshold = len(clean_summaries) / 2
+        common_bigrams = [bg for bg, count in bigram_counts.items() if count > threshold]
+        if common_bigrams:
+            # Use the longest common bigram (most descriptive)
+            phrase = sorted(common_bigrams, key=len, reverse=True)[0]
+            # Check if phrase contains an action verb - if so, use it directly
+            phrase_words = phrase.split()
+            if phrase_words and phrase_words[0] in ACTION_VERBS:
+                return phrase
+            return f"improve {phrase}"
+
+    # Strategy 3: If all commits share a single scope, describe improvements
+    # (Note: scope will be added by caller in conventional commit format)
+    if len(scopes) == 1:
+        words_per_summary = [set(_extract_key_words(s)) for s in clean_summaries]
+        if words_per_summary:
+            common = set.intersection(*words_per_summary)
+            if common:
+                # Find verbs/actions using ACTION_VERBS constant
+                actions = [w for w in common if w in ACTION_VERBS]
+                nouns = [w for w in common if w not in ACTION_VERBS]
+                if actions and nouns:
+                    return f"{actions[0]} {nouns[0]}"
+                if actions:
+                    return f"{actions[0]} handling"
+                if nouns:
+                    return f"improve {nouns[0]}"
+        # Fall back to generic improvement (scope added by caller)
+        return "improve handling"
+
+    # Strategy 4: Find common theme words and build natural phrase
+    words_per_summary = [set(_extract_key_words(s)) for s in clean_summaries]
+    if len(words_per_summary) > 1:
+        common = set.intersection(*words_per_summary)
+        if common:
+            # Use ACTION_VERBS constant for consistency
+            actions = [w for w in common if w in ACTION_VERBS]
+            # Filter out incidental nouns
+            nouns = sorted(
+                [w for w in common if w not in ACTION_VERBS and w not in INCIDENTAL_NOUNS],
+                key=len,
+                reverse=True,
+            )
+
+            if actions and nouns:
+                # "add scanner support", "improve error handling"
+                return f"{actions[0]} {nouns[0]}"
+            if len(nouns) >= 2:
+                # "improve scanner and parser" instead of vague "improvements"
+                return f"improve {nouns[0]} and {nouns[1]}"
+            if nouns:
+                return f"improve {nouns[0]} handling"
+
+    # Strategy 5: Find words in at least half the summaries
+    word_counts: dict[str, int] = defaultdict(int)
+    for word_set in words_per_summary:
+        for word in word_set:
+            word_counts[word] += 1
+
+    threshold = max(2, len(clean_summaries) // 2)
+    frequent = [w for w, c in word_counts.items() if c >= threshold]
+    if frequent:
+        # Use ACTION_VERBS constant
+        actions = [w for w in frequent if w in ACTION_VERBS]
+        # Filter out incidental nouns
+        nouns = sorted(
+            [w for w in frequent if w not in ACTION_VERBS and w not in INCIDENTAL_NOUNS],
+            key=lambda w: word_counts[w],
+            reverse=True,
+        )
+
+        if actions and nouns:
+            return f"{actions[0]} {nouns[0]}"
+        if len(nouns) >= 2:
+            return f"improve {nouns[0]} and {nouns[1]}"
+        if nouns:
+            return f"improve {nouns[0]} handling"
+        if actions:
+            # Common action found but no specific nouns
+            return f"{actions[0]} various components"
+
+    # Strategy 6: Extract key nouns from each summary and list domains
+    # Filter out common verbs/adjectives to find actual domain nouns
+    common_verbs = {
+        "add",
+        "fix",
+        "improve",
+        "handle",
+        "support",
+        "implement",
+        "enable",
+        "prevent",
+        "remove",
+        "update",
+        "create",
+        "delete",
+        "move",
+        "rename",
+        "refactor",
+        "clean",
+        "resolve",
+        "use",
+        "make",
+        "get",
+        "set",
+        "check",
+        "validate",
+        "missing",
+        "broken",
+        "invalid",
+        "empty",
+        "null",
+        "undefined",
+        "large",
+        "small",
+        "new",
+        "old",
+        "gracefully",
+        "hanging",
+        "slow",
+        "fast",
+    }
+
+    domains = []
+    for s in clean_summaries[:3]:
+        words = _extract_key_words(s)
+        # Filter to likely nouns (not common verbs/adjectives or incidental nouns)
+        nouns = [w for w in words if w not in common_verbs and w not in INCIDENTAL_NOUNS]
+        if nouns:
+            # Prefer simple words over hyphenated compound identifiers
+            # Split hyphenated words and consider their parts too
+            simple_nouns = []
+            for w in nouns:
+                if "-" in w:
+                    # Extract meaningful parts from hyphenated words (e.g., "smart-todo-scanner" -> "scanner")
+                    parts = [
+                        p
+                        for p in w.split("-")
+                        if len(p) > 3 and p not in common_verbs and p not in INCIDENTAL_NOUNS
+                    ]
+                    simple_nouns.extend(parts)
+                else:
+                    simple_nouns.append(w)
+            if simple_nouns:
+                # Take the longest simple noun as the likely domain
+                domain = sorted(simple_nouns, key=len, reverse=True)[0]
+                if domain not in domains:
+                    domains.append(domain)
+
+    if len(domains) >= 2:
+        return f"improve {domains[0]} and {domains[1]}"
+    if domains:
+        return f"improve {domains[0]} handling"
+
+    # Absolute last resort: use first summary with adverbs stripped
+    # Use _extract_key_words to get words without adverbs
+    fallback_words = _extract_key_words(clean_summaries[0])
+    if fallback_words:
+        # Try to form "verb noun" if first word is a verb
+        if fallback_words[0] in ACTION_VERBS:
+            return " ".join(fallback_words[:3])  # Verb + up to 2 more words
+        return f"improve {' '.join(fallback_words[:2])}"
+    return clean_summaries[0]
+
+
+def extract_branch_type(branch_name: str) -> str:
+    """
+    Extract conventional commit type from branch name prefix.
+
+    Examples:
+        feat/add-login -> feat
+        fix/null-pointer -> fix
+        chore/update-deps -> chore
+        feature/xyz -> feat (normalize "feature" to "feat")
+    """
+    if not branch_name:
+        return ""
+
+    # Match common branch prefixes: type/description or type-description
+    match = re.match(
+        r"^(feat|fix|docs|style|refactor|test|chore|ci|perf|build|feature)[/-]",
+        branch_name.lower(),
+    )
+    if match:
+        branch_type = match.group(1)
+        # Normalize "feature" to "feat"
+        if branch_type == "feature":
+            return "feat"
+        return branch_type
+    return ""
+
+
+def generate_pr_title(commits: list[CommitInfo], config: Config, branch_name: str = "") -> str:
     """
     Generate a PR title from commits using conventional commit format.
 
-    If multiple commits, uses the dominant type and summarizes.
+    Strategy:
+    - Single commit: use its subject directly
+    - Multiple commits: extract meaningful description from commit messages
+    - Never just count commits - always describe WHAT changed
+    - Branch name prefix (feat/, fix/) is used as tiebreaker or override
+    - First commit is weighted more heavily (it's usually the main change)
+    - "test:" type is deprioritized unless ALL commits are tests
     """
     if not commits:
         return "Untitled PR"
 
-    # Count commit types
+    # Extract type from branch name for tiebreaking/override
+    branch_type = extract_branch_type(branch_name)
+
+    # Count commit types with weighting: first commit counts double
     type_counts: dict[str, int] = defaultdict(int)
     typed_commits = []
-    for commit in commits:
+    for i, commit in enumerate(commits):
         if commit.commit_type:
-            type_counts[commit.commit_type] += 1
+            # First commit gets weight of 2, others get 1
+            weight = 2 if i == 0 else 1
+            type_counts[commit.commit_type] += weight
             typed_commits.append(commit)
 
     # Single commit - use it directly
@@ -411,18 +1008,62 @@ def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
         commit = commits[0]
         if commit.commit_type:
             _, _, summary = parse_conventional_commit(commit.subject)
-            return config.title_format.format(
+            # Use conventional commit format with scope when present
+            if commit.scope:
+                title_format = "{type}({scope}): {summary}"
+            else:
+                title_format = config.title_format
+            return title_format.format(
                 type=commit.commit_type,
                 scope=commit.scope or "",
-                summary=summary.capitalize(),
+                summary=summary.capitalize() if summary else "update",
             )
         return commit.subject
 
-    # Multiple commits - find dominant type
+    # Multiple commits - find dominant type with smart selection
     if type_counts:
-        dominant_type = max(type_counts, key=lambda k: type_counts[k])
+        # Check if ALL commits are tests - only then use "test" type
+        all_tests = all(c.commit_type == "test" for c in typed_commits) if typed_commits else False
 
-        # Get scopes for the dominant type
+        # Deprioritize "test" type unless all commits are tests
+        if not all_tests and "test" in type_counts and len(type_counts) > 1:
+            # Remove test from consideration for dominant type
+            type_counts_filtered = {k: v for k, v in type_counts.items() if k != "test"}
+        else:
+            type_counts_filtered = type_counts
+
+        # Find dominant type from filtered counts
+        if type_counts_filtered:
+            # Get max count
+            max_count = max(type_counts_filtered.values())
+            # Find all types with max count (potential ties)
+            top_types = [t for t, c in type_counts_filtered.items() if c == max_count]
+
+            if len(top_types) == 1:
+                dominant_type = top_types[0]
+            elif branch_type and branch_type in top_types:
+                # Use branch type as tiebreaker
+                dominant_type = branch_type
+            elif branch_type and branch_type in COMMIT_TYPES:
+                # Branch type overrides when there's a tie and branch has valid type
+                dominant_type = branch_type
+            else:
+                # Default to first in sorted order for consistency
+                dominant_type = sorted(top_types)[0]
+        else:
+            # Fall back to test if that's all we have
+            dominant_type = "test"
+
+        # If branch type strongly suggests a different type and counts are close,
+        # prefer branch type
+        if branch_type and branch_type != dominant_type and branch_type in type_counts:
+            branch_count = type_counts[branch_type]
+            dominant_count = type_counts_filtered.get(dominant_type, 0)
+            # If branch type has at least 50% of dominant count, prefer branch type
+            if branch_count >= dominant_count * 0.5:
+                dominant_type = branch_type
+
+        # Collect scopes and summaries for the dominant type
         scopes = set()
         summaries = []
         for c in typed_commits:
@@ -430,21 +1071,26 @@ def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
                 if c.scope:
                     scopes.add(c.scope)
                 _, _, summary = parse_conventional_commit(c.subject)
-                summaries.append(summary)
+                if summary:
+                    summaries.append(summary.strip())
 
-        # Build summary
-        if len(summaries) == 1:
-            summary_text = summaries[0]
-        elif len(scopes) == 1:
-            summary_text = f"multiple {list(scopes)[0]} changes"
-        else:
-            summary_text = (
-                f"{len(typed_commits)} {COMMIT_TYPES.get(dominant_type, dominant_type)} changes"
-            )
+        # If no commits match dominant type (e.g., branch override), use first commit
+        if not summaries and commits:
+            _, _, summary = parse_conventional_commit(commits[0].subject)
+            if summary:
+                summaries.append(summary.strip())
 
+        # Build a descriptive summary (never just count commits)
+        summary_text = _build_multi_commit_summary(summaries, scopes)
         scope_text = list(scopes)[0] if len(scopes) == 1 else ""
 
-        return config.title_format.format(
+        # Use conventional commit format with scope when present
+        if scope_text:
+            title_format = "{type}({scope}): {summary}"
+        else:
+            title_format = config.title_format
+
+        return title_format.format(
             type=dominant_type,
             scope=scope_text,
             summary=summary_text,
@@ -579,380 +1225,6 @@ def get_pr_comments(repo_path: Path, head_branch: str) -> list[PRComment]:
         return []
 
 
-def get_code_snippets(repo_path: Path, base: str, head: str, files: list[FileChange]) -> dict[str, str]:
-    """Extract key code snippets from git diff for each changed file."""
-    snippets = {}
-
-    # Focus on the most important files (source files, docs, config - exclude tests)
-    important_files = [f for f in files if f.category in ("source", "docs", "config") and f.status in ("A", "M")]
-
-    for file_change in important_files[:5]:  # Limit to top 5 files to keep output manageable
-        code, stdout, _ = run(
-            ["git", "diff", f"{base}...{head}", "--", file_change.path], cwd=repo_path
-        )
-
-        if code != 0 or not stdout:
-            continue
-
-        # Extract key changes (added/modified lines)
-        lines = stdout.split("\n")
-        added_lines = []
-
-        for i, line in enumerate(lines):
-            if line.startswith("+") and not line.startswith("+++"):
-                # Get some context around added lines
-                start = max(0, i - 2)
-                end = min(len(lines), i + 3)
-
-                context_block = []
-                for j in range(start, end):
-                    if not lines[j].startswith("@@") and not lines[j].startswith("+++") and not lines[j].startswith("---"):
-                        # Clean up diff markers for display
-                        clean_line = lines[j][1:] if lines[j].startswith(("+", "-", " ")) else lines[j]
-                        if lines[j].startswith("+"):
-                            context_block.append(clean_line)
-                        elif lines[j].startswith(" "):
-                            context_block.append(clean_line)
-
-                if context_block:
-                    added_lines.extend(context_block)
-
-        # Take first meaningful chunk (around 5-10 lines)
-        if added_lines:
-            # Remove duplicates while preserving order
-            unique_lines = []
-            seen = set()
-            for line in added_lines:
-                if line not in seen and line.strip():
-                    unique_lines.append(line)
-                    seen.add(line)
-
-            if unique_lines:
-                snippets[file_change.path] = "\n".join(unique_lines[:10])
-
-    return snippets
-
-
-def extract_structured_section(commits: list[CommitInfo], section: str) -> str | None:
-    """Extract explicit What:, Why:, or How: sections from commit bodies.
-
-    Args:
-        commits: List of commit info objects
-        section: Section name to extract ("What", "Why", or "How")
-
-    Returns:
-        The extracted section text, or None if not found
-    """
-    pattern = re.compile(rf"^{section}:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
-
-    for commit in commits:
-        if not commit.body:
-            continue
-
-        match = pattern.search(commit.body)
-        if match:
-            return match.group(1).strip()
-
-    return None
-
-
-def generate_what_section(commits: list[CommitInfo]) -> str:
-    """Generate the What section - one sentence summary from commit message.
-
-    First looks for explicit "What:" sections in commit bodies, then falls back to inference.
-    """
-    if not commits:
-        return "No changes found"
-
-    # First, try to extract explicit "What:" section
-    explicit_what = extract_structured_section(commits, "What")
-    if explicit_what:
-        return explicit_what
-
-    # Fallback to existing inference logic
-    # For single commit, extract the summary part
-    if len(commits) == 1:
-        commit = commits[0]
-        _, _, summary = parse_conventional_commit(commit.subject)
-        return summary.capitalize() if summary else commit.subject
-
-    # For multiple commits, combine the actual summaries
-    summaries = []
-    for commit in commits:
-        _, _, summary = parse_conventional_commit(commit.subject)
-        if summary:
-            summaries.append(summary)
-        else:
-            # If not conventional commit, use the whole subject
-            summaries.append(commit.subject)
-
-    if len(summaries) == 1:
-        return summaries[0].capitalize()
-    elif len(summaries) == 2:
-        return f"{summaries[0]} and {summaries[1]}"
-    else:
-        # For more than 2, join with commas and "and"
-        return f"{', '.join(summaries[:-1])}, and {summaries[-1]}"
-
-
-def generate_why_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
-    """Generate the Why section - infer motivation from commit types and changes.
-
-    First looks for explicit "Why:" sections in commit bodies, then falls back to inference.
-    """
-    if not commits:
-        return "No context available"
-
-    # First, try to extract explicit "Why:" section
-    explicit_why = extract_structured_section(commits, "Why")
-    if explicit_why:
-        return explicit_why
-
-    # Fallback to existing inference logic
-    # Look for "Resolves" or problem statements in commit bodies
-    specific_reasons = []
-    for commit in commits:
-        if commit.body:
-            lines = commit.body.split('\n')
-            for line in lines:
-                line = line.strip()
-                # Look for "Resolves X" statements
-                if line.startswith("Resolves "):
-                    reason = line[9:].strip()  # Remove "Resolves "
-                    specific_reasons.append(reason)
-                # Look for problem statements containing "when", "crashed", "hanging", etc.
-                elif any(keyword in line.lower() for keyword in ["crashed", "hanging", "failed", "broken", "error when"]):
-                    specific_reasons.append(line)
-                # Look for lines ending with "." that describe a problem
-                elif any(keyword in line.lower() for keyword in ["missing", "not installed", "large directories", "infinite loop"]):
-                    if line.endswith('.'):
-                        specific_reasons.append(line)
-
-    if specific_reasons:
-        if len(specific_reasons) == 1:
-            return specific_reasons[0]
-        else:
-            # Combine multiple specific reasons with better formatting
-            return " and ".join(specific_reasons).replace(". and ", " and ")
-
-    # Look for issue references: "Resolves", "Fixes", "Closes" in subject
-    for commit in commits:
-        issue_match = re.search(
-            r"(?:resolves?|fixes?|closes?)\s+#?(\d+|[A-Z]+-\d+)",
-            commit.subject,
-            re.IGNORECASE
-        )
-        if issue_match:
-            specific_reasons.append(f"Addresses issue #{issue_match.group(1)}")
-
-        # Also check body for issue refs and "because/since/due to" phrases
-        if commit.body:
-            for line in commit.body.split('\n'):
-                line = line.strip()
-                issue_match = re.search(
-                    r"(?:resolves?|fixes?|closes?)\s+#?(\d+|[A-Z]+-\d+)",
-                    line,
-                    re.IGNORECASE
-                )
-                if issue_match:
-                    specific_reasons.append(f"Addresses issue #{issue_match.group(1)}")
-                    continue
-
-                reason_match = re.search(
-                    r"(?:because|since|due to)\s+(.+)",
-                    line,
-                    re.IGNORECASE
-                )
-                if reason_match:
-                    reason = reason_match.group(1).strip().rstrip('.')
-                    if len(reason) > 10:
-                        specific_reasons.append(reason.capitalize())
-
-    # Dedupe while preserving order
-    seen = set()
-    unique_reasons = []
-    for r in specific_reasons:
-        r_lower = r.lower()
-        if r_lower not in seen:
-            seen.add(r_lower)
-            unique_reasons.append(r)
-
-    if unique_reasons:
-        return " ".join(unique_reasons[:3]) if len(unique_reasons) > 1 else unique_reasons[0]
-
-    # Infer from commit types
-    type_counts = defaultdict(int)
-    for commit in commits:
-        if commit.commit_type:
-            type_counts[commit.commit_type] += 1
-
-    if type_counts:
-        dominant_type = max(type_counts, key=lambda k: type_counts[k])
-        type_reasons = {
-            "fix": "The previous behavior had bugs or issues that needed correction.",
-            "feat": "This capability was missing or requested.",
-            "refactor": "The code needed restructuring for better maintainability.",
-            "perf": "Performance improvements were needed.",
-            "docs": "Documentation was missing, outdated, or unclear.",
-            "test": "Test coverage was insufficient or tests needed updates.",
-            "chore": "Maintenance tasks were needed.",
-            "ci": "CI/CD pipeline needed updates or fixes.",
-            "style": "Code style or formatting needed cleanup.",
-        }
-        if dominant_type in type_reasons:
-            return type_reasons[dominant_type]
-
-    # Fallback based on file categories
-    categories = defaultdict(int)
-    for f in files:
-        categories[f.category] += 1
-
-    if categories:
-        dominant_cat = max(categories, key=lambda k: categories[k])
-        cat_desc = {
-            "source": "The codebase needed updates to improve functionality.",
-            "tests": "Test coverage needed improvements.",
-            "docs": "Documentation needed updates.",
-            "config": "Configuration needed adjustments.",
-            "ci": "CI/CD pipeline needed updates.",
-            "deps": "Dependencies needed updates.",
-        }
-        return cat_desc.get(dominant_cat, "Changes were needed to improve the codebase.")
-
-    # Ultimate fallback when no context is available
-    return "Changes were needed to improve the codebase."
-
-
-def generate_how_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
-    """Generate the How section - brief explanation of approach.
-
-    First looks for explicit "How:" sections in commit bodies, then falls back to inference.
-    """
-    if not commits:
-        return "No implementation details available"
-
-    # First, try to extract explicit "How:" section
-    explicit_how = extract_structured_section(commits, "How")
-    if explicit_how:
-        return explicit_how
-
-    # Fallback to existing inference logic
-    # Extract specific implementation details from commit bodies
-    implementation_details = []
-
-    for commit in commits:
-        if commit.body:
-            lines = commit.body.split('\n')
-            for line in lines:
-                line = line.strip()
-                # Look for lines starting with "- " (bullet points describing implementation)
-                if line.startswith("- "):
-                    implementation = line[2:].strip()  # Remove "- "
-                    # Filter for implementation details (not problem descriptions)
-                    if any(keyword in implementation.lower() for keyword in [
-                        "add", "use", "wrap", "check", "implement", "improve", "fix", "handle",
-                        "prevent", "skip", "filter"
-                    ]):
-                        implementation_details.append(implementation)
-
-    if implementation_details:
-        # Group related implementation details
-        if len(implementation_details) <= 3:
-            return ". ".join(implementation_details) + "."
-        else:
-            # For many details, take the most important ones and summarize
-            key_details = implementation_details[:2]  # Take first 2 most important
-            result = ". ".join(key_details)
-            result += f". Plus {len(implementation_details) - 2} additional improvements"
-            return result + "."
-
-    # Describe based on files changed - be specific about modules
-    if files:
-        modules = defaultdict(list)
-        for f in files:
-            parts = Path(f.path).parts
-            if len(parts) > 1:
-                mod = parts[0] if parts[0] not in ("src", "lib", "app") else (parts[1] if len(parts) > 1 else parts[0])
-                modules[mod].append(f)
-            else:
-                modules["root"].append(f)
-
-        descriptions = []
-        status_verbs = {"A": "Added", "M": "Modified", "D": "Removed", "R": "Renamed"}
-
-        for module, module_files in list(modules.items())[:3]:
-            status_counts = defaultdict(int)
-            for f in module_files:
-                status_counts[f.status] += 1
-            dominant_status = max(status_counts, key=lambda k: status_counts[k])
-            verb = status_verbs.get(dominant_status, "Updated")
-
-            file_types = set(Path(f.path).suffix for f in module_files)
-            if ".py" in file_types:
-                descriptions.append(f"{verb} `{module}` module")
-            elif ".md" in file_types or ".rst" in file_types:
-                descriptions.append(f"{verb} `{module}` documentation")
-            elif any(f.category == "config" for f in module_files):
-                descriptions.append(f"{verb} `{module}` configuration")
-            elif any(f.category == "tests" for f in module_files):
-                descriptions.append(f"{verb} `{module}` tests")
-            else:
-                descriptions.append(f"{verb} `{module}` files")
-
-        if descriptions:
-            return ". ".join(descriptions) + "."
-
-    # Describe based on commit summaries
-    actions = []
-    for commit in commits:
-        _, _, summary = parse_conventional_commit(commit.subject)
-        if summary:
-            s_lower = summary.lower()
-            if s_lower.startswith("add "):
-                actions.append("Added " + summary[4:])
-            elif s_lower.startswith("fix "):
-                actions.append("Fixed " + summary[4:])
-            elif s_lower.startswith("update "):
-                actions.append("Updated " + summary[7:])
-            elif s_lower.startswith("remove "):
-                actions.append("Removed " + summary[7:])
-            elif s_lower.startswith("refactor "):
-                actions.append("Refactored " + summary[9:])
-            elif s_lower.startswith("improve "):
-                actions.append("Improved " + summary[8:])
-            else:
-                actions.append(summary[0].upper() + summary[1:] if summary else summary)
-
-    if actions:
-        seen = set()
-        unique_actions = []
-        for a in actions:
-            a_lower = a.lower()
-            if a_lower not in seen:
-                seen.add(a_lower)
-                unique_actions.append(a)
-
-        return ". ".join(unique_actions[:3]) + "."
-
-    # Ultimate fallback - describe file changes numerically
-    added = sum(1 for f in files if f.status == "A")
-    modified = sum(1 for f in files if f.status == "M")
-    removed = sum(1 for f in files if f.status == "D")
-
-    parts = []
-    if added:
-        parts.append(f"added {added} file{'s' if added > 1 else ''}")
-    if modified:
-        parts.append(f"modified {modified} file{'s' if modified > 1 else ''}")
-    if removed:
-        parts.append(f"removed {removed} file{'s' if removed > 1 else ''}")
-
-    if parts:
-        return "Changes " + ", ".join(parts) + "."
-
-    return f"Updated {len(files)} file{'s' if len(files) != 1 else ''}."
-
-
 def generate_pr_description(
     repo_path: str | Path,
     base_branch: str,
@@ -985,7 +1257,7 @@ def generate_pr_description(
     diff_text = get_diff_text(repo_path, base_branch, head_branch)
 
     # Analyze
-    title = generate_pr_title(commits, config)
+    title = generate_pr_title(commits, config, branch_name=head_branch)
     summary = generate_summary(commits, files, config)
     testing = generate_testing_suggestions(files, commits) if config.include_testing else []
 
@@ -998,16 +1270,12 @@ def generate_pr_description(
     # Get PR comments if requested
     comments = get_pr_comments(repo_path, head_branch) if include_comments else []
 
-    # Get code snippets for the new template format
-    code_snippets = get_code_snippets(repo_path, base_branch, head_branch, files)
-
-    # Group files by status (keep for backward compatibility)
+    # Group files by status
     changes = {
         "added": [f.path for f in files if f.status == "A"],
         "modified": [f.path for f in files if f.status == "M"],
         "removed": [f.path for f in files if f.status == "D"],
         "renamed": [f.path for f in files if f.status == "R"],
-        "code_snippets": code_snippets,  # Add code snippets to changes
     }
 
     # Build notes
@@ -1046,114 +1314,86 @@ def generate_pr_description(
 
 
 def format_markdown(desc: PRDescription, config: Config) -> str:
-    """Format PRDescription as markdown using What/Why/How/Changes/Testing template."""
+    """Format PRDescription as markdown."""
     lines = []
 
-    # Extract data for the new template
-    commits = [CommitInfo(**c) if isinstance(c, dict) else c for c in desc.commits]
-    files = []
-
-    # Reconstruct file list from changes dict for generating sections
-    for status, file_list in desc.changes.items():
-        if status != "code_snippets":
-            for file_path in file_list:
-                files.append(FileChange(path=file_path, status=status[0].upper()))
-
-    # What section
-    what_text = generate_what_section(commits)
+    # Summary
     lines.append("## What")
     lines.append("")
-    lines.append(what_text)
+    lines.append(desc.summary)
     lines.append("")
 
-    # Why section
-    why_text = generate_why_section(commits, files)
-    lines.append("## Why")
-    lines.append("")
-    lines.append(why_text)
-    lines.append("")
+    # Changes (skip in minimal mode)
+    if config.output_style != "minimal":
+        lines.append("## Changes")
+        lines.append("")
 
-    # How section
-    how_text = generate_how_section(commits, files)
-    lines.append("## How")
-    lines.append("")
-    lines.append(how_text)
-    lines.append("")
-
-    # Changes section with actual code snippets
-    lines.append("## Changes")
-    lines.append("")
-
-    # Show code snippets first (the key requirement)
-    code_snippets = desc.changes.get("code_snippets", {})
-    if code_snippets:
-        for file_path, snippet in code_snippets.items():
-            lines.append(f"**{file_path}**")
-
-            # Detect file type for appropriate code block formatting
-            if file_path.endswith(('.py', '.pyx')):
-                lines.append("```python")
-            elif file_path.endswith('.md'):
-                lines.append("```markdown")
-            elif file_path.endswith(('.js', '.jsx')):
-                lines.append("```javascript")
-            elif file_path.endswith(('.ts', '.tsx')):
-                lines.append("```typescript")
-            elif file_path.endswith(('.yml', '.yaml')):
-                lines.append("```yaml")
-            elif file_path.endswith('.json'):
-                lines.append("```json")
-            elif file_path.endswith('.toml'):
-                lines.append("```toml")
-            elif file_path.endswith('.sh'):
-                lines.append("```bash")
-            else:
-                lines.append("```")
-
-            lines.append(snippet)
-            lines.append("```")
-            lines.append("")
-
-    # Also show file lists if in verbose mode
-    if config.output_style == "verbose":
-        max_files = config.max_files_shown
+        max_files = config.max_files_shown if config.output_style == "verbose" else 10
 
         if desc.changes.get("added"):
             lines.append("**Additional files added:**")
             for f in desc.changes["added"][:max_files]:
-                if f not in code_snippets:  # Don't duplicate files already shown with snippets
-                    lines.append(f"- `{f}`")
+                lines.append(f"- `{f}`")
+            if len(desc.changes["added"]) > max_files:
+                lines.append(f"- ... and {len(desc.changes['added']) - max_files} more")
             lines.append("")
 
         if desc.changes.get("modified"):
-            modified_not_shown = [f for f in desc.changes["modified"] if f not in code_snippets]
-            if modified_not_shown:
-                lines.append("**Additional files modified:**")
-                for f in modified_not_shown[:max_files]:
-                    lines.append(f"- `{f}`")
-                lines.append("")
+            lines.append("**Additional files modified:**")
+            for f in desc.changes["modified"][:max_files]:
+                lines.append(f"- `{f}`")
+            if len(desc.changes["modified"]) > max_files:
+                lines.append(f"- ... and {len(desc.changes['modified']) - max_files} more")
+            lines.append("")
 
         if desc.changes.get("removed"):
-            lines.append("**Files removed:**")
+            lines.append("**Removed:**")
             for f in desc.changes["removed"][:10]:
+                lines.append(f"- `{f}`")
+            if len(desc.changes["removed"]) > 10:
+                lines.append(f"- ... and {len(desc.changes['removed']) - 10} more")
+            lines.append("")
+
+        if desc.changes.get("renamed"):
+            lines.append("**Renamed:**")
+            for f in desc.changes["renamed"][:10]:
                 lines.append(f"- `{f}`")
             lines.append("")
 
-    # Testing section (if enabled)
+    # Testing (if enabled)
     if desc.testing and config.include_testing:
         lines.append("## Testing")
         lines.append("")
         for t in desc.testing:
-            lines.append(f"{t}")
+            lines.append(f"- [ ] {t}")
         lines.append("")
 
-    # Add notes section if there are breaking changes or important info
-    if desc.notes and config.output_style != "minimal":
+    # Notes (if any)
+    if desc.notes:
         lines.append("## Notes")
         lines.append("")
         for note in desc.notes:
             lines.append(note)
         lines.append("")
+
+    # Comments (if any)
+    if desc.comments and config.output_style == "verbose":
+        lines.append("## PR Discussion Context")
+        lines.append("")
+        for comment in desc.comments[:5]:
+            if isinstance(comment, dict):
+                lines.append(f"**@{comment['author']}:** {comment['body'][:200]}")
+            else:
+                lines.append(f"**@{comment.author}:** {comment.body[:200]}")
+            lines.append("")
+
+    # Stats footer (skip in minimal mode)
+    if config.output_style != "minimal":
+        lines.append("---")
+        lines.append(
+            f"*{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed "
+            f"(+{desc.stats['additions']}/-{desc.stats['deletions']})*"
+        )
 
     return "\n".join(lines)
 
@@ -1245,9 +1485,9 @@ def format_squash(desc: PRDescription, config: Config) -> str:
 
     # Key changes as brief bullets (max 5)
     all_files = (
-        desc.changes.get("added", []) +
-        desc.changes.get("modified", []) +
-        desc.changes.get("removed", [])
+        desc.changes.get("added", [])
+        + desc.changes.get("modified", [])
+        + desc.changes.get("removed", [])
     )
     if all_files:
         lines.append("Changes:")
@@ -1259,16 +1499,16 @@ def format_squash(desc: PRDescription, config: Config) -> str:
 
     # Stats
     stats = desc.stats
-    lines.append(
-        f"{stats['files_changed']} files, "
-        f"+{stats['additions']}/-{stats['deletions']}"
-    )
+    lines.append(f"{stats['files_changed']} files, +{stats['additions']}/-{stats['deletions']}")
 
     # Breaking changes (critical - always show)
     breaking = [n for n in desc.notes if "Breaking" in n or "⚠️" in n]
     if breaking:
         lines.append("")
-        lines.append("⚠️ BREAKING: " + breaking[0].replace("⚠️ ", "").replace("**Breaking Changes:**", "").strip())
+        lines.append(
+            "⚠️ BREAKING: "
+            + breaking[0].replace("⚠️ ", "").replace("**Breaking Changes:**", "").strip()
+        )
 
     return "\n".join(lines)
 

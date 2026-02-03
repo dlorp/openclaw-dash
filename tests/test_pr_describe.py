@@ -366,8 +366,6 @@ class TestFormatMarkdown:
         )
         result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## What" in result
-        assert "## Why" in result
-        assert "## How" in result
 
     def test_includes_changes_section(self):
         desc = pr_describe.PRDescription(
@@ -427,8 +425,6 @@ class TestFormatMarkdown:
         result = pr_describe.format_markdown(desc, pr_describe.Config())
         # Verify all main sections are present
         assert "## What" in result
-        assert "## Why" in result
-        assert "## How" in result
         assert "## Changes" in result
         assert "## Testing" in result
         assert "## Notes" in result
@@ -656,3 +652,501 @@ class TestCopyToClipboard:
         mock_run.return_value = (1, "", "")  # No clipboard tools found
         result = pr_describe.copy_to_clipboard("test text")
         assert result is False
+
+
+class TestGeneratePRTitle:
+    """Tests for generate_pr_title function."""
+
+    def test_single_commit_uses_subject(self):
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc123",
+                subject="feat: add user authentication",
+                commit_type="feat",
+            )
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        assert "feat" in result
+        assert "authentication" in result.lower()
+
+    def test_no_commits_returns_untitled(self):
+        config = pr_describe.Config()
+        result = pr_describe.generate_pr_title([], config)
+        assert result == "Untitled PR"
+
+    def test_multiple_commits_never_just_counts(self):
+        """Ensure we never generate titles like 'feat: 3 feature changes'."""
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc",
+                subject="feat: add login page",
+                commit_type="feat",
+            ),
+            pr_describe.CommitInfo(
+                hash="def",
+                subject="feat: add signup form",
+                commit_type="feat",
+            ),
+            pr_describe.CommitInfo(
+                hash="ghi",
+                subject="feat: add password reset",
+                commit_type="feat",
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        # Should NOT contain patterns like "3 feature changes"
+        assert "3 feature changes" not in result.lower()
+        assert "feature changes" not in result.lower()
+        # Should contain something descriptive
+        assert len(result) > 5
+
+    def test_multiple_commits_with_shared_scope(self):
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc",
+                subject="feat(auth): add login",
+                commit_type="feat",
+                scope="auth",
+            ),
+            pr_describe.CommitInfo(
+                hash="def",
+                subject="feat(auth): add logout",
+                commit_type="feat",
+                scope="auth",
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        # Should reference the shared scope
+        assert "auth" in result.lower()
+
+    def test_multiple_commits_finds_common_theme(self):
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc",
+                subject="fix: handle null in parser",
+                commit_type="fix",
+            ),
+            pr_describe.CommitInfo(
+                hash="def",
+                subject="fix: handle undefined in parser",
+                commit_type="fix",
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        # Should find common words like "handle" or "parser"
+        assert "fix" in result.lower()
+        # Should have descriptive content, not just count
+        assert "2 fix changes" not in result.lower()
+
+    def test_non_conventional_commits_uses_first_subject(self):
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc",
+                subject="Updated the login page",
+            ),
+            pr_describe.CommitInfo(
+                hash="def",
+                subject="Fixed a bug",
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        assert result == "Updated the login page"
+
+
+class TestExtractKeyWords:
+    """Tests for _extract_key_words helper function."""
+
+    def test_filters_stop_words(self):
+        result = pr_describe._extract_key_words("add the new feature to the system")
+        assert "the" not in result
+        assert "add" in result
+        assert "feature" in result
+        assert "system" in result
+
+    def test_filters_short_words(self):
+        result = pr_describe._extract_key_words("add a new UI to it")
+        assert "ui" not in result  # too short
+        assert "add" in result
+
+    def test_filters_adverbs(self):
+        """Adverbs (words ending in -ly) should be filtered out."""
+        result = pr_describe._extract_key_words("handle errors gracefully and properly")
+        assert "gracefully" not in result
+        assert "properly" not in result
+        assert "handle" in result
+        assert "errors" in result
+
+    def test_keeps_short_ly_words(self):
+        """Short -ly words (4 chars or less) should be kept as they're often not adverbs."""
+        result = pr_describe._extract_key_words("fix the fly and ply issues")
+        assert "fly" in result  # Short -ly word, not an adverb
+        assert "ply" in result
+
+    def test_handles_empty_string(self):
+        result = pr_describe._extract_key_words("")
+        assert result == []
+
+
+class TestBuildMultiCommitSummary:
+    """Tests for _build_multi_commit_summary helper function."""
+
+    def test_single_summary_returned_directly(self):
+        result = pr_describe._build_multi_commit_summary(["add user authentication"], set())
+        assert "add user authentication" in result
+
+    def test_shared_scope_combines_actions(self):
+        """When commits share a scope, actions should be combined cleanly.
+
+        Note: scope is added by generate_pr_title() in conventional commit format,
+        not by _build_multi_commit_summary().
+        """
+        result = pr_describe._build_multi_commit_summary(
+            ["add login", "add logout"],
+            {"auth"},
+        )
+        # Should combine the actions
+        assert "add" in result.lower()
+        assert "login" in result.lower() or "logout" in result.lower()
+
+    def test_finds_common_words(self):
+        result = pr_describe._build_multi_commit_summary(
+            ["handle null pointer error", "handle undefined reference error"],
+            set(),
+        )
+        # Should find "handle" or "error" as common themes
+        assert "handle" in result.lower() or "error" in result.lower()
+
+    def test_finds_common_bigrams(self):
+        """Common bigrams like 'structured output' should be found across commits."""
+        result = pr_describe._build_multi_commit_summary(
+            ["add structured output to scanner", "structured output support for tools"],
+            set(),
+        )
+        assert "structured output" in result.lower()
+
+    def test_handles_hyphenated_words(self):
+        """Hyphenated words should be split for better domain extraction."""
+        result = pr_describe._build_multi_commit_summary(
+            ["prevent smart-todo-scanner hanging", "handle security audit tools"],
+            set(),
+        )
+        # Should extract "scanner" from "smart-todo-scanner", not use the whole thing
+        # and should not include adverbs
+        assert "gracefully" not in result.lower()
+        # Should find meaningful domains like "scanner" or "security"
+        assert "scanner" in result.lower() or "security" in result.lower()
+
+    def test_filters_adverbs_from_domains(self):
+        """Adverbs should not appear in generated titles."""
+        result = pr_describe._build_multi_commit_summary(
+            ["handle errors gracefully", "process data efficiently"],
+            set(),
+        )
+        assert "gracefully" not in result.lower()
+        assert "efficiently" not in result.lower()
+
+    def test_empty_summaries_returns_fallback(self):
+        result = pr_describe._build_multi_commit_summary([], set())
+        assert result == "various updates"
+
+    def test_contradictory_add_remove_becomes_refactor(self):
+        """Adding and removing the same thing should produce a refactoring summary."""
+        result = pr_describe._build_multi_commit_summary(
+            ["add bullet points to summary", "remove bullet points from output"],
+            set(),
+        )
+        # Should NOT say "add bullet points and remove bullet points"
+        assert "add bullet points and remove bullet points" not in result.lower()
+        # Should say something like "refactor bullet point handling"
+        assert "refactor" in result.lower()
+        assert "bullet point" in result.lower()
+
+    def test_contradictory_enable_disable_becomes_refactor(self):
+        """Enabling and disabling the same feature should produce a refactoring summary."""
+        result = pr_describe._build_multi_commit_summary(
+            ["enable feature flags", "disable feature flags for testing"],
+            set(),
+        )
+        assert "enable" not in result.lower() or "disable" not in result.lower()
+        assert "refactor" in result.lower()
+
+    def test_contradictory_with_scope(self):
+        """Contradictory actions should become refactor regardless of scope.
+
+        Note: scope is added by generate_pr_title() in conventional commit format,
+        not by _build_multi_commit_summary().
+        """
+        result = pr_describe._build_multi_commit_summary(
+            ["add validation", "remove validation"],
+            {"parser"},
+        )
+        assert "refactor" in result.lower()
+        # Scope is NOT in summary - it's added by generate_pr_title()
+        assert "validation" in result.lower()
+
+    def test_preserves_technical_term_none(self):
+        """Technical terms like None should be preserved in multi-commit summaries."""
+        result = pr_describe._build_multi_commit_summary(
+            ["prevent None returns", "handle None values"],
+            set(),
+        )
+        # Should preserve "None" capitalization
+        assert "None" in result or "none" not in result.lower()
+
+    def test_preserves_technical_term_in_action_phrase(self):
+        """When action phrases contain technical terms, preserve their case."""
+        result = pr_describe._build_multi_commit_summary(
+            ["prevent None and improve error handling"],
+            set(),
+        )
+        # Single summary with None should preserve it
+        assert "None" in result
+
+
+class TestNormalizeObject:
+    """Tests for _normalize_object helper function."""
+
+    def test_removes_trailing_s(self):
+        assert pr_describe._normalize_object("bullet points") == "bullet point"
+        assert pr_describe._normalize_object("errors") == "error"
+
+    def test_removes_leading_articles(self):
+        assert pr_describe._normalize_object("the bullet points") == "bullet point"
+        assert pr_describe._normalize_object("a validation") == "validation"
+        assert pr_describe._normalize_object("an error") == "error"
+
+    def test_lowercases(self):
+        assert pr_describe._normalize_object("Bullet Points") == "bullet point"
+
+    def test_short_words_unchanged(self):
+        # Words <= 3 chars don't get 's' removed
+        assert pr_describe._normalize_object("as") == "as"
+        assert pr_describe._normalize_object("is") == "is"
+
+
+class TestDetectContradictoryActions:
+    """Tests for _detect_contradictory_actions helper function."""
+
+    def test_detects_add_remove_same_object(self):
+        phrases = [("add", "bullet points"), ("remove", "bullet points")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is not None
+        assert "bullet point" in result[1].lower()
+
+    def test_detects_add_remove_singular_plural(self):
+        """Should match even with singular/plural differences."""
+        phrases = [("add", "bullet point"), ("remove", "bullet points")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is not None
+
+    def test_detects_enable_disable(self):
+        phrases = [("enable", "feature flag"), ("disable", "feature flag")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is not None
+
+    def test_no_contradiction_different_objects(self):
+        phrases = [("add", "bullet points"), ("remove", "whitespace")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is None
+
+    def test_no_contradiction_non_opposing_verbs(self):
+        phrases = [("add", "bullet points"), ("improve", "bullet points")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is None
+
+    def test_no_contradiction_single_action(self):
+        phrases = [("add", "bullet points")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is None
+
+    def test_no_contradiction_empty_list(self):
+        result = pr_describe._detect_contradictory_actions([])
+        assert result is None
+
+
+class TestExtractActionPhrase:
+    """Tests for _extract_action_phrase helper function."""
+
+    def test_extracts_remove_action(self):
+        result = pr_describe._extract_action_phrase("remove bullet points from summary")
+        assert result is not None
+        assert result[0] == "remove"
+        assert "bullet points" in result[1]
+
+    def test_extracts_add_action(self):
+        result = pr_describe._extract_action_phrase("add validation for inputs")
+        assert result is not None
+        assert result[0] == "add"
+        assert "validation" in result[1]
+
+    def test_extracts_filter_action(self):
+        result = pr_describe._extract_action_phrase("filter empty commits")
+        assert result is not None
+        assert result[0] == "filter"
+        assert "empty commits" in result[1]
+
+    def test_extracts_improve_action(self):
+        result = pr_describe._extract_action_phrase("improve section headers")
+        assert result is not None
+        assert result[0] == "improve"
+        assert "section headers" in result[1]
+
+    def test_strips_trailing_adverbs(self):
+        result = pr_describe._extract_action_phrase("handle errors gracefully")
+        assert result is not None
+        assert result[0] == "handle"
+        assert "gracefully" not in result[1]
+        assert "errors" in result[1]
+
+    def test_returns_none_for_no_action(self):
+        result = pr_describe._extract_action_phrase("bullet points improvements")
+        assert result is None
+
+    def test_handles_prepositions(self):
+        result = pr_describe._extract_action_phrase("remove spaces from output")
+        assert result is not None
+        assert result[0] == "remove"
+        assert result[1] == "spaces"  # Stops at "from"
+
+    def test_preserves_technical_term_case_none(self):
+        """Technical terms like None should preserve their case."""
+        result = pr_describe._extract_action_phrase("prevent None returns")
+        assert result is not None
+        assert result[0] == "prevent"
+        assert result[1] == "None returns"  # None should stay capitalized
+
+    def test_preserves_technical_term_case_true_false(self):
+        """Python boolean literals should preserve case."""
+        result = pr_describe._extract_action_phrase("handle True and False values")
+        assert result is not None
+        assert result[0] == "handle"
+        assert "True" in result[1]
+        assert "False" in result[1]
+
+    def test_preserves_technical_term_case_null(self):
+        """NULL should preserve its uppercase."""
+        result = pr_describe._extract_action_phrase("filter NULL entries")
+        assert result is not None
+        assert result[0] == "filter"
+        assert result[1] == "NULL entries"
+
+    def test_preserves_technical_term_case_error_types(self):
+        """Error type names should preserve their case."""
+        result = pr_describe._extract_action_phrase("handle TypeError exceptions")
+        assert result is not None
+        assert result[0] == "handle"
+        assert "TypeError" in result[1]
+
+
+class TestExtractBranchType:
+    """Tests for extract_branch_type function."""
+
+    def test_extracts_feat_type(self):
+        assert pr_describe.extract_branch_type("feat/add-login") == "feat"
+        assert pr_describe.extract_branch_type("feat-add-login") == "feat"
+
+    def test_extracts_fix_type(self):
+        assert pr_describe.extract_branch_type("fix/null-pointer") == "fix"
+        assert pr_describe.extract_branch_type("fix-null-pointer") == "fix"
+
+    def test_extracts_chore_type(self):
+        assert pr_describe.extract_branch_type("chore/update-deps") == "chore"
+
+    def test_normalizes_feature_to_feat(self):
+        assert pr_describe.extract_branch_type("feature/new-thing") == "feat"
+
+    def test_returns_empty_for_no_prefix(self):
+        assert pr_describe.extract_branch_type("main") == ""
+        assert pr_describe.extract_branch_type("develop") == ""
+        assert pr_describe.extract_branch_type("random-branch") == ""
+
+    def test_handles_empty_string(self):
+        assert pr_describe.extract_branch_type("") == ""
+
+    def test_case_insensitive(self):
+        assert pr_describe.extract_branch_type("FEAT/uppercase") == "feat"
+        assert pr_describe.extract_branch_type("Fix/Mixed") == "fix"
+
+
+class TestGeneratePrTitleWithBranch:
+    """Tests for generate_pr_title with branch name support."""
+
+    def test_single_commit_ignores_branch(self):
+        """Single commit should use commit type directly."""
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: add login", commit_type="feat")
+        ]
+        result = pr_describe.generate_pr_title(commits, config, "fix/something-else")
+        assert result.startswith("feat:")
+
+    def test_branch_type_as_tiebreaker(self):
+        """Branch type should break ties between equal commit type counts."""
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: add login", commit_type="feat"),
+            pr_describe.CommitInfo(hash="def", subject="fix: handle error", commit_type="fix"),
+        ]
+        # With feat branch, should prefer feat
+        result = pr_describe.generate_pr_title(commits, config, "feat/login-feature")
+        assert result.startswith("feat:")
+
+        # With fix branch, should prefer fix
+        result = pr_describe.generate_pr_title(commits, config, "fix/handle-errors")
+        assert result.startswith("fix:")
+
+    def test_first_commit_weighted_more(self):
+        """First commit should be weighted more heavily."""
+        config = pr_describe.Config()
+        # First commit is feat, then two fix commits
+        # Without weighting: fix wins 2-1
+        # With weighting: feat=2, fix=2, tie broken by branch or sort
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: main feature", commit_type="feat"),
+            pr_describe.CommitInfo(hash="def", subject="fix: small fix 1", commit_type="fix"),
+            pr_describe.CommitInfo(hash="ghi", subject="fix: small fix 2", commit_type="fix"),
+        ]
+        # With a feat branch, should definitely be feat
+        result = pr_describe.generate_pr_title(commits, config, "feat/main-feature")
+        assert result.startswith("feat:")
+
+    def test_test_type_deprioritized(self):
+        """Test type should be deprioritized unless ALL commits are tests."""
+        config = pr_describe.Config()
+        # Main feature commit + test commits
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: add feature", commit_type="feat"),
+            pr_describe.CommitInfo(hash="def", subject="test: add tests", commit_type="test"),
+            pr_describe.CommitInfo(hash="ghi", subject="test: more tests", commit_type="test"),
+        ]
+        result = pr_describe.generate_pr_title(commits, config, "feat/new-feature")
+        # Should be feat, not test, even though test has more commits (2 vs 1)
+        assert result.startswith("feat:")
+
+    def test_all_tests_uses_test_type(self):
+        """If ALL commits are tests, should use test type."""
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="test: add unit tests", commit_type="test"),
+            pr_describe.CommitInfo(
+                hash="def", subject="test: add integration tests", commit_type="test"
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config, "test/add-tests")
+        assert result.startswith("test:")
+
+    def test_branch_override_with_close_counts(self):
+        """Branch type should win when commit counts are close."""
+        config = pr_describe.Config()
+        # feat branch with mostly feat commits but one fix
+        commits = [
+            pr_describe.CommitInfo(hash="abc", subject="feat: main feature", commit_type="feat"),
+            pr_describe.CommitInfo(hash="def", subject="fix: related fix", commit_type="fix"),
+        ]
+        result = pr_describe.generate_pr_title(commits, config, "feat/new-feature")
+        assert result.startswith("feat:")
