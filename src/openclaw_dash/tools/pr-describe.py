@@ -389,11 +389,134 @@ def detect_config_changes(files: list[FileChange]) -> list[str]:
     return changes
 
 
+def _extract_key_words(text: str) -> list[str]:
+    """Extract meaningful words from text, filtering stop words."""
+    stop_words = {
+        "the",
+        "a",
+        "an",
+        "to",
+        "for",
+        "in",
+        "on",
+        "at",
+        "by",
+        "with",
+        "and",
+        "or",
+        "of",
+        "from",
+        "is",
+        "be",
+        "was",
+        "were",
+        "been",
+        "this",
+        "that",
+        "it",
+        "its",
+        "as",
+        "if",
+        "when",
+        "also",
+        "into",
+        "some",
+        "all",
+        "more",
+        "new",
+        "change",
+        "changes",
+        "update",
+        "updates",
+    }
+    words = re.findall(r"\b[a-zA-Z][a-zA-Z0-9_-]*\b", text.lower())
+    return [w for w in words if w not in stop_words and len(w) > 2]
+
+
+def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
+    """
+    Build a meaningful summary from multiple commit summaries.
+
+    Strategy:
+    1. If there's a single summary, use it
+    2. If all commits share a scope, describe improvements to that scope
+    3. Find common words across summaries for a theme
+    4. Fall back to listing first few key changes
+    """
+    if not summaries:
+        return "various updates"
+
+    # Clean up summaries
+    clean_summaries = [s.strip() for s in summaries if s.strip()]
+    if not clean_summaries:
+        return "various updates"
+
+    if len(clean_summaries) == 1:
+        return clean_summaries[0][:60]
+
+    # If all commits share a single scope, that's a strong signal
+    if len(scopes) == 1:
+        scope = list(scopes)[0]
+        # Try to find common action words
+        words_per_summary = [set(_extract_key_words(s)) for s in clean_summaries]
+        if words_per_summary:
+            common = set.intersection(*words_per_summary)
+            if common:
+                key_word = sorted(common, key=len, reverse=True)[0]
+                return f"{key_word} {scope}"
+        return f"{scope} improvements"
+
+    # Find words common to all summaries
+    words_per_summary = [set(_extract_key_words(s)) for s in clean_summaries]
+    if len(words_per_summary) > 1:
+        common = set.intersection(*words_per_summary)
+        if common:
+            # Use the longest common word as the theme
+            key_words = sorted(common, key=len, reverse=True)[:2]
+            return " and ".join(key_words) + " updates"
+
+    # Find words that appear in multiple (but not all) summaries
+    word_counts: dict[str, int] = defaultdict(int)
+    for word_set in words_per_summary:
+        for word in word_set:
+            word_counts[word] += 1
+
+    # Words appearing in at least half the summaries
+    threshold = max(2, len(clean_summaries) // 2)
+    frequent = [w for w, c in word_counts.items() if c >= threshold]
+    if frequent:
+        key_words = sorted(frequent, key=lambda w: word_counts[w], reverse=True)[:2]
+        return " and ".join(key_words) + " updates"
+
+    # Last resort: list first two changes briefly
+    short_summaries = []
+    total_len = 0
+    for s in clean_summaries:
+        # Take first few words of each summary
+        words = s.split()[:4]
+        short_text = " ".join(words)
+        if len(short_text) > 25:
+            short_text = short_text[:22] + "..."
+        if total_len + len(short_text) > 50:
+            break
+        short_summaries.append(short_text)
+        total_len += len(short_text) + 2  # account for ", "
+
+    if short_summaries:
+        return ", ".join(short_summaries)
+
+    # Absolute last resort: use first summary truncated
+    return clean_summaries[0][:60]
+
+
 def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
     """
     Generate a PR title from commits using conventional commit format.
 
-    If multiple commits, uses the dominant type and summarizes.
+    Strategy:
+    - Single commit: use its subject directly
+    - Multiple commits: extract meaningful description from commit messages
+    - Never just count commits - always describe WHAT changed
     """
     if not commits:
         return "Untitled PR"
@@ -414,15 +537,15 @@ def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
             return config.title_format.format(
                 type=commit.commit_type,
                 scope=commit.scope or "",
-                summary=summary.capitalize(),
+                summary=summary.capitalize() if summary else "update",
             )
         return commit.subject
 
-    # Multiple commits - find dominant type
+    # Multiple commits - find dominant type and build meaningful summary
     if type_counts:
         dominant_type = max(type_counts, key=lambda k: type_counts[k])
 
-        # Get scopes for the dominant type
+        # Collect scopes and summaries for the dominant type
         scopes = set()
         summaries = []
         for c in typed_commits:
@@ -430,18 +553,11 @@ def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
                 if c.scope:
                     scopes.add(c.scope)
                 _, _, summary = parse_conventional_commit(c.subject)
-                summaries.append(summary)
+                if summary:
+                    summaries.append(summary.strip())
 
-        # Build summary
-        if len(summaries) == 1:
-            summary_text = summaries[0]
-        elif len(scopes) == 1:
-            summary_text = f"multiple {list(scopes)[0]} changes"
-        else:
-            summary_text = (
-                f"{len(typed_commits)} {COMMIT_TYPES.get(dominant_type, dominant_type)} changes"
-            )
-
+        # Build a descriptive summary (never just count commits)
+        summary_text = _build_multi_commit_summary(summaries, scopes)
         scope_text = list(scopes)[0] if len(scopes) == 1 else ""
 
         return config.title_format.format(

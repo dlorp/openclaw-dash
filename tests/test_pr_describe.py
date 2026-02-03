@@ -656,3 +656,154 @@ class TestCopyToClipboard:
         mock_run.return_value = (1, "", "")  # No clipboard tools found
         result = pr_describe.copy_to_clipboard("test text")
         assert result is False
+
+
+class TestGeneratePRTitle:
+    """Tests for generate_pr_title function."""
+
+    def test_single_commit_uses_subject(self):
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc123",
+                subject="feat: add user authentication",
+                commit_type="feat",
+            )
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        assert "feat" in result
+        assert "authentication" in result.lower()
+
+    def test_no_commits_returns_untitled(self):
+        config = pr_describe.Config()
+        result = pr_describe.generate_pr_title([], config)
+        assert result == "Untitled PR"
+
+    def test_multiple_commits_never_just_counts(self):
+        """Ensure we never generate titles like 'feat: 3 feature changes'."""
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc",
+                subject="feat: add login page",
+                commit_type="feat",
+            ),
+            pr_describe.CommitInfo(
+                hash="def",
+                subject="feat: add signup form",
+                commit_type="feat",
+            ),
+            pr_describe.CommitInfo(
+                hash="ghi",
+                subject="feat: add password reset",
+                commit_type="feat",
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        # Should NOT contain patterns like "3 feature changes"
+        assert "3 feature changes" not in result.lower()
+        assert "feature changes" not in result.lower()
+        # Should contain something descriptive
+        assert len(result) > 5
+
+    def test_multiple_commits_with_shared_scope(self):
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc",
+                subject="feat(auth): add login",
+                commit_type="feat",
+                scope="auth",
+            ),
+            pr_describe.CommitInfo(
+                hash="def",
+                subject="feat(auth): add logout",
+                commit_type="feat",
+                scope="auth",
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        # Should reference the shared scope
+        assert "auth" in result.lower()
+
+    def test_multiple_commits_finds_common_theme(self):
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc",
+                subject="fix: handle null in parser",
+                commit_type="fix",
+            ),
+            pr_describe.CommitInfo(
+                hash="def",
+                subject="fix: handle undefined in parser",
+                commit_type="fix",
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        # Should find common words like "handle" or "parser"
+        assert "fix" in result.lower()
+        # Should have descriptive content, not just count
+        assert "2 fix changes" not in result.lower()
+
+    def test_non_conventional_commits_uses_first_subject(self):
+        config = pr_describe.Config()
+        commits = [
+            pr_describe.CommitInfo(
+                hash="abc",
+                subject="Updated the login page",
+            ),
+            pr_describe.CommitInfo(
+                hash="def",
+                subject="Fixed a bug",
+            ),
+        ]
+        result = pr_describe.generate_pr_title(commits, config)
+        assert result == "Updated the login page"
+
+
+class TestExtractKeyWords:
+    """Tests for _extract_key_words helper function."""
+
+    def test_filters_stop_words(self):
+        result = pr_describe._extract_key_words("add the new feature to the system")
+        assert "the" not in result
+        assert "add" in result
+        assert "feature" in result
+        assert "system" in result
+
+    def test_filters_short_words(self):
+        result = pr_describe._extract_key_words("add a new UI to it")
+        assert "ui" not in result  # too short
+        assert "add" in result
+
+    def test_handles_empty_string(self):
+        result = pr_describe._extract_key_words("")
+        assert result == []
+
+
+class TestBuildMultiCommitSummary:
+    """Tests for _build_multi_commit_summary helper function."""
+
+    def test_single_summary_returned_directly(self):
+        result = pr_describe._build_multi_commit_summary(["add user authentication"], set())
+        assert "add user authentication" in result
+
+    def test_shared_scope_mentioned(self):
+        result = pr_describe._build_multi_commit_summary(
+            ["add login", "add logout"],
+            {"auth"},
+        )
+        assert "auth" in result.lower()
+
+    def test_finds_common_words(self):
+        result = pr_describe._build_multi_commit_summary(
+            ["handle null pointer error", "handle undefined reference error"],
+            set(),
+        )
+        # Should find "handle" or "error" as common themes
+        assert "handle" in result.lower() or "error" in result.lower()
+
+    def test_empty_summaries_returns_fallback(self):
+        result = pr_describe._build_multi_commit_summary([], set())
+        assert result == "various updates"
