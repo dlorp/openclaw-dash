@@ -1,4 +1,10 @@
-"""System resources panel widget for the TUI dashboard."""
+"""System resources panel widget for the TUI dashboard.
+
+This module provides widgets for monitoring system resources including
+CPU, memory, disk, and network usage with visual indicators and sparklines.
+"""
+
+from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.widgets import Static
@@ -18,11 +24,19 @@ _cpu_history: list[float] = []
 _mem_history: list[float] = []
 _net_sent_history: list[float] = []
 _net_recv_history: list[float] = []
-MAX_HISTORY = 30
+MAX_HISTORY: int = 30
 
 
 def _format_bytes(n: float, suffix: str = "B") -> str:
-    """Format bytes into human-readable string."""
+    """Format bytes into human-readable string.
+
+    Args:
+        n: Number of bytes to format.
+        suffix: Suffix to append (default "B" for bytes).
+
+    Returns:
+        Human-readable string with appropriate unit (KB, MB, GB, etc.).
+    """
     for unit in ["", "K", "M", "G", "T"]:
         if abs(n) < 1024:
             return f"{n:.1f}{unit}{suffix}"
@@ -31,7 +45,14 @@ def _format_bytes(n: float, suffix: str = "B") -> str:
 
 
 def _format_rate(bps: float) -> str:
-    """Format bytes per second into human-readable rate."""
+    """Format bytes per second into human-readable rate.
+
+    Args:
+        bps: Bytes per second to format.
+
+    Returns:
+        Human-readable rate string (e.g., "1.5 KB/s", "2.3 MB/s").
+    """
     if bps < 1024:
         return f"{bps:.0f} B/s"
     elif bps < 1024 * 1024:
@@ -41,12 +62,29 @@ def _format_rate(bps: float) -> str:
 
 
 class ResourcesPanel(Static):
-    """System resources monitoring panel."""
+    """System resources monitoring panel.
+
+    Displays real-time system resource usage including:
+    - CPU usage (overall and per-core) with sparkline history
+    - Memory usage with swap information
+    - Disk usage for mounted volumes
+    - Network I/O rates with sparkline history
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying resource content.
+        """
         yield Static("Loading...", id="resources-content")
 
     def refresh_data(self) -> None:
+        """Refresh system resource data.
+
+        Collects current CPU, memory, disk, and network metrics and
+        updates the display with visual indicators and sparklines.
+        """
         global _cpu_history, _mem_history, _net_sent_history, _net_recv_history
 
         data = resources.collect_with_rates()
@@ -199,12 +237,26 @@ class ResourcesPanel(Static):
 
 
 class CompactResourcesPanel(Static):
-    """Compact single-line resources summary."""
+    """Compact single-line resources summary.
+
+    Provides a condensed view of CPU and memory usage suitable for
+    inclusion in dashboard headers or status bars.
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying the compact summary.
+        """
         yield Static("Loading...", id="resources-compact")
 
     def refresh_data(self) -> None:
+        """Refresh the compact resource summary.
+
+        Collects CPU and memory metrics and renders a single-line
+        summary with mini bar visualizations.
+        """
         data = resources.collect()
         content = self.query_one("#resources-compact", Static)
 

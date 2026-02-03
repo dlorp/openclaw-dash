@@ -1,4 +1,10 @@
-"""Alerts panel widget for the TUI dashboard."""
+"""Alerts panel widget for the TUI dashboard.
+
+This module provides widgets for displaying system alerts and notifications
+with color-coded severity levels (critical, high, medium, low).
+"""
+
+from __future__ import annotations
 
 from datetime import datetime
 
@@ -9,13 +15,26 @@ from openclaw_dash.collectors import alerts
 
 
 class AlertsPanel(Static):
-    """Alerts display panel with color-coded severity."""
+    """Alerts display panel with color-coded severity.
+
+    Displays a list of system alerts with visual indicators for severity,
+    source information, and relative timestamps.
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying alert content.
+        """
         yield Static("Loading...", id="alerts-content")
 
     def refresh_data(self) -> None:
-        """Refresh alert data from collectors."""
+        """Refresh alert data from collectors.
+
+        Fetches the latest alerts and updates the display with
+        severity-coded entries and summary counts.
+        """
         data = alerts.collect()
         content = self.query_one("#alerts-content", Static)
 
@@ -71,7 +90,14 @@ class AlertsPanel(Static):
         content.update("\n".join(lines))
 
     def _format_time(self, timestamp: str) -> str:
-        """Format timestamp as relative time."""
+        """Format timestamp as relative time.
+
+        Args:
+            timestamp: ISO format timestamp string.
+
+        Returns:
+            Human-readable relative time string (e.g., "5m ago", "2h ago").
+        """
         if not timestamp:
             return "?"
 
@@ -96,13 +122,26 @@ class AlertsPanel(Static):
 
 
 class AlertsSummaryPanel(Static):
-    """Compact alerts summary for the main dashboard."""
+    """Compact alerts summary for the main dashboard.
+
+    Provides a condensed view of alert status suitable for inclusion
+    in dashboard headers, showing counts by severity level.
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying the summary.
+        """
         yield Static("", id="alerts-summary")
 
     def refresh_data(self) -> None:
-        """Refresh alert summary."""
+        """Refresh the alert summary display.
+
+        Collects alert data and renders a compact summary with
+        severity counts and the first alert title.
+        """
         data = alerts.collect(
             include_ci=True,
             include_security=True,

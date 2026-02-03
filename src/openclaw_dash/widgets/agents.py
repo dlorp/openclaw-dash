@@ -1,4 +1,9 @@
-"""Agents panel widget for displaying active sub-agents and their status."""
+"""Agents panel widget for displaying active sub-agents and their status.
+
+This module provides widgets for monitoring and displaying the status of
+sub-agents running within the OpenClaw system, including their activity state,
+context usage, and task summaries.
+"""
 
 from __future__ import annotations
 
@@ -10,13 +15,30 @@ from openclaw_dash.widgets.ascii_art import mini_bar, separator
 
 
 class AgentsPanel(Static):
-    """Panel displaying active sub-agents and their coordination status."""
+    """Panel displaying active sub-agents and their coordination status.
+
+    Shows a list of currently running sub-agents with their:
+    - Status (active, idle, error)
+    - Label/name
+    - Context window usage percentage
+    - Current task summary
+    - Running time
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying agent content.
+        """
         yield Static("Loading...", id="agents-content")
 
     def refresh_data(self) -> None:
-        """Refresh sub-agent data from collector."""
+        """Refresh sub-agent data from the collector.
+
+        Fetches the latest agent data and updates the panel display
+        with current status, context usage, and task information.
+        """
         data = agents.collect()
         content = self.query_one("#agents-content", Static)
 
@@ -65,13 +87,26 @@ class AgentsPanel(Static):
 
 
 class AgentsSummaryPanel(Static):
-    """Compact agents summary for metric boxes or header display."""
+    """Compact agents summary for metric boxes or header display.
+
+    Provides a condensed view of agent status suitable for inclusion
+    in dashboard headers or metric boxes, showing counts by status.
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying the summary.
+        """
         yield Static("", id="agents-summary")
 
     def refresh_data(self) -> None:
-        """Refresh agent summary."""
+        """Refresh the agent summary display.
+
+        Collects agent data and renders a compact summary showing
+        counts of active, idle, and error state agents.
+        """
         data = agents.collect()
         content = self.query_one("#agents-summary", Static)
 
