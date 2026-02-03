@@ -102,8 +102,8 @@ class AuditResult:
 class SecurityAudit:
     """Main security audit class."""
 
-    def __init__(self, openclaw_dir: Path | None = None):
-        self.openclaw_dir = openclaw_dir or Path.home() / ".openclaw"
+    def __init__(self, openclaw_dir: Path | str | None = None):
+        self.openclaw_dir = Path(openclaw_dir) if openclaw_dir else Path.home() / ".openclaw"
         self.result = AuditResult()
 
     def _should_skip(self, path: Path) -> bool:
