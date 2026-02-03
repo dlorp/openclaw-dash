@@ -109,6 +109,7 @@ def render_error(
     error_type: str | None = None,
     retry_hint: bool = True,
     collector_name: str | None = None,
+    offline_hint: str | None = None,
 ) -> str:
     """Render an error state.
 
@@ -117,6 +118,7 @@ def render_error(
         error_type: Category/type of error.
         retry_hint: Whether to show a retry hint.
         collector_name: Name of collector for last-success lookup.
+        offline_hint: Optional hint about offline alternatives.
 
     Returns:
         Rich markup string for the error state.
@@ -142,8 +144,12 @@ def render_error(
             ago = _format_time_ago(last)
             lines.append(f"[dim]Last success: {ago}[/]")
 
-    # Retry hint
-    if retry_hint:
+    # Show offline hint if provided
+    if offline_hint:
+        lines.append("")
+        lines.append(f"[dim]{offline_hint}[/]")
+    # Otherwise show retry hint
+    elif retry_hint:
         lines.append("[dim italic]Press 'r' to refresh[/]")
 
     return "\n".join(lines)
@@ -209,12 +215,14 @@ def render_stale(
 def render_disconnected(
     service_name: str = "service",
     hint: str | None = None,
+    show_offline_alternatives: bool = True,
 ) -> str:
-    """Render a disconnected state.
+    """Render a disconnected state with offline alternatives.
 
     Args:
         service_name: Name of the disconnected service.
         hint: Optional hint about how to reconnect.
+        show_offline_alternatives: Whether to show offline feature alternatives.
 
     Returns:
         Rich markup string for the disconnected state.
@@ -224,6 +232,13 @@ def render_disconnected(
 
     if hint:
         lines.append(f"[dim italic]{hint}[/]")
+
+    # Add offline alternatives for gateway-related disconnections
+    if show_offline_alternatives and service_name.lower() in ("gateway", "service"):
+        lines.append("")
+        lines.append("[dim]Offline alternatives:[/]")
+        lines.append("[dim]  • openclaw-dash security[/]")
+        lines.append("[dim]  • openclaw-dash auto backup[/]")
 
     return "\n".join(lines)
 
@@ -274,12 +289,14 @@ def check_and_render_state(
     if data.get("_error") or data.get("error"):
         error_msg = data.get("_error") or data.get("error")
         error_type = data.get("_error_type")
+        offline_hint = data.get("_offline_hint")
         return (
             WidgetState.ERROR,
             render_error(
                 error=error_msg,
                 error_type=error_type,
                 collector_name=collector_name,
+                offline_hint=offline_hint,
             ),
         )
 

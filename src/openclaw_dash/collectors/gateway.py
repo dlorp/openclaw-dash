@@ -13,6 +13,7 @@ from openclaw_dash.collectors.base import (
 from openclaw_dash.collectors.cache import cached_collector
 from openclaw_dash.collectors.openclaw_cli import get_openclaw_status, status_to_gateway_data
 from openclaw_dash.demo import is_demo_mode, mock_gateway_status
+from openclaw_dash.offline import format_gateway_error_short
 
 COLLECTOR_NAME = "gateway"
 
@@ -140,10 +141,14 @@ def _collect_gateway_impl() -> dict[str, Any]:
             error_data["_last_healthy"] = _last_healthy.isoformat()
 
         # Add helpful hints based on failure count
-        if _connection_failures >= 3:
-            error_data["_hint"] = "Gateway may need to be started"
-        elif _connection_failures >= 5:
+        if _connection_failures >= 5:
             error_data["_hint"] = "Run 'openclaw gateway start'"
+            error_data["_offline_hint"] = format_gateway_error_short()
+        elif _connection_failures >= 3:
+            error_data["_hint"] = "Gateway may need to be started"
+            error_data["_offline_hint"] = format_gateway_error_short()
+        else:
+            error_data["_hint"] = "Checking gateway connection..."
 
         result = CollectorResult(
             data=error_data,
