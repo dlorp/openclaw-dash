@@ -62,11 +62,11 @@ class BackupReport:
     issues: list[str]
 
 
-def run(cmd: str, cwd: Path | None = None, timeout: int = 30) -> tuple[int, str, str]:
-    """Run a shell command and return (returncode, stdout, stderr)."""
+def run(cmd: list[str], cwd: Path | None = None, timeout: int = 30) -> tuple[int, str, str]:
+    """Run a command and return (returncode, stdout, stderr)."""
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=timeout
+            cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
@@ -158,7 +158,7 @@ class BackupVerifier:
         workspace = self.config.workspace_path
 
         # Check if it's a git repo
-        code, _, _ = run("git rev-parse --is-inside-work-tree", cwd=workspace)
+        code, _, _ = run(["git", "rev-parse", "--is-inside-work-tree"], cwd=workspace)
         if code != 0:
             return SyncCheck(
                 is_git_repo=False,
@@ -172,17 +172,17 @@ class BackupVerifier:
             )
 
         # Get current branch
-        _, branch, _ = run("git branch --show-current", cwd=workspace)
+        _, branch, _ = run(["git", "branch", "--show-current"], cwd=workspace)
 
         # Check for remote
-        code, remotes, _ = run("git remote", cwd=workspace)
+        code, remotes, _ = run(["git", "remote"], cwd=workspace)
         has_remote = bool(remotes.strip())
 
         # Get ahead/behind counts
         ahead, behind = 0, 0
         if has_remote:
             _, status, _ = run(
-                f"git rev-list --left-right --count origin/{branch}...HEAD 2>/dev/null",
+                ["git", "rev-list", "--left-right", "--count", f"origin/{branch}...HEAD"],
                 cwd=workspace,
             )
             parts = status.split()
@@ -193,11 +193,11 @@ class BackupVerifier:
                     pass
 
         # Check uncommitted changes
-        _, diff_output, _ = run("git status --porcelain", cwd=workspace)
+        _, diff_output, _ = run(["git", "status", "--porcelain"], cwd=workspace)
         uncommitted = len([line for line in diff_output.split("\n") if line.strip()])
 
         # Get last commit date
-        _, commit_date_str, _ = run("git log -1 --format=%ci", cwd=workspace)
+        _, commit_date_str, _ = run(["git", "log", "-1", "--format=%ci"], cwd=workspace)
         try:
             last_commit_date = datetime.fromisoformat(
                 commit_date_str.replace(" ", "T").split("+")[0]

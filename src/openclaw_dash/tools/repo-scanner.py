@@ -30,9 +30,9 @@ REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]  # Your repos
 REPO_BASE = Path.home() / "repos"  # Local path to cloned repos
 
 
-def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str]:
-    """Run a shell command and return (returncode, output)."""
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd)
+def run(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str]:
+    """Run a command and return (returncode, output)."""
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
     return result.returncode, result.stdout.strip()
 
 
@@ -42,12 +42,19 @@ def count_todos(repo_path: Path) -> dict:
     files_with_todos = []
 
     for ext in ["py", "ts", "tsx", "js", "jsx"]:
-        _, output = run(
-            f'grep -rn "TODO\\|FIXME\\|HACK\\|XXX" --include="*.{ext}" . 2>/dev/null | grep -v node_modules | grep -v __pycache__ | grep -v ".git"',
+        # Use grep without shell - pipe filtering done in Python
+        grep_result = subprocess.run(
+            ["grep", "-rn", r"TODO\|FIXME\|HACK\|XXX", f"--include=*.{ext}", "."],
+            capture_output=True,
+            text=True,
             cwd=repo_path,
         )
+        output = grep_result.stdout.strip()
         if output:
             for line in output.split("\n"):
+                # Filter out unwanted directories in Python
+                if "node_modules" in line or "__pycache__" in line or ".git" in line:
+                    continue
                 if "TODO" in line:
                     todos["TODO"] += 1
                 if "FIXME" in line:
@@ -71,18 +78,32 @@ def count_todos(repo_path: Path) -> dict:
 
 def count_tests(repo_path: Path) -> int:
     """Count test files/functions."""
-    _, output = run(
-        'find . -name "test_*.py" -o -name "*.test.ts" -o -name "*.test.tsx" 2>/dev/null | grep -v node_modules | wc -l',
+    # Use find without shell, filter in Python
+    find_result = subprocess.run(
+        ["find", ".", "-name", "test_*.py", "-o", "-name", "*.test.ts", "-o", "-name", "*.test.tsx"],
+        capture_output=True,
+        text=True,
         cwd=repo_path,
     )
-    return int(output.strip()) if output.strip().isdigit() else 0
+    output = find_result.stdout.strip()
+    if not output:
+        return 0
+    # Filter out node_modules and count
+    count = sum(1 for line in output.split("\n") if line.strip() and "node_modules" not in line)
+    return count
 
 
 def get_open_prs(repo: str) -> list:
     """Get open PRs for a repo."""
     if not GITHUB_ORG:
         return []
-    _, output = run(f"gh pr list -R {GITHUB_ORG}/{repo} --state open --json number,title --limit 10")
+    _, output = run([
+        "gh", "pr", "list",
+        "-R", f"{GITHUB_ORG}/{repo}",
+        "--state", "open",
+        "--json", "number,title",
+        "--limit", "10"
+    ])
     try:
         return json.loads(output) if output else []
     except json.JSONDecodeError:
@@ -91,7 +112,7 @@ def get_open_prs(repo: str) -> list:
 
 def get_last_commit(repo_path: Path) -> str:
     """Get last commit info."""
-    _, output = run('git log -1 --format="%h %s (%cr)"', cwd=repo_path)
+    _, output = run(["git", "log", "-1", "--format=%h %s (%cr)"], cwd=repo_path)
     return output or "Unknown"
 
 
@@ -103,7 +124,7 @@ def scan_repo(repo: str) -> dict:
         return {"error": f"Repo not found: {repo_path}"}
 
     # Pull latest
-    run("git fetch --quiet", cwd=repo_path)
+    run(["git", "fetch", "--quiet"], cwd=repo_path)
 
     return {
         "name": repo,

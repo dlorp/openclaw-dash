@@ -79,11 +79,11 @@ class PRDescription:
     stats: dict[str, int]
 
 
-def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str, str]:
-    """Run a shell command and return (returncode, stdout, stderr)."""
+def run(cmd: list[str], cwd: Optional[Path] = None) -> tuple[int, str, str]:
+    """Run a command and return (returncode, stdout, stderr)."""
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=60
+            cmd, capture_output=True, text=True, cwd=cwd, timeout=60
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
@@ -94,26 +94,28 @@ def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str, str]:
 
 def get_current_branch(repo_path: Path) -> str:
     """Get the current git branch name."""
-    code, stdout, _ = run("git rev-parse --abbrev-ref HEAD", cwd=repo_path)
+    code, stdout, _ = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_path)
     return stdout if code == 0 else "HEAD"
 
 
 def get_default_branch(repo_path: Path) -> str:
     """Get the default branch (main or master)."""
     # Try main first
-    code, _, _ = run("git show-ref --verify refs/heads/main", cwd=repo_path)
+    code, _, _ = run(["git", "show-ref", "--verify", "refs/heads/main"], cwd=repo_path)
     if code == 0:
         return "main"
 
     # Fall back to master
-    code, _, _ = run("git show-ref --verify refs/heads/master", cwd=repo_path)
+    code, _, _ = run(["git", "show-ref", "--verify", "refs/heads/master"], cwd=repo_path)
     if code == 0:
         return "master"
 
     # Try to get from remote
-    code, stdout, _ = run("git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d: -f2", cwd=repo_path)
-    if code == 0 and stdout.strip():
-        return stdout.strip()
+    code, stdout, _ = run(["git", "remote", "show", "origin"], cwd=repo_path)
+    if code == 0 and stdout:
+        for line in stdout.split("\n"):
+            if "HEAD branch" in line:
+                return line.split(":")[-1].strip()
 
     return "main"
 
@@ -122,7 +124,7 @@ def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
     """Get commits between base and head branches."""
     # Format: hash|||subject|||body
     code, stdout, _ = run(
-        f'git log {base}..{head} --format="%H|||%s|||%b---COMMIT---"',
+        ["git", "log", f"{base}..{head}", "--format=%H|||%s|||%b---COMMIT---"],
         cwd=repo_path
     )
 
@@ -149,7 +151,7 @@ def get_changed_files(repo_path: Path, base: str, head: str) -> list[FileChange]
     """Get list of changed files with status."""
     # Get file statuses
     code, stdout, _ = run(
-        f'git diff {base}...{head} --name-status',
+        ["git", "diff", f"{base}...{head}", "--name-status"],
         cwd=repo_path
     )
 
@@ -173,7 +175,7 @@ def get_changed_files(repo_path: Path, base: str, head: str) -> list[FileChange]
 
     # Get numstat for additions/deletions
     code, stdout, _ = run(
-        f'git diff {base}...{head} --numstat',
+        ["git", "diff", f"{base}...{head}", "--numstat"],
         cwd=repo_path
     )
 
@@ -233,7 +235,7 @@ def detect_new_dependencies(repo_path: Path, base: str, head: str, files: list[F
 
     for dep_file in dep_changes:
         code, stdout, _ = run(
-            f'git diff {base}...{head} -- "{dep_file.path}"',
+            ["git", "diff", f"{base}...{head}", "--", dep_file.path],
             cwd=repo_path
         )
 
@@ -379,7 +381,7 @@ def generate_testing_suggestions(files: list[FileChange], commits: list[CommitIn
 
 def get_diff_text(repo_path: Path, base: str, head: str) -> str:
     """Get the full diff text."""
-    code, stdout, _ = run(f'git diff {base}...{head}', cwd=repo_path)
+    code, stdout, _ = run(["git", "diff", f"{base}...{head}"], cwd=repo_path)
     return stdout if code == 0 else ""
 
 
@@ -532,21 +534,21 @@ def format_json(desc: PRDescription) -> str:
 def copy_to_clipboard(text: str) -> bool:
     """Copy text to clipboard. Returns True on success."""
     # Try pbcopy (macOS)
-    code, _, _ = run("which pbcopy")
+    code, _, _ = run(["which", "pbcopy"])
     if code == 0:
         proc = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)
         proc.communicate(text.encode())
         return proc.returncode == 0
 
     # Try xclip (Linux)
-    code, _, _ = run("which xclip")
+    code, _, _ = run(["which", "xclip"])
     if code == 0:
         proc = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE)
         proc.communicate(text.encode())
         return proc.returncode == 0
 
     # Try xsel (Linux)
-    code, _, _ = run("which xsel")
+    code, _, _ = run(["which", "xsel"])
     if code == 0:
         proc = subprocess.Popen(["xsel", "--clipboard", "--input"], stdin=subprocess.PIPE)
         proc.communicate(text.encode())
@@ -578,7 +580,7 @@ def main():
     repo_path = Path.cwd()
 
     # Check if we're in a git repo
-    code, _, _ = run("git rev-parse --git-dir", cwd=repo_path)
+    code, _, _ = run(["git", "rev-parse", "--git-dir"], cwd=repo_path)
     if code != 0:
         print("Error: Not a git repository", file=sys.stderr)
         sys.exit(1)
@@ -597,7 +599,7 @@ def main():
         sys.exit(1)
 
     # Check if there are commits
-    code, stdout, _ = run(f"git rev-list {base_branch}..{head_branch} --count", cwd=repo_path)
+    code, stdout, _ = run(["git", "rev-list", f"{base_branch}..{head_branch}", "--count"], cwd=repo_path)
     if code != 0 or stdout == "0":
         print(f"Error: No commits between {base_branch} and {head_branch}", file=sys.stderr)
         sys.exit(1)

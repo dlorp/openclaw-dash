@@ -32,9 +32,9 @@ REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]  # Your repos
 STATE_FILE = Path(__file__).parent / ".pr_state.json"
 
 
-def run(cmd: str) -> tuple[int, str]:
-    """Run a shell command and return (returncode, output)."""
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+def run(cmd: list[str]) -> tuple[int, str]:
+    """Run a command and return (returncode, output)."""
+    result = subprocess.run(cmd, capture_output=True, text=True)
     return result.returncode, result.stdout.strip()
 
 
@@ -43,9 +43,13 @@ def get_prs(repo: str, state: str = "all") -> list[dict]:
     if not GITHUB_ORG:
         print("Error: Set GITHUB_ORG environment variable or edit the script.", file=sys.stderr)
         return []
-    _, output = run(
-        f"gh pr list -R {GITHUB_ORG}/{repo} --state {state} --json number,title,state,createdAt,mergedAt,closedAt,author --limit 20"
-    )
+    _, output = run([
+        "gh", "pr", "list",
+        "-R", f"{GITHUB_ORG}/{repo}",
+        "--state", state,
+        "--json", "number,title,state,createdAt,mergedAt,closedAt,author",
+        "--limit", "20"
+    ])
     try:
         return json.loads(output) if output else []
     except json.JSONDecodeError:
