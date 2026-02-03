@@ -1,5 +1,7 @@
 # openclaw-dash
 
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
+
 TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/openclaw) ecosystem at a glance.
 
 ![Dashboard Screenshot](docs/images/dashboard.svg)
