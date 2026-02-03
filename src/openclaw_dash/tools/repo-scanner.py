@@ -34,7 +34,6 @@ GIT_TIMEOUT = 30
 
 
 def load_config() -> dict[str, Any]:
-    """Load configuration using shared config module."""
     # Get shared config with tool-specific overrides
     shared = get_shared_config("repo-scanner")
 
@@ -133,7 +132,6 @@ def count_tests(repo_path: Path) -> int:
 
 
 def get_open_prs(repo: str, github_org: str) -> list:
-    """Get open PRs for a repo."""
     if not github_org:
         return []
     _, output = run(
@@ -158,7 +156,6 @@ def get_open_prs(repo: str, github_org: str) -> list:
 
 
 def get_last_commit(repo_path: Path) -> str:
-    """Get last commit info."""
     _, output = run(["git", "log", "-1", "--format=%h %s (%cr)"], cwd=repo_path)
     return output or "Unknown"
 
@@ -184,7 +181,6 @@ def scan_repo(repo: str, repo_base: Path, github_org: str) -> dict:
 
 
 def format_todo_counts(todos: dict, style: str = "verbose") -> str:
-    """Format TODO counts."""
     total = todos["total"]
     counts = todos["counts"]
 
@@ -202,7 +198,6 @@ def format_todo_counts(todos: dict, style: str = "verbose") -> str:
 
 
 def format_markdown(results: list[dict], style: str = "verbose") -> str:
-    """Format results as markdown."""
     lines = ["## Repo Status", ""]
     lines.append(f"**Scanned:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
@@ -252,7 +247,6 @@ def format_markdown(results: list[dict], style: str = "verbose") -> str:
 
 
 def format_plain(results: list[dict], style: str = "verbose") -> str:
-    """Format results as plain text."""
     lines = ["REPO STATUS", "=" * 40]
     lines.append(f"Scanned: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
@@ -301,7 +295,6 @@ def format_plain(results: list[dict], style: str = "verbose") -> str:
 
 
 def format_json(results: list[dict], _style: str = "verbose") -> str:
-    """Format results as JSON."""
     return json.dumps(results, indent=2)
 
 
@@ -324,7 +317,6 @@ def save_snapshot(results: list[dict], path: Path) -> Path:
 
 
 def progress(msg: str, current: int, total: int) -> None:
-    """Print progress indicator."""
     print(f"[{current}/{total}] {msg}...", file=sys.stderr)
 
 
@@ -387,7 +379,7 @@ Environment:
         choices=["verbose", "concise"],
         default=None,
         metavar="STYLE",
-        help="Output style: verbose (default) or concise",
+        help="Output style: verbose (default) shows PR details and full TODO breakdown; concise shows only totals",
     )
     args = parser.parse_args()
 
@@ -400,6 +392,7 @@ Environment:
     # Handle deprecated --json flag
     output_format = args.format
     if args.json:
+        print("Warning: --json is deprecated, use --format json", file=sys.stderr)
         output_format = "json"
 
     if not github_org:
