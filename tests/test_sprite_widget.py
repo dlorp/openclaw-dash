@@ -4,6 +4,7 @@ from openclaw_dash.widgets.sprite import (
     DEFAULT_STATUS_TEXT,
     SPRITES,
     STATE_COLORS,
+    STATE_ICONS,
     CompactSpriteWidget,
     SpriteState,
     SpriteWidget,
@@ -12,6 +13,7 @@ from openclaw_dash.widgets.sprite import (
     get_sprite,
     get_sprite_art,
     get_state_color,
+    get_state_icon,
     parse_state,
 )
 
@@ -150,6 +152,25 @@ class TestSprites:
         sprite = SPRITES["alert"]
         assert "!" in sprite[0]  # Alert indicator
         assert sprite[2] == "(!.!)"  # Alert eyes
+
+
+class TestStateIcons:
+    """Tests for state emoji icons."""
+
+    def test_all_states_have_icons(self):
+        """Test all states have icons defined."""
+        for state in SpriteState:
+            assert state in STATE_ICONS
+
+    def test_get_state_icon(self):
+        """Test get_state_icon returns correct icons."""
+        assert get_state_icon(SpriteState.IDLE) == "😊"
+        assert get_state_icon(SpriteState.SLEEP) == "😴"
+        assert get_state_icon(SpriteState.THINK) == "🤔"
+        assert get_state_icon(SpriteState.WORK) == "⚡"
+        assert get_state_icon(SpriteState.SPAWN) == "👥"
+        assert get_state_icon(SpriteState.DONE) == "✅"
+        assert get_state_icon(SpriteState.ALERT) == "⚠️"
 
 
 class TestStateColors:
