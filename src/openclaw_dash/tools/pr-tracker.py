@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -31,7 +32,7 @@ def run(cmd: list[str]) -> tuple[int, str]:
 
 def get_prs(org: str, repo: str, state: str = "all") -> list[dict]:
     """Get PRs for a repo."""
-    _, output = run(
+    returncode, output = run(
         [
             "gh",
             "pr",
@@ -46,16 +47,46 @@ def get_prs(org: str, repo: str, state: str = "all") -> list[dict]:
             "20",
         ]
     )
+    if returncode != 0:
+        # gh CLI failed - likely invalid org/repo
+        print(
+            f"Warning: Failed to fetch PRs for {org}/{repo} (gh exit code {returncode})",
+            file=sys.stderr,
+        )
+        return []
     try:
         return json.loads(output) if output else []
     except json.JSONDecodeError:
         return []
 
 
+def validate_org(org: str) -> bool:
+    """Check if the org/user exists on GitHub."""
+    returncode, _ = run(["gh", "api", f"users/{org}", "--silent"])
+    if returncode != 0:
+        # Also try as an org
+        returncode, _ = run(["gh", "api", f"orgs/{org}", "--silent"])
+    return returncode == 0
+
+
 def load_state() -> dict:
-    """Load previous state."""
+    """Load previous state with graceful handling of corrupted files."""
     if STATE_FILE.exists():
-        return json.loads(STATE_FILE.read_text())
+        try:
+            data = json.loads(STATE_FILE.read_text())
+            if not isinstance(data, dict):
+                print("Warning: State file corrupted (not a dict), resetting", file=sys.stderr)
+                return {"prs": {}, "last_check": None}
+            # Handle null/None values - ensure prs is always a dict
+            if data.get("prs") is None:
+                data["prs"] = {}
+            return data
+        except json.JSONDecodeError as e:
+            print(f"Warning: State file corrupted ({e}), resetting", file=sys.stderr)
+            return {"prs": {}, "last_check": None}
+        except OSError as e:
+            print(f"Warning: Cannot read state file ({e}), resetting", file=sys.stderr)
+            return {"prs": {}, "last_check": None}
     return {"prs": {}, "last_check": None}
 
 
@@ -65,17 +96,25 @@ def save_state(state: dict):
     STATE_FILE.write_text(json.dumps(state, indent=2))
 
 
-def format_age(created_at: str) -> str:
-    """Format PR age as human readable."""
-    created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-    age = datetime.now(created.tzinfo) - created
+def format_age(created_at: str | None) -> str:
+    """Format PR age as human readable with date validation."""
+    if not created_at or not isinstance(created_at, str):
+        return "?"
 
-    if age.days > 0:
-        return f"{age.days}d"
-    elif age.seconds >= 3600:
-        return f"{age.seconds // 3600}h"
-    else:
-        return f"{age.seconds // 60}m"
+    try:
+        created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        age = datetime.now(created.tzinfo) - created
+
+        if age.days > 0:
+            return f"{age.days}d"
+        elif age.seconds >= 3600:
+            return f"{age.seconds // 3600}h"
+        else:
+            return f"{age.seconds // 60}m"
+    except (ValueError, AttributeError, TypeError) as e:
+        # Invalid date format or missing timezone info
+        print(f"Warning: Invalid date '{created_at}': {e}", file=sys.stderr)
+        return "?"
 
 
 def check_changes(old_state: dict, current_prs: dict) -> dict[str, list[Any]]:
@@ -86,7 +125,8 @@ def check_changes(old_state: dict, current_prs: dict) -> dict[str, list[Any]]:
         "new": [],
     }
 
-    old_prs = old_state.get("prs", {})
+    # Handle null/None - ensure old_prs is always a dict
+    old_prs = old_state.get("prs") or {}
 
     for pr_key, pr in current_prs.items():
         if pr_key not in old_prs:
@@ -141,6 +181,14 @@ Examples:
 
     # Resolve org (require_org exits with helpful message if not configured)
     org = args.org or require_org()
+
+    # Validate org exists on GitHub
+    if not validate_org(org):
+        print(
+            f"Warning: GitHub org/user '{org}' may not exist or is inaccessible. "
+            "Results may be empty.",
+            file=sys.stderr,
+        )
 
     # Resolve repos (from args, or config file, or defaults)
     repos = args.repo if args.repo else get_repos("pr-tracker")
