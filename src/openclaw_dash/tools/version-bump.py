@@ -91,9 +91,12 @@ def get_current_version(
     """Find and return current version, file path, and file type."""
     # If path specified, look there first
     if specified_path:
-        search_path = repo_root / specified_path
+        search_path = (repo_root / specified_path).resolve()
+        if not search_path.is_relative_to(repo_root.resolve()):
+            print("Error: Path must be within repository", file=sys.stderr)
+            sys.exit(1)
         if not search_path.is_dir():
-            print(f"Error: Specified path does not exist: {specified_path}")
+            print(f"Error: Specified path does not exist: {specified_path}", file=sys.stderr)
             sys.exit(1)
         result = find_version_file(search_path)
         if result:
