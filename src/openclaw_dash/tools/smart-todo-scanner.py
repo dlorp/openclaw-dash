@@ -16,9 +16,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
@@ -28,6 +29,11 @@ class TodoItem:
     line: int
     category: str  # DOCSTRING, COMMENT, INLINE
     text: str
+    priority: str  # HIGH, MEDIUM, LOW
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        return asdict(self)
 
 
 # Regex to match TODOs only in comments, not string literals
@@ -164,6 +170,16 @@ def find_todo_in_comment(line: str) -> tuple[str, str] | None:
     return None
 
 
+def get_priority(category: str) -> str:
+    """Get priority level based on category."""
+    priority_map = {
+        "INLINE": "HIGH",
+        "COMMENT": "MEDIUM",
+        "DOCSTRING": "LOW"
+    }
+    return priority_map.get(category, "MEDIUM")
+
+
 def categorize_todo(line: str, is_in_docstring: bool) -> str:
     """Categorize a TODO based on context."""
     stripped = line.strip()
@@ -235,12 +251,14 @@ def scan_file(filepath: Path) -> list[TodoItem]:
             todo_match = find_todo_in_docstring(line)
             if todo_match:
                 keyword, text = todo_match
+                category = "DOCSTRING"
                 todos.append(
                     TodoItem(
                         file=str(filepath),
                         line=i + 1,
-                        category="DOCSTRING",
+                        category=category,
                         text=text[:80] if text else f"{keyword} (no description)",
+                        priority=get_priority(category),
                     )
                 )
         else:
@@ -256,6 +274,7 @@ def scan_file(filepath: Path) -> list[TodoItem]:
                         line=i + 1,
                         category=category,
                         text=text[:80] if text else f"{keyword} (no description)",
+                        priority=get_priority(category),
                     )
                 )
 
@@ -395,6 +414,16 @@ def main() -> int:
         default=[".py", ".ts", ".tsx", ".js", ".jsx"],
         help="File extensions to scan (default: .py .ts .tsx .js .jsx)",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output in JSON format for machine processing",
+    )
+    parser.add_argument(
+        "--actionable",
+        action="store_true",
+        help="Only show actionable TODOs (exclude DOCSTRING category)",
+    )
 
     args = parser.parse_args()
     path = Path(args.path)
@@ -409,6 +438,10 @@ def main() -> int:
     else:
         todos = scan_directory(path, args.extensions)
 
+    # Apply actionable filter if requested
+    if args.actionable:
+        todos = [todo for todo in todos if todo.category != "DOCSTRING"]
+
     # Group by category
     by_category: dict[str, list[TodoItem]] = {
         "DOCSTRING": [],
@@ -418,42 +451,73 @@ def main() -> int:
     for todo in todos:
         by_category[todo.category].append(todo)
 
-    # Print report
-    print("## 📝 Smart TODO Scan")
-    print(f"**Path:** {path}")
-    print(f"**Total:** {len(todos)} TODOs found")
-    print()
-
-    print("### ⚠️ INLINE (code TODOs - high priority)")
-    if by_category["INLINE"]:
-        for t in by_category["INLINE"][:10]:
-            print(f"  {t.file}:{t.line} — {t.text}")
+    if args.json:
+        # JSON output
+        output = {
+            "scan_info": {
+                "path": str(path),
+                "extensions": args.extensions,
+                "actionable_only": args.actionable
+            },
+            "todos": [todo.to_dict() for todo in todos],
+            "summary": {
+                "total": len(todos),
+                "by_category": {
+                    "INLINE": len(by_category["INLINE"]),
+                    "COMMENT": len(by_category["COMMENT"]),
+                    "DOCSTRING": len(by_category["DOCSTRING"])
+                },
+                "by_priority": {
+                    "HIGH": len([t for t in todos if t.priority == "HIGH"]),
+                    "MEDIUM": len([t for t in todos if t.priority == "MEDIUM"]),
+                    "LOW": len([t for t in todos if t.priority == "LOW"])
+                },
+                "actionable": len([t for t in todos if t.category in ["INLINE", "COMMENT"]])
+            }
+        }
+        print(json.dumps(output, indent=2))
     else:
-        print("  *None*")
-    print()
+        # Human-readable prose output
+        filter_note = " (actionable only)" if args.actionable else ""
+        print(f"## 📝 Smart TODO Scan{filter_note}")
+        print(f"**Path:** {path}")
+        print(f"**Total:** {len(todos)} TODOs found")
+        print()
 
-    print(f"### 💬 COMMENT ({len(by_category['COMMENT'])} items)")
-    if by_category["COMMENT"]:
-        for t in by_category["COMMENT"][:10]:
-            print(f"  {t.file}:{t.line} — {t.text}")
-        if len(by_category["COMMENT"]) > 10:
-            print(f"  ... and {len(by_category['COMMENT']) - 10} more")
-    else:
-        print("  *None*")
-    print()
+        print("### ⚠️ INLINE (code TODOs - high priority)")
+        if by_category["INLINE"]:
+            for t in by_category["INLINE"][:10]:
+                print(f"  {t.file}:{t.line} — {t.text}")
+        else:
+            print("  *None*")
+        print()
 
-    print(f"### 📚 DOCSTRING ({len(by_category['DOCSTRING'])} items - documentation notes)")
-    if by_category["DOCSTRING"]:
-        print(f"  {len(by_category['DOCSTRING'])} documentation notes (low priority)")
-    else:
-        print("  *None*")
+        print(f"### 💬 COMMENT ({len(by_category['COMMENT'])} items)")
+        if by_category["COMMENT"]:
+            for t in by_category["COMMENT"][:10]:
+                print(f"  {t.file}:{t.line} — {t.text}")
+            if len(by_category["COMMENT"]) > 10:
+                print(f"  ... and {len(by_category['COMMENT']) - 10} more")
+        else:
+            print("  *None*")
+        print()
 
-    # Summary
-    actionable = len(by_category["INLINE"]) + len(by_category["COMMENT"])
-    docs = len(by_category["DOCSTRING"])
-    print()
-    print("---")
-    print(f"**Actionable:** {actionable} | **Documentation notes:** {docs}")
+        if not args.actionable:
+            print(f"### 📚 DOCSTRING ({len(by_category['DOCSTRING'])} items - documentation notes)")
+            if by_category["DOCSTRING"]:
+                print(f"  {len(by_category['DOCSTRING'])} documentation notes (low priority)")
+            else:
+                print("  *None*")
+
+        # Summary
+        actionable = len(by_category["INLINE"]) + len(by_category["COMMENT"])
+        docs = len(by_category["DOCSTRING"])
+        print()
+        print("---")
+        if args.actionable:
+            print(f"**Actionable TODOs:** {actionable}")
+        else:
+            print(f"**Actionable:** {actionable} | **Documentation notes:** {docs}")
 
     return 0
 

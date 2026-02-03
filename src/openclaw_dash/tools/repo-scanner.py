@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """
-repo-scanner.py — Scan repos for health metrics.
+repo-scanner.py — Scan repos for health metrics with structured output.
 
 Tracks:
 - TODO/FIXME counts by file
 - Test counts
 - Open PRs
 - Last commit activity
+- Health status (green/yellow/red) based on configurable thresholds
+
+Features:
+- Machine-readable JSON output with consistent structure
+- Human-readable markdown and plain text formats
+- Configurable status thresholds
+- Summary statistics across all repos
 
 Usage:
     python3 repo-scanner.py [--format FORMAT] [--save] [--repo-base PATH] [--org ORG]
@@ -42,6 +49,12 @@ def load_config() -> dict[str, Any]:
         "repo_base": str(get_repo_base()),
         "github_org": shared.get("github_org", ""),
         "output_style": shared.get("output_format", "text"),
+        "status_thresholds": shared.get("status_thresholds", {
+            "green_max_todos": 10,
+            "green_max_prs": 2,
+            "yellow_max_todos": 25,
+            "yellow_max_prs": 5,
+        }),
     }
 
 
@@ -174,7 +187,25 @@ def get_last_commit(repo_path: Path) -> str:
     return output or "Unknown"
 
 
-def scan_repo(repo: str, repo_base: Path, github_org: str) -> dict:
+def determine_status(todo_count: int, pr_count: int, thresholds: dict) -> str:
+    """Determine repo status (green/yellow/red) based on TODO and PR counts."""
+    green_todos = thresholds.get("green_max_todos", 10)
+    green_prs = thresholds.get("green_max_prs", 2)
+    yellow_todos = thresholds.get("yellow_max_todos", 25)
+    yellow_prs = thresholds.get("yellow_max_prs", 5)
+
+    # Green: both metrics under green thresholds
+    if todo_count <= green_todos and pr_count <= green_prs:
+        return "green"
+    # Red: either metric above yellow threshold
+    elif todo_count > yellow_todos or pr_count > yellow_prs:
+        return "red"
+    # Yellow: everything else
+    else:
+        return "yellow"
+
+
+def scan_repo(repo: str, repo_base: Path, github_org: str, thresholds: dict) -> dict:
     """Scan a single repo for health metrics."""
     repo_path = repo_base / repo
 
@@ -183,12 +214,17 @@ def scan_repo(repo: str, repo_base: Path, github_org: str) -> dict:
 
     run(["git", "fetch", "--quiet"], cwd=repo_path)
 
+    todos = count_todos(repo_path)
+    prs = get_open_prs(repo, github_org)
+    status = determine_status(todos["total"], len(prs), thresholds)
+
     return {
         "name": repo,
         "path": str(repo_path),
-        "todos": count_todos(repo_path),
+        "status": status,
+        "todos": todos,
         "test_files": count_tests(repo_path),
-        "open_prs": get_open_prs(repo, github_org),
+        "open_prs": prs,
         "last_commit": get_last_commit(repo_path),
         "scanned_at": datetime.now().isoformat(),
     }
@@ -216,33 +252,37 @@ def format_markdown(results: list[dict], style: str = "verbose") -> str:
     lines.append(f"**Scanned:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
 
-    total_todos = 0
-    total_prs = 0
+    # Collect summary statistics
+    summary = {
+        "total_repos": len(results),
+        "total_todos": 0,
+        "total_prs": 0,
+        "total_test_files": 0,
+        "status_counts": {"green": 0, "yellow": 0, "red": 0, "error": 0},
+    }
+
+    status_icons = {"green": "✅", "yellow": "🟡", "red": "🔴", "error": "❌"}
 
     for r in results:
         if "error" in r:
             lines.append(f"### ❌ {r.get('name', 'Unknown')}")
-            lines.append(f"Error: {r['error']}")
+            lines.append(f"**Error:** {r['error']}")
             lines.append("")
+            summary["status_counts"]["error"] += 1
             continue
 
         name = r["name"]
+        status = r["status"]
         todos = r["todos"]
         prs = r["open_prs"]
 
-        total_todos += todos["total"]
-        total_prs += len(prs)
+        summary["total_todos"] += todos["total"]
+        summary["total_prs"] += len(prs)
+        summary["total_test_files"] += r["test_files"]
+        summary["status_counts"][status] += 1
 
-        # Status based on open PR count
-        pr_count = len(prs)
-        if pr_count == 0:
-            status = "✅"
-        elif pr_count <= 3:
-            status = "🟡"
-        else:
-            status = "🔴"
-
-        lines.append(f"### {status} {name}")
+        icon = status_icons[status]
+        lines.append(f"### {icon} {name} ({status.upper()})")
         lines.append(f"- **TODOs:** {format_todo_counts(todos, style)}")
         lines.append(f"- **Test files:** {r['test_files']}")
         lines.append(f"- **Open PRs:** {len(prs)}")
@@ -254,8 +294,20 @@ def format_markdown(results: list[dict], style: str = "verbose") -> str:
         lines.append(f"- **Last commit:** {r['last_commit']}")
         lines.append("")
 
+    # Add summary section
     lines.append("---")
-    lines.append(f"**Totals:** {total_todos} TODOs, {total_prs} open PRs")
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(f"**Total Repos:** {summary['total_repos']}")
+    lines.append(f"**Total TODOs:** {summary['total_todos']}")
+    lines.append(f"**Total Open PRs:** {summary['total_prs']}")
+    lines.append(f"**Total Test Files:** {summary['total_test_files']}")
+    lines.append("")
+    lines.append("**Status Breakdown:**")
+    for status, count in summary["status_counts"].items():
+        if count > 0:
+            icon = status_icons[status]
+            lines.append(f"- {icon} {status.title()}: {count}")
 
     return "\n".join(lines)
 
@@ -265,30 +317,31 @@ def format_plain(results: list[dict], style: str = "verbose") -> str:
     lines.append(f"Scanned: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
 
-    total_todos = 0
-    total_prs = 0
+    # Collect summary statistics
+    summary = {
+        "total_repos": len(results),
+        "total_todos": 0,
+        "total_prs": 0,
+        "total_test_files": 0,
+        "status_counts": {"green": 0, "yellow": 0, "red": 0, "error": 0},
+    }
 
     for r in results:
         if "error" in r:
             lines.append(f"[ERROR] {r.get('name', 'Unknown')}: {r['error']}")
             lines.append("")
+            summary["status_counts"]["error"] += 1
             continue
 
         name = r["name"]
+        status = r["status"].upper()
         todos = r["todos"]
         prs = r["open_prs"]
 
-        total_todos += todos["total"]
-        total_prs += len(prs)
-
-        # Status based on open PR count
-        pr_count = len(prs)
-        if pr_count == 0:
-            status = "OK"
-        elif pr_count <= 3:
-            status = "WARN"
-        else:
-            status = "ALERT"
+        summary["total_todos"] += todos["total"]
+        summary["total_prs"] += len(prs)
+        summary["total_test_files"] += r["test_files"]
+        summary["status_counts"][r["status"]] += 1
 
         lines.append(f"[{status}] {name}")
         lines.append(f"  TODOs: {format_todo_counts(todos, style)}")
@@ -302,14 +355,80 @@ def format_plain(results: list[dict], style: str = "verbose") -> str:
         lines.append(f"  Last:  {r['last_commit']}")
         lines.append("")
 
+    # Add summary section
     lines.append("-" * 40)
-    lines.append(f"TOTALS: {total_todos} TODOs, {total_prs} open PRs")
+    lines.append("SUMMARY")
+    lines.append("")
+    lines.append(f"Total Repos:      {summary['total_repos']}")
+    lines.append(f"Total TODOs:      {summary['total_todos']}")
+    lines.append(f"Total Open PRs:   {summary['total_prs']}")
+    lines.append(f"Total Test Files: {summary['total_test_files']}")
+    lines.append("")
+    lines.append("Status Breakdown:")
+    for status, count in summary["status_counts"].items():
+        if count > 0:
+            lines.append(f"  {status.title()}: {count}")
 
     return "\n".join(lines)
 
 
 def format_json(results: list[dict], _style: str = "verbose") -> str:
-    return json.dumps(results, indent=2)
+    """Format results as structured JSON with consistent fields."""
+    repos = []
+    summary = {
+        "total_repos": 0,
+        "total_todos": 0,
+        "total_prs": 0,
+        "total_test_files": 0,
+        "status_counts": {"green": 0, "yellow": 0, "red": 0, "error": 0},
+        "scanned_at": datetime.now().isoformat(),
+    }
+
+    for result in results:
+        if "error" in result:
+            repos.append({
+                "repo_name": result["name"],
+                "status": "error",
+                "error": result["error"],
+                "pr_count": 0,
+                "todo_count": 0,
+                "test_file_count": 0,
+                "last_commit": None,
+            })
+            summary["status_counts"]["error"] += 1
+        else:
+            repo_data = {
+                "repo_name": result["name"],
+                "status": result["status"],
+                "pr_count": len(result["open_prs"]),
+                "todo_count": result["todos"]["total"],
+                "test_file_count": result["test_files"],
+                "last_commit": result["last_commit"],
+                "todo_breakdown": result["todos"]["counts"],
+                "files_with_todos": result["todos"]["files_affected"],
+            }
+
+            # Add PR details if available
+            if result["open_prs"]:
+                repo_data["open_prs"] = [
+                    {"number": pr["number"], "title": pr["title"]}
+                    for pr in result["open_prs"]
+                ]
+
+            repos.append(repo_data)
+
+            # Update summary
+            summary["total_todos"] += result["todos"]["total"]
+            summary["total_prs"] += len(result["open_prs"])
+            summary["total_test_files"] += result["test_files"]
+            summary["status_counts"][result["status"]] += 1
+
+        summary["total_repos"] += 1
+
+    return json.dumps({
+        "repos": repos,
+        "summary": summary
+    }, indent=2)
 
 
 def save_snapshot(results: list[dict], path: Path) -> Path:
@@ -358,6 +477,11 @@ Configuration:
       - repo2
     repo_base: ~/repos
     output_format: text  # or json
+    status_thresholds:
+      green_max_todos: 10    # Green if TODOs <= 10 AND PRs <= 2
+      green_max_prs: 2
+      yellow_max_todos: 25   # Red if TODOs > 25 OR PRs > 5
+      yellow_max_prs: 5      # Yellow otherwise
 
 Environment:
   GITHUB_ORG    GitHub username/org (can be set in config or via --org)
@@ -424,9 +548,10 @@ Environment:
 
     results = []
     total = len(repos)
+    status_thresholds = config["status_thresholds"]
     for i, repo in enumerate(repos, 1):
         progress(f"Scanning {repo}", i, total)
-        results.append(scan_repo(repo, repo_base, github_org))
+        results.append(scan_repo(repo, repo_base, github_org, status_thresholds))
 
     if args.save:
         snapshot = save_snapshot(results, Path(__file__))
