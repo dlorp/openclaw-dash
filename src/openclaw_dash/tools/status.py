@@ -414,10 +414,17 @@ def scan_repo(
     repo: str, repo_base: Path, github_org: str, fetch_ci: bool, skip_docstrings: bool
 ) -> dict[str, Any]:
     """Scan a single repo for combined status."""
-    repo_path = repo_base / repo
+    repo_path = (repo_base / repo).resolve()
+    resolved_base = repo_base.resolve()
+
+    # Prevent path traversal: ensure resolved path stays within repo_base
+    try:
+        repo_path.relative_to(resolved_base)
+    except ValueError:
+        return {"name": repo, "error": "Invalid repo path"}
 
     if not repo_path.exists():
-        return {"name": repo, "error": f"Repo not found: {repo_path}"}
+        return {"name": repo, "error": "Repo not found"}
 
     # Fetch PRs
     prs = get_prs(github_org, repo, "open", fetch_ci=fetch_ci)
