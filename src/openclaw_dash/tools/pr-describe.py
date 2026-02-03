@@ -91,6 +91,83 @@ FILE_CATEGORIES = {
     "ci": [r"\.github/", r"\.gitlab-ci", r"\.circleci/", r"Jenkinsfile", r"\.travis"],
 }
 
+# Incidental nouns - generic terms that don't describe domain/feature
+# These are WHERE/HOW things happen, not WHAT the change is about
+INCIDENTAL_NOUNS = {
+    # Location/container nouns
+    "directories",
+    "directory",
+    "files",
+    "file",
+    "folder",
+    "folders",
+    "path",
+    "paths",
+    "code",
+    "codebase",
+    "project",
+    "projects",
+    "repo",
+    "repository",
+    # Generic data terms
+    "data",
+    "items",
+    "item",
+    "things",
+    "thing",
+    "stuff",
+    "content",
+    "contents",
+    "elements",
+    "element",
+    "entries",
+    "entry",
+    # Generic change terms (often in commit msgs)
+    "changes",
+    "updates",
+    "modifications",
+    "adjustments",
+    # Generic problem terms
+    "errors",
+    "error",
+    "issues",
+    "issue",
+    "problems",
+    "problem",
+    "bugs",
+    "bug",
+    # Generic technical terms
+    "cases",
+    "case",
+    "options",
+    "option",
+    "values",
+    "value",
+    "types",
+    "type",
+    "results",
+    "result",
+    "objects",
+    "object",
+    "instances",
+    "instance",
+    "requests",
+    "request",
+    "responses",
+    "response",
+    # Process/action nouns
+    "operations",
+    "operation",
+    "processes",
+    "process",
+    "actions",
+    "action",
+    "steps",
+    "step",
+    "tasks",
+    "task",
+}
+
 # Breaking change indicators
 BREAKING_PATTERNS = [
     r"BREAKING",
@@ -511,7 +588,12 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
         if common:
             action_words = {"add", "fix", "improve", "handle", "support", "implement", "enable"}
             actions = [w for w in common if w in action_words]
-            nouns = sorted([w for w in common if w not in action_words], key=len, reverse=True)
+            # Filter out incidental nouns
+            nouns = sorted(
+                [w for w in common if w not in action_words and w not in INCIDENTAL_NOUNS],
+                key=len,
+                reverse=True,
+            )
 
             if actions and nouns:
                 # "add scanner support", "improve error handling"
@@ -533,8 +615,9 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
     if frequent:
         action_words = {"add", "fix", "improve", "handle", "support", "implement", "enable"}
         actions = [w for w in frequent if w in action_words]
+        # Filter out incidental nouns
         nouns = sorted(
-            [w for w in frequent if w not in action_words],
+            [w for w in frequent if w not in action_words and w not in INCIDENTAL_NOUNS],
             key=lambda w: word_counts[w],
             reverse=True,
         )
@@ -578,13 +661,21 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
         "empty",
         "null",
         "undefined",
+        "large",
+        "small",
+        "new",
+        "old",
+        "gracefully",
+        "hanging",
+        "slow",
+        "fast",
     }
 
     domains = []
     for s in clean_summaries[:3]:
         words = _extract_key_words(s)
-        # Filter to likely nouns (not common verbs/adjectives)
-        nouns = [w for w in words if w not in common_verbs]
+        # Filter to likely nouns (not common verbs/adjectives or incidental nouns)
+        nouns = [w for w in words if w not in common_verbs and w not in INCIDENTAL_NOUNS]
         if nouns:
             # Prefer simple words over hyphenated compound identifiers
             # Split hyphenated words and consider their parts too
@@ -592,7 +683,11 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
             for w in nouns:
                 if "-" in w:
                     # Extract meaningful parts from hyphenated words (e.g., "smart-todo-scanner" -> "scanner")
-                    parts = [p for p in w.split("-") if len(p) > 3 and p not in common_verbs]
+                    parts = [
+                        p
+                        for p in w.split("-")
+                        if len(p) > 3 and p not in common_verbs and p not in INCIDENTAL_NOUNS
+                    ]
                     simple_nouns.extend(parts)
                 else:
                     simple_nouns.append(w)
