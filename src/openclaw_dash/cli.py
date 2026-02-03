@@ -14,8 +14,8 @@ class GatewayTimeoutError(Exception):
 
 
 GATEWAY_TIMEOUT_MSG = (
-    "Gateway connection timed out. These commands work offline: "
-    "metrics (partial), security, auto backup, auto cleanup"
+    "Command timed out unexpectedly. The gateway should respond instantly. "
+    "This may be a bug — please report it at https://github.com/dlorp/openclaw-dash/issues"
 )
 
 GATEWAY_TIMEOUT_SECONDS = 10
