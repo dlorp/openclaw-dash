@@ -189,7 +189,7 @@ class TestMetricBoxesIntegration:
 
         from openclaw_dash.app import DashboardApp
 
-        source = inspect.getsource(DashboardApp._auto_refresh)
+        source = inspect.getsource(DashboardApp._do_auto_refresh)
         assert "MetricBoxesBar" in source
 
         source = inspect.getsource(DashboardApp.action_refresh)

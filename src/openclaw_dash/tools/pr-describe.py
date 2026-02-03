@@ -27,6 +27,7 @@ import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Optional, Union
 
 # File categorization patterns
 FILE_CATEGORIES = {
@@ -74,11 +75,11 @@ class PRDescription:
     changes: dict[str, list[str]]
     testing: list[str]
     notes: list[str]
-    commits: list[CommitInfo]
+    commits: Union[list[CommitInfo], list[dict]]
     stats: dict[str, int]
 
 
-def run(cmd: str, cwd: Path | None = None) -> tuple[int, str, str]:
+def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str, str]:
     """Run a shell command and return (returncode, stdout, stderr)."""
     try:
         result = subprocess.run(
@@ -383,7 +384,7 @@ def get_diff_text(repo_path: Path, base: str, head: str) -> str:
 
 
 def generate_pr_description(
-    repo_path: str | Path,
+    repo_path: Union[str, Path],
     base_branch: str,
     head_branch: str
 ) -> str:

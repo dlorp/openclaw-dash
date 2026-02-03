@@ -52,7 +52,7 @@ class PerformanceMetrics:
 
     def _find_log_files(self) -> list[Path]:
         """Find gateway log files to parse."""
-        logs = []
+        logs: list[Path] = []
 
         # Check ~/.openclaw/logs/
         if GATEWAY_LOG_DIR.exists():
@@ -99,9 +99,10 @@ class PerformanceMetrics:
 
     def parse_logs(self) -> dict[str, ToolCallMetric]:
         """Parse gateway logs for performance data."""
+        logs: list[Path] = self._find_log_files()
         tool_metrics: dict[str, ToolCallMetric] = {}
 
-        for log_file in self._find_log_files():
+        for log_file in logs:
             try:
                 with open(log_file, errors="ignore") as f:
                     for line in f:

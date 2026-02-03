@@ -36,7 +36,8 @@ def collect(repos: list[str] | None = None) -> dict[str, Any]:
         if not repo_path.exists():
             continue
 
-        repo_data = {"name": repo_name, "path": str(repo_path)}
+        repo_data: dict[str, Any] = {"name": repo_name, "path": str(repo_path)}
+        open_prs: int = 0
 
         # Open PRs
         try:
@@ -48,10 +49,11 @@ def collect(repos: list[str] | None = None) -> dict[str, Any]:
                 timeout=15,
             )
             if result.returncode == 0:
-                prs = json.loads(result.stdout)
-                repo_data["open_prs"] = len(prs)
+                prs_list = json.loads(result.stdout)
+                open_prs = len(prs_list)
         except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
-            repo_data["open_prs"] = 0
+            open_prs = 0
+        repo_data["open_prs"] = open_prs
 
         # Last commit
         try:
@@ -68,12 +70,12 @@ def collect(repos: list[str] | None = None) -> dict[str, Any]:
             pass
 
         # Health emoji
-        prs = repo_data.get("open_prs", 0)
-        if prs == 0:
+        prs_count: int = open_prs
+        if prs_count == 0:
             repo_data["health"] = "✨"
-        elif prs <= 2:
+        elif prs_count <= 2:
             repo_data["health"] = "🟢"
-        elif prs <= 5:
+        elif prs_count <= 5:
             repo_data["health"] = "🟡"
         else:
             repo_data["health"] = "🔴"

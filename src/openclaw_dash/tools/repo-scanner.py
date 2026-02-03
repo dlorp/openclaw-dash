@@ -22,6 +22,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 # Configuration - customize for your setup
 GITHUB_ORG = os.environ.get("GITHUB_ORG", "")  # Set your GitHub username/org
@@ -29,7 +30,7 @@ REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]  # Your repos
 REPO_BASE = Path.home() / "repos"  # Local path to cloned repos
 
 
-def run(cmd: str, cwd: Path | None = None) -> tuple[int, str]:
+def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str]:
     """Run a shell command and return (returncode, output)."""
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd)
     return result.returncode, result.stdout.strip()

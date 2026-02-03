@@ -83,7 +83,7 @@ class AgentsSummaryPanel(Static):
 
         # Count by status
         agent_list = data.get("agents", [])
-        status_counts = {}
+        status_counts: dict[str, int] = {}
         for agent in agent_list:
             status = agent.get("status", "unknown")
             status_counts[status] = status_counts.get(status, 0) + 1

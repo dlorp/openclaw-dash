@@ -166,7 +166,7 @@ class GitHubMetrics:
                             else None
                         )
 
-                        cycle_hours = None
+                        cycle_hours: float | None = None
                         if merged:
                             cycle_hours = round((merged - created).total_seconds() / 3600, 2)
 
@@ -204,14 +204,15 @@ class GitHubMetrics:
             if not todo_files:
                 continue
 
-            repo_trends = []
+            repo_trends: list[dict[str, Any]] = []
             for todo_file in sorted(todo_files, key=lambda p: p.stat().st_mtime)[-30:]:
                 try:
                     data = json.loads(todo_file.read_text())
                     # Handle different formats
-                    todo_count = 0
+                    todo_count: int = 0
                     if isinstance(data, dict):
-                        todo_count = data.get("todo_count", data.get("todos", 0))
+                        raw_count = data.get("todo_count", data.get("todos", 0))
+                        todo_count = int(raw_count) if raw_count is not None else 0
                         if "items" in data:
                             todo_count = len(data["items"])
                     elif isinstance(data, list):
