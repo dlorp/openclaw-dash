@@ -463,9 +463,9 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
         tests_passed, test_output = run_tests(repo_path)
         if not tests_passed:
             # Revert and return
-            run("git checkout -- .", cwd=repo_path)
-            run("git checkout main", cwd=repo_path)
-            run(f"git branch -D {branch_name}", cwd=repo_path)
+            run(["git", "checkout", "--", "."], cwd=repo_path)
+            run(["git", "checkout", "main"], cwd=repo_path)
+            run(["git", "branch", "-D", branch_name], cwd=repo_path)
             return False, f"Tests failed, skipping PR: {test_output}"
 
         # Commit
