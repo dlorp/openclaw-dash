@@ -3,7 +3,7 @@
 import json
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -257,11 +257,16 @@ class PRAutomation:
                 continue
 
             try:
-                commit_date = datetime.fromisoformat(
-                    parts[1].strip().replace(" ", "T").split("+")[0]
-                )
+                # Parse date and ensure it's timezone-aware (assume UTC if naive)
+                raw_date = parts[1].strip().replace(" ", "T")
+                # Strip timezone suffix for consistent parsing, then add UTC
+                for sep in ("+", "-", "Z"):
+                    if sep in raw_date[10:]:  # Don't split on date separators
+                        raw_date = raw_date.split(sep)[0] if sep != "Z" else raw_date.rstrip("Z")
+                        break
+                commit_date = datetime.fromisoformat(raw_date).replace(tzinfo=timezone.utc)
             except ValueError:
-                commit_date = datetime.now()
+                commit_date = datetime.now(timezone.utc)
 
             is_merged = f"origin/{name}" in merged_branches
 
@@ -289,7 +294,7 @@ class PRAutomation:
         """Clean up stale branches."""
         results = []
         branches = self.get_remote_branches()
-        cutoff_date = datetime.now() - timedelta(days=config.max_age_days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=config.max_age_days)
 
         for branch in branches:
             # Skip protected branches
