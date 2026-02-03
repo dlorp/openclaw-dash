@@ -959,7 +959,327 @@
       "state": "MERGED",
       "title": "Fix TODOs in corruption_preview.py",
       "repo": "t3rra1n"
+    },
+    "openclaw-dash#57": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": null,
+      "createdAt": "2026-02-03T07:51:57Z",
+      "headRefName": "security/fix-shell-injection",
+      "mergedAt": null,
+      "number": 57,
+      "state": "OPEN",
+      "title": "security: remove shell=True command injection vulnerabilities",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#56": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-03T07:33:06Z",
+      "createdAt": "2026-02-03T05:42:24Z",
+      "headRefName": "feat/error-handling-improvements",
+      "mergedAt": "2026-02-03T07:33:06Z",
+      "number": 56,
+      "state": "MERGED",
+      "title": "feat: add robust error handling and edge case coverage",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#55": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-03T07:20:46Z",
+      "createdAt": "2026-02-03T03:58:35Z",
+      "headRefName": "feat/improvements-feb2",
+      "mergedAt": "2026-02-03T07:20:46Z",
+      "number": 55,
+      "state": "MERGED",
+      "title": "feat: add collector caching, timing, and error tracking",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#54": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-03T03:11:09Z",
+      "createdAt": "2026-02-03T02:57:05Z",
+      "headRefName": "fix/code-quality-improvements",
+      "mergedAt": "2026-02-03T03:11:09Z",
+      "number": 54,
+      "state": "MERGED",
+      "title": "chore: code quality improvements",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#53": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-03T02:30:17Z",
+      "createdAt": "2026-02-03T01:50:45Z",
+      "headRefName": "docs/comprehensive-update",
+      "mergedAt": "2026-02-03T02:30:17Z",
+      "number": 53,
+      "state": "MERGED",
+      "title": "docs: comprehensive documentation update for new contributors",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#52": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-03T02:29:33Z",
+      "createdAt": "2026-02-03T01:24:46Z",
+      "headRefName": "chore/widget-type-hints-docstrings",
+      "mergedAt": "2026-02-03T02:29:33Z",
+      "number": 52,
+      "state": "MERGED",
+      "title": "chore(widgets): add missing type hints and docstrings",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#51": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-03T02:47:56Z",
+      "createdAt": "2026-02-03T00:18:58Z",
+      "headRefName": "chore/code-quality-improvements",
+      "mergedAt": "2026-02-03T02:47:56Z",
+      "number": 51,
+      "state": "MERGED",
+      "title": "chore: improve channels collector and expand test coverage",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#50": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-03T02:46:07Z",
+      "createdAt": "2026-02-02T21:38:39Z",
+      "headRefName": "feature/widget-improvements",
+      "mergedAt": "2026-02-03T02:46:07Z",
+      "number": 50,
+      "state": "MERGED",
+      "title": "feat: Comprehensive widget tests + fix jump mode initialization",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#49": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-03T02:28:05Z",
+      "createdAt": "2026-02-02T21:31:43Z",
+      "headRefName": "feature/sprite-final-design",
+      "mergedAt": "2026-02-03T02:28:05Z",
+      "number": 49,
+      "state": "MERGED",
+      "title": "feat(sprite): Final lorp sprite design",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#48": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T22:30:32Z",
+      "createdAt": "2026-02-02T19:37:36Z",
+      "headRefName": "feature/sprite-widget",
+      "mergedAt": null,
+      "number": 48,
+      "state": "CLOSED",
+      "title": "feat(widgets): add tamagotchi-style sprite widget",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#47": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T19:30:37Z",
+      "createdAt": "2026-02-02T18:30:52Z",
+      "headRefName": "feature/collapsible-panel-tests",
+      "mergedAt": "2026-02-02T19:30:37Z",
+      "number": 47,
+      "state": "MERGED",
+      "title": "feat: Add comprehensive tests for CollapsiblePanel + fix CSS bug",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#46": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T07:04:57Z",
+      "createdAt": "2026-02-02T06:21:50Z",
+      "headRefName": "feature/cron-widget",
+      "mergedAt": "2026-02-02T07:04:57Z",
+      "number": 46,
+      "state": "MERGED",
+      "title": "feat: Add CronPanel widget for scheduled jobs",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#45": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T07:03:25Z",
+      "createdAt": "2026-02-02T06:21:26Z",
+      "headRefName": "docs/comprehensive",
+      "mergedAt": "2026-02-02T07:03:25Z",
+      "number": 45,
+      "state": "MERGED",
+      "title": "docs: Add comprehensive documentation",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#44": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T07:03:22Z",
+      "createdAt": "2026-02-02T06:19:33Z",
+      "headRefName": "feature/activity-widget",
+      "mergedAt": "2026-02-02T07:03:22Z",
+      "number": 44,
+      "state": "MERGED",
+      "title": "feat(widgets): add ActivityPanel for recent activity timeline",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#43": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T07:03:19Z",
+      "createdAt": "2026-02-02T06:02:19Z",
+      "headRefName": "feature/real-openclaw-integration",
+      "mergedAt": "2026-02-02T07:03:19Z",
+      "number": 43,
+      "state": "MERGED",
+      "title": "feat: Add real OpenClaw CLI integration",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#42": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T07:03:06Z",
+      "createdAt": "2026-02-02T05:59:31Z",
+      "headRefName": "feature/sessions-widget",
+      "mergedAt": "2026-02-02T07:03:06Z",
+      "number": 42,
+      "state": "MERGED",
+      "title": "feat: add SessionsPanel widget for active sessions display",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#41": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T05:26:26Z",
+      "createdAt": "2026-02-02T05:23:41Z",
+      "headRefName": "feature/tool-harness",
+      "mergedAt": "2026-02-02T05:26:26Z",
+      "number": 41,
+      "state": "MERGED",
+      "title": "feat(widgets): Add ToolHarnessPanel for agent-tool visualization",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#40": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T05:23:55Z",
+      "createdAt": "2026-02-02T04:20:23Z",
+      "headRefName": "feature/input-pane",
+      "mergedAt": "2026-02-02T05:23:55Z",
+      "number": 40,
+      "state": "MERGED",
+      "title": "feat: Add InputPane widget for sending commands to OpenClaw",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#39": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T05:23:46Z",
+      "createdAt": "2026-02-02T04:15:05Z",
+      "headRefName": "feature/agents-panel",
+      "mergedAt": "2026-02-02T05:23:46Z",
+      "number": 39,
+      "state": "MERGED",
+      "title": "feat: Add Agent Coordination View panel",
+      "repo": "openclaw-dash"
+    },
+    "openclaw-dash#38": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": "2026-02-02T05:23:37Z",
+      "createdAt": "2026-02-02T04:10:12Z",
+      "headRefName": "feature/cost-forecasting",
+      "mergedAt": "2026-02-02T05:23:37Z",
+      "number": 38,
+      "state": "MERGED",
+      "title": "feat: Add cost forecasting to metrics panel",
+      "repo": "openclaw-dash"
     }
   },
-  "last_check": "2026-02-02T23:30:17.155637"
+  "last_check": "2026-02-02T23:30:36.083687"
 }

@@ -9,17 +9,17 @@ Features:
 - Save state for comparison
 """
 
+from __future__ import annotations
+
 import argparse
 import json
-import os
 import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Configuration - customize for your setup
-DEFAULT_REPOS = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
+from config import get_repos, require_org
+
 STATE_FILE = Path(__file__).parent / ".pr_state.json"
 
 
@@ -139,14 +139,11 @@ Examples:
     )
     args = parser.parse_args()
 
-    # Resolve org
-    org = args.org or os.environ.get("GITHUB_ORG", "")
-    if not org:
-        print("Error: GITHUB_ORG not set. Use --org or set GITHUB_ORG env var.", file=sys.stderr)
-        sys.exit(1)
+    # Resolve org (require_org exits with helpful message if not configured)
+    org = args.org or require_org()
 
-    # Resolve repos
-    repos = args.repo if args.repo else DEFAULT_REPOS
+    # Resolve repos (from args, or config file, or defaults)
+    repos = args.repo if args.repo else get_repos("pr-tracker")
 
     # Load previous state
     old_state = load_state()

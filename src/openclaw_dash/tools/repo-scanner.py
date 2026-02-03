@@ -20,66 +20,30 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Try to import yaml, gracefully handle if not available
-try:
-    import yaml
+# Use shared config module for common settings
+from config import get_config as get_shared_config
+from config import get_config_path, get_repo_base
 
-    HAS_YAML = True
-except ImportError:
-    HAS_YAML = False
-
-# Default configuration
-DEFAULT_REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]
-DEFAULT_REPO_BASE = Path.home() / "repos"
-CONFIG_PATH = Path.home() / ".config" / "openclaw-dash" / "repo-scanner.yaml"
 GIT_TIMEOUT = 30
 
 
 def load_config() -> dict[str, Any]:
-    """Load configuration from YAML file if it exists."""
-    config: dict[str, Any] = {
-        "repos": DEFAULT_REPOS,
-        "repo_base": str(DEFAULT_REPO_BASE),
-        "github_org": os.environ.get("GITHUB_ORG", ""),
-        "output_style": "verbose",
+    """Load configuration using shared config module."""
+    # Get shared config with tool-specific overrides
+    shared = get_shared_config("repo-scanner")
+
+    return {
+        "repos": shared.get("repos", []),
+        "repo_base": str(get_repo_base()),
+        "github_org": shared.get("github_org", ""),
+        "output_style": shared.get("output_format", "text"),
     }
-
-    if not CONFIG_PATH.exists():
-        return config
-
-    if not HAS_YAML:
-        print(
-            f"Warning: Config file exists at {CONFIG_PATH} but PyYAML not installed. "
-            "Install with: pip install pyyaml",
-            file=sys.stderr,
-        )
-        return config
-
-    try:
-        with open(CONFIG_PATH) as f:
-            file_config = yaml.safe_load(f) or {}
-
-        # Merge file config into defaults
-        if "repos" in file_config:
-            config["repos"] = file_config["repos"]
-        if "repo_base" in file_config:
-            config["repo_base"] = file_config["repo_base"]
-        if "github_org" in file_config:
-            config["github_org"] = file_config["github_org"]
-        if "output_style" in file_config:
-            config["output_style"] = file_config["output_style"]
-
-    except Exception as e:
-        print(f"Warning: Failed to load config from {CONFIG_PATH}: {e}", file=sys.stderr)
-
-    return config
 
 
 def run(cmd: list[str], cwd: Path | None = None, timeout: int = GIT_TIMEOUT) -> tuple[int, str]:
@@ -380,14 +344,14 @@ Examples:
   %(prog)s --save                 # Save snapshot for trending
 
 Configuration:
-  Config file: {CONFIG_PATH}
-  Example config:
+  Config file: {get_config_path()}
+  Example config (tools.yaml):
+    github_org: myorg
     repos:
       - repo1
       - repo2
     repo_base: ~/repos
-    github_org: myorg
-    output_style: verbose  # or concise
+    output_format: text  # or json
 
 Environment:
   GITHUB_ORG    GitHub username/org (can be set in config or via --org)
@@ -442,7 +406,7 @@ Environment:
         print(
             "Error: GitHub org not configured.\n"
             f"Set via --org, GITHUB_ORG env var, or config file:\n"
-            f"  {CONFIG_PATH}",
+            f"  {get_config_path()}",
             file=sys.stderr,
         )
         sys.exit(1)
