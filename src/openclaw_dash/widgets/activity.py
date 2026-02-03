@@ -26,24 +26,24 @@ class ActivityType(Enum):
 
 # Icons for each activity type
 ACTIVITY_ICONS = {
-    ActivityType.GIT: "󰊢",      # git branch icon
-    ActivityType.PR: "",       # pull request icon
-    ActivityType.CI: "󰙨",       # test/CI icon
-    ActivityType.AGENT: "󰚩",    # robot/agent icon
-    ActivityType.TASK: "󰄬",     # checkbox/task icon
+    ActivityType.GIT: "󰊢",  # git branch icon
+    ActivityType.PR: "",  # pull request icon
+    ActivityType.CI: "󰙨",  # test/CI icon
+    ActivityType.AGENT: "󰚩",  # robot/agent icon
+    ActivityType.TASK: "󰄬",  # checkbox/task icon
     ActivityType.MESSAGE: "󰍡",  # message icon
-    ActivityType.DEFAULT: "●",   # bullet point
+    ActivityType.DEFAULT: "●",  # bullet point
 }
 
 # Fallback ASCII icons for terminals without nerd fonts
 ACTIVITY_ICONS_ASCII = {
-    ActivityType.GIT: "⎇",       # branch symbol
-    ActivityType.PR: "⤴",        # merge arrow
-    ActivityType.CI: "⚙",        # gear
-    ActivityType.AGENT: "◉",     # robot/agent
-    ActivityType.TASK: "✓",      # checkmark
-    ActivityType.MESSAGE: "✉",   # envelope
-    ActivityType.DEFAULT: "●",   # bullet
+    ActivityType.GIT: "⎇",  # branch symbol
+    ActivityType.PR: "⤴",  # merge arrow
+    ActivityType.CI: "⚙",  # gear
+    ActivityType.AGENT: "◉",  # robot/agent
+    ActivityType.TASK: "✓",  # checkmark
+    ActivityType.MESSAGE: "✉",  # envelope
+    ActivityType.DEFAULT: "●",  # bullet
 }
 
 # Colors for each activity type
@@ -133,7 +133,7 @@ class ActivityPanel(Static):
         lines.append("")
 
         # Display activity items with visual timeline
-        for i, item in enumerate(recent[-self.max_items:][::-1]):  # Reverse to show newest first
+        for i, item in enumerate(recent[-self.max_items :][::-1]):  # Reverse to show newest first
             time_str = self._format_time(item.get("time", ""))
             action = item.get("action", "Unknown action")
             activity_type = get_activity_type(item.get("type"))
