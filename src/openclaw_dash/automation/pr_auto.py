@@ -61,9 +61,7 @@ class BranchInfo:
 def run(cmd: list[str], cwd: Path | None = None, timeout: int = 60) -> tuple[int, str, str]:
     """Run a command and return (returncode, stdout, stderr)."""
     try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout)
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
@@ -81,7 +79,13 @@ class PRAutomation:
     def get_open_prs(self) -> list[PRInfo]:
         """Get all open PRs for the repository."""
         code, stdout, stderr = run(
-            ["gh", "pr", "list", "--json", "number,title,headRefName,state,mergeable,statusCheckRollup,reviews,labels,author,createdAt,url"],
+            [
+                "gh",
+                "pr",
+                "list",
+                "--json",
+                "number,title,headRefName,state,mergeable,statusCheckRollup,reviews,labels,author,createdAt,url",
+            ],
             cwd=self.repo_path,
         )
 
@@ -215,8 +219,13 @@ class PRAutomation:
 
         # Get branches with last commit date
         code, stdout, stderr = run(
-            ["git", "for-each-ref", "--sort=-committerdate", "refs/remotes/origin",
-             "--format=%(refname:short)|%(committerdate:iso)|%(authorname)"],
+            [
+                "git",
+                "for-each-ref",
+                "--sort=-committerdate",
+                "refs/remotes/origin",
+                "--format=%(refname:short)|%(committerdate:iso)|%(authorname)",
+            ],
             cwd=self.repo_path,
         )
 
