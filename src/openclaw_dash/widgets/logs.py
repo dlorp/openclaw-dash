@@ -1,6 +1,13 @@
-"""Logs panel widget for the TUI dashboard."""
+"""Logs panel widget for the TUI dashboard.
+
+This module provides widgets for displaying gateway logs with color-coded
+log levels and relative timestamps.
+"""
+
+from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.widgets import Static
@@ -9,7 +16,14 @@ from openclaw_dash.collectors import logs
 
 
 class LogsPanel(Static):
-    """Log viewer panel showing recent gateway logs."""
+    """Log viewer panel showing recent gateway logs.
+
+    Displays recent log entries with:
+    - Color-coded log levels (error, warning, info, debug)
+    - Timestamps formatted as time-only
+    - Source tags
+    - Truncated message content
+    """
 
     DEFAULT_CSS = """
     LogsPanel {
@@ -17,21 +31,30 @@ class LogsPanel(Static):
     }
     """
 
-    def __init__(self, n_lines: int = 15, **kwargs) -> None:
+    def __init__(self, n_lines: int = 15, **kwargs: Any) -> None:
         """Initialize the logs panel.
 
         Args:
-            n_lines: Number of log lines to display
-            **kwargs: Additional arguments for Static
+            n_lines: Number of log lines to display.
+            **kwargs: Additional arguments passed to Static.
         """
         super().__init__(**kwargs)
         self.n_lines = n_lines
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying log content.
+        """
         yield Static("Loading logs...", id="logs-content")
 
     def refresh_data(self) -> None:
-        """Refresh log data from collector."""
+        """Refresh log data from the collector.
+
+        Fetches recent log entries and updates the display with
+        color-coded levels and formatted timestamps.
+        """
         data = logs.collect(n=self.n_lines)
         content = self.query_one("#logs-content", Static)
 
@@ -86,7 +109,14 @@ class LogsPanel(Static):
         content.update("\n".join(lines))
 
     def _format_time(self, timestamp: str) -> str:
-        """Format ISO timestamp to short time string."""
+        """Format ISO timestamp to short time string.
+
+        Args:
+            timestamp: ISO format timestamp string (e.g., "2026-02-01T08:09:41.294Z").
+
+        Returns:
+            Short time string in HH:MM:SS format, or "??:??" if parsing fails.
+        """
         if not timestamp:
             return "??:??"
 
@@ -103,13 +133,26 @@ class LogsPanel(Static):
 
 
 class LogsSummaryPanel(Static):
-    """Compact logs summary showing error/warning counts."""
+    """Compact logs summary showing error/warning counts.
+
+    Provides a condensed view of log status suitable for inclusion
+    in dashboard headers, showing error and warning counts.
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying the summary.
+        """
         yield Static("", id="logs-summary")
 
     def refresh_data(self) -> None:
-        """Refresh logs summary."""
+        """Refresh the logs summary display.
+
+        Collects recent log data and renders a compact summary with
+        error/warning counts and the most recent issue message.
+        """
         data = logs.collect(n=50)
         content = self.query_one("#logs-summary", Static)
 

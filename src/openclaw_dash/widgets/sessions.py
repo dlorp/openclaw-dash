@@ -1,4 +1,8 @@
-"""Sessions panel widget for displaying active sessions with context burn rate."""
+"""Sessions panel widget for displaying active sessions with context burn rate.
+
+This module provides widgets for monitoring active agent sessions,
+including their status, context window usage, and activity timing.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +18,10 @@ from openclaw_dash.widgets.ascii_art import mini_bar, separator
 
 
 class SessionStatus(Enum):
-    """Session status enum."""
+    """Session status enum.
+
+    Represents the possible states of an agent session.
+    """
 
     ACTIVE = "active"
     IDLE = "idle"
@@ -23,7 +30,14 @@ class SessionStatus(Enum):
 
 
 def get_status_icon(status: str) -> str:
-    """Get icon for session status."""
+    """Get icon for session status.
+
+    Args:
+        status: The session status string.
+
+    Returns:
+        A Unicode icon character representing the status.
+    """
     icons = {
         "active": "●",
         "idle": "◐",
@@ -34,7 +48,14 @@ def get_status_icon(status: str) -> str:
 
 
 def get_status_color(status: str) -> str:
-    """Get color for session status."""
+    """Get color for session status.
+
+    Args:
+        status: The session status string.
+
+    Returns:
+        A color name string for Rich/Textual markup.
+    """
     colors = {
         "active": "green",
         "idle": "yellow",
@@ -45,7 +66,14 @@ def get_status_color(status: str) -> str:
 
 
 def _calculate_time_active(updated_at_ms: float | None) -> str:
-    """Calculate time active from updatedAt timestamp in milliseconds."""
+    """Calculate time active from updatedAt timestamp in milliseconds.
+
+    Args:
+        updated_at_ms: Timestamp in milliseconds since epoch, or None.
+
+    Returns:
+        Human-readable duration string (e.g., "5m 30s", "2h 15m").
+    """
     if updated_at_ms is None:
         return "?"
 
@@ -71,7 +99,14 @@ def _calculate_time_active(updated_at_ms: float | None) -> str:
 
 
 def _determine_status(session: dict[str, Any]) -> str:
-    """Determine session status from session data."""
+    """Determine session status from session data.
+
+    Args:
+        session: Session data dictionary with status indicators.
+
+    Returns:
+        Status string: "spawning", "active", or "idle".
+    """
     if session.get("spawning"):
         return "spawning"
     if session.get("active", False):
@@ -92,7 +127,14 @@ def _determine_status(session: dict[str, Any]) -> str:
 
 
 def _calculate_context_pct(session: dict[str, Any]) -> float:
-    """Calculate context usage percentage from session data."""
+    """Calculate context usage percentage from session data.
+
+    Args:
+        session: Session data dictionary with token counts.
+
+    Returns:
+        Context usage as a percentage (0-100).
+    """
     # First check if already computed
     if "context_pct" in session:
         return session["context_pct"]
@@ -113,13 +155,29 @@ def _calculate_context_pct(session: dict[str, Any]) -> float:
 
 
 class SessionsPanel(Static):
-    """Panel displaying active sessions with context burn rate."""
+    """Panel displaying active sessions with context burn rate.
+
+    Shows a list of active agent sessions with:
+    - Status indicator (active, idle, spawning)
+    - Session name/label
+    - Context window usage as percentage and visual bar
+    - Session kind and activity time
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying session content.
+        """
         yield Static("Loading...", id="sessions-content")
 
     def refresh_data(self) -> None:
-        """Refresh sessions data from collector."""
+        """Refresh session data from the collector.
+
+        Fetches active session data and updates the display with
+        status indicators and context usage visualizations.
+        """
         data = sessions.collect()
         content = self.query_one("#sessions-content", Static)
 
@@ -173,13 +231,26 @@ class SessionsPanel(Static):
 
 
 class SessionsSummaryPanel(Static):
-    """Compact sessions summary for metric boxes or header display."""
+    """Compact sessions summary for metric boxes or header display.
+
+    Provides a condensed view of session status suitable for inclusion
+    in dashboard headers, showing active/total counts and average context usage.
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying the summary.
+        """
         yield Static("", id="sessions-summary")
 
     def refresh_data(self) -> None:
-        """Refresh sessions summary."""
+        """Refresh the sessions summary display.
+
+        Collects session data and renders a compact summary with
+        active counts and average context usage indicator.
+        """
         data = sessions.collect()
         content = self.query_one("#sessions-summary", Static)
 

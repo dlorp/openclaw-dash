@@ -1,4 +1,12 @@
-"""Metrics panel widget for the TUI dashboard."""
+"""Metrics panel widget for the TUI dashboard.
+
+This module provides widgets for displaying various metrics including:
+- Cost tracking and forecasting
+- Performance metrics (latency, error rates)
+- GitHub activity metrics (streaks, PR cycles)
+"""
+
+from __future__ import annotations
 
 from datetime import date
 from typing import Any
@@ -99,12 +107,26 @@ def get_days_in_current_month() -> int:
 
 
 class CostsPanel(Static):
-    """Token costs display with API and estimated cost sources."""
+    """Token costs display with API and estimated cost sources.
+
+    Shows detailed cost information including:
+    - Today's cost with source indicator (API or estimated)
+    - Token counts (input/output)
+    - API availability status
+    - Cost forecast and projections
+    - Cost breakdown by model
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying cost content.
+        """
         yield Static("Loading...", id="costs-content")
 
     def refresh_data(self) -> None:
+        """Refresh cost data from tracker and billing APIs."""
         tracker = CostTracker()
         data = tracker.collect()
         content = self.query_one("#costs-content", Static)
@@ -206,12 +228,26 @@ class CostsPanel(Static):
 
 
 class PerformancePanel(Static):
-    """Performance metrics display."""
+    """Performance metrics display.
+
+    Shows system performance metrics including:
+    - Total API call counts
+    - Error rate with visual bar
+    - Average latency with sparkline history
+    - Slowest actions breakdown
+    - Error-prone operations
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying performance content.
+        """
         yield Static("Loading...", id="perf-content")
 
     def refresh_data(self) -> None:
+        """Refresh performance metrics from collector."""
         perf = PerformanceMetrics()
         data = perf.collect()
         content = self.query_one("#perf-content", Static)
@@ -274,12 +310,25 @@ class PerformancePanel(Static):
 
 
 class GitHubPanel(Static):
-    """GitHub metrics display."""
+    """GitHub metrics display.
+
+    Shows GitHub activity metrics including:
+    - Commit streak with fire emoji indicators
+    - Commit activity sparkline
+    - PR cycle time statistics
+    - TODO trend tracking per repository
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying GitHub content.
+        """
         yield Static("Loading...", id="github-content")
 
     def refresh_data(self) -> None:
+        """Refresh GitHub metrics from collector."""
         gh = GitHubMetrics()
         data = gh.collect()
         content = self.query_one("#github-content", Static)
@@ -360,12 +409,22 @@ class GitHubPanel(Static):
 
 
 class MetricsPanel(Static):
-    """Combined metrics panel for compact display."""
+    """Combined metrics panel for compact display.
+
+    Provides a unified view of all key metrics (costs, performance, GitHub)
+    in a compact format suitable for the main dashboard.
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying the metrics summary.
+        """
         yield Static("", id="metrics-summary")
 
     def refresh_data(self) -> None:
+        """Refresh all metrics and update the combined display."""
         content = self.query_one("#metrics-summary", Static)
 
         lines = []

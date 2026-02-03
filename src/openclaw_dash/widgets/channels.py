@@ -1,4 +1,10 @@
-"""Channels panel widget for displaying messaging channel status."""
+"""Channels panel widget for displaying messaging channel status.
+
+This module provides widgets for monitoring the connection status of
+messaging channels (Discord, Telegram, WhatsApp, etc.) in the OpenClaw system.
+"""
+
+from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.widgets import Static
@@ -7,13 +13,26 @@ from openclaw_dash.collectors import channels
 
 
 class ChannelsPanel(Static):
-    """Panel displaying connected messaging channels and their status."""
+    """Panel displaying connected messaging channels and their status.
+
+    Shows a list of configured messaging channels with their connection
+    status (connected, configured, disabled, error) and visual indicators.
+    """
 
     def compose(self) -> ComposeResult:
+        """Compose the panel's child widgets.
+
+        Yields:
+            A Static widget for displaying channel content.
+        """
         yield Static("", id="channels-content")
 
     def refresh_data(self) -> None:
-        """Refresh channel status data."""
+        """Refresh channel status data from the collector.
+
+        Fetches the latest channel connection status and updates
+        the display with color-coded status indicators.
+        """
         data = channels.collect()
         content = self.query_one("#channels-content", Static)
 
