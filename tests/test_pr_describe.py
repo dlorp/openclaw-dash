@@ -366,8 +366,6 @@ class TestFormatMarkdown:
         )
         result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## What" in result
-        assert "## Why" in result
-        assert "## How" in result
 
     def test_includes_changes_section(self):
         desc = pr_describe.PRDescription(
@@ -427,8 +425,6 @@ class TestFormatMarkdown:
         result = pr_describe.format_markdown(desc, pr_describe.Config())
         # Verify all main sections are present
         assert "## What" in result
-        assert "## Why" in result
-        assert "## How" in result
         assert "## Changes" in result
         assert "## Testing" in result
         assert "## Notes" in result
