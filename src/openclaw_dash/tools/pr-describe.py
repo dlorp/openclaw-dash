@@ -100,6 +100,29 @@ ACTION_VERBS = {
     "refactor", "simplify", "optimize", "cache", "update", "create",
 }
 
+# Technical terms that should preserve their original case when lowercasing
+# These are programming language keywords, type names, and special values
+TECHNICAL_TERMS = {
+    # Python/JavaScript literals
+    "None", "True", "False", "NoneType",
+    # General programming
+    "NULL", "NaN", "undefined", "nil",
+    # Type names (when used as type references)
+    "String", "Integer", "Boolean", "Float", "Double",
+    # Common class/type patterns
+    "TypeError", "ValueError", "KeyError", "AttributeError",
+    "RuntimeError", "IndexError", "IOError", "OSError",
+}
+
+# Pairs of contradictory action verbs (doing both = refactoring, not two separate actions)
+# Format: frozenset({verb1, verb2}) - order doesn't matter
+CONTRADICTORY_VERB_PAIRS = {
+    frozenset({"add", "remove"}),
+    frozenset({"enable", "disable"}),
+    frozenset({"create", "delete"}),
+    frozenset({"show", "hide"}),
+}
+
 # Incidental nouns - generic terms that don't describe domain/feature
 # These are WHERE/HOW things happen, not WHAT the change is about
 INCIDENTAL_NOUNS = {
@@ -541,6 +564,9 @@ def _extract_action_phrase(text: str) -> tuple[str, str] | None:
 
     Returns (verb, object) tuple or None if no action pattern found.
     E.g., "remove bullet points from summary" -> ("remove", "bullet points")
+
+    Preserves case for technical terms (None, True, False, etc.) by extracting
+    from the original text at the matched position rather than from lowercased text.
     """
     text_lower = text.lower()
     for verb in ACTION_VERBS:
@@ -548,13 +574,65 @@ def _extract_action_phrase(text: str) -> tuple[str, str] | None:
         pattern = rf"\b{verb}\s+(.+?)(?:\s+(?:from|in|for|to|on|when|if)\s+|$)"
         match = re.search(pattern, text_lower)
         if match:
-            obj = match.group(1).strip()
+            # Extract from ORIGINAL text to preserve case of technical terms
+            obj_start = match.start(1)
+            obj_end = match.end(1)
+            obj = text[obj_start:obj_end].strip()
             # Clean up trailing punctuation and common suffixes
             obj = re.sub(r"[.,;:!?]+$", "", obj)
             # Remove trailing adverbs (words ending in -ly)
             obj = re.sub(r"\s+\w+ly$", "", obj)
             if obj and len(obj) < 40:  # Sanity check
                 return (verb, obj)
+    return None
+
+
+def _normalize_object(obj: str) -> str:
+    """
+    Normalize an object string for comparison (singularize, lowercase, strip articles).
+
+    E.g., "bullet points" and "bullet point" should match.
+    """
+    obj = obj.lower().strip()
+    # Remove leading articles
+    obj = re.sub(r"^(the|a|an)\s+", "", obj)
+    # Simple singularization: remove trailing 's' for comparison
+    # (handles "points" -> "point", "bullets" -> "bullet")
+    if obj.endswith("s") and len(obj) > 3:
+        obj_singular = obj[:-1]
+        # Return both forms for comparison flexibility
+        return obj_singular
+    return obj
+
+
+def _detect_contradictory_actions(
+    action_phrases: list[tuple[str, str]],
+) -> tuple[str, str] | None:
+    """
+    Detect if action phrases contain contradictory verb pairs on the same object.
+
+    Returns (verb1, common_object) if contradiction found, None otherwise.
+    E.g., [("add", "bullet points"), ("remove", "bullet points")] -> ("add", "bullet points")
+    """
+    if len(action_phrases) < 2:
+        return None
+
+    # Build mapping: normalized_object -> list of (verb, original_object)
+    obj_to_verbs: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for verb, obj in action_phrases:
+        norm_obj = _normalize_object(obj)
+        obj_to_verbs[norm_obj].append((verb, obj))
+
+    # Check each object for contradictory verb pairs
+    for norm_obj, verb_obj_pairs in obj_to_verbs.items():
+        if len(verb_obj_pairs) < 2:
+            continue
+        verbs = {v for v, _ in verb_obj_pairs}
+        for pair in CONTRADICTORY_VERB_PAIRS:
+            if pair <= verbs:  # Both verbs in pair are present
+                # Return the first verb and object (for the refactor message)
+                return (list(pair)[0], verb_obj_pairs[0][1])
+
     return None
 
 
@@ -590,13 +668,20 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
             action_phrases.append(phrase)
 
     if action_phrases:
+        # Helper to add scope suffix when available
+        scope_suffix = f" in {list(scopes)[0]}" if len(scopes) == 1 else ""
+
+        # Check for contradictory actions FIRST (add X + remove X = refactoring)
+        contradiction = _detect_contradictory_actions(action_phrases)
+        if contradiction:
+            _, obj = contradiction
+            # Use "refactor X handling" or "update X" for contradictory actions
+            return f"refactor {obj} handling{scope_suffix}"
+
         # Group by verb
         verbs_to_objects: dict[str, list[str]] = defaultdict(list)
         for verb, obj in action_phrases:
             verbs_to_objects[verb].append(obj)
-
-        # Helper to add scope suffix when available
-        scope_suffix = f" in {list(scopes)[0]}" if len(scopes) == 1 else ""
 
         # If all actions share the same verb, combine objects
         if len(verbs_to_objects) == 1:

@@ -851,6 +851,115 @@ class TestBuildMultiCommitSummary:
         result = pr_describe._build_multi_commit_summary([], set())
         assert result == "various updates"
 
+    def test_contradictory_add_remove_becomes_refactor(self):
+        """Adding and removing the same thing should produce a refactoring summary."""
+        result = pr_describe._build_multi_commit_summary(
+            ["add bullet points to summary", "remove bullet points from output"],
+            set(),
+        )
+        # Should NOT say "add bullet points and remove bullet points"
+        assert "add bullet points and remove bullet points" not in result.lower()
+        # Should say something like "refactor bullet point handling"
+        assert "refactor" in result.lower()
+        assert "bullet point" in result.lower()
+
+    def test_contradictory_enable_disable_becomes_refactor(self):
+        """Enabling and disabling the same feature should produce a refactoring summary."""
+        result = pr_describe._build_multi_commit_summary(
+            ["enable feature flags", "disable feature flags for testing"],
+            set(),
+        )
+        assert "enable" not in result.lower() or "disable" not in result.lower()
+        assert "refactor" in result.lower()
+
+    def test_contradictory_with_scope(self):
+        """Contradictory actions with a scope should include the scope."""
+        result = pr_describe._build_multi_commit_summary(
+            ["add validation", "remove validation"],
+            {"parser"},
+        )
+        assert "refactor" in result.lower()
+        assert "parser" in result.lower()
+
+    def test_preserves_technical_term_none(self):
+        """Technical terms like None should be preserved in multi-commit summaries."""
+        result = pr_describe._build_multi_commit_summary(
+            ["prevent None returns", "handle None values"],
+            set(),
+        )
+        # Should preserve "None" capitalization
+        assert "None" in result or "none" not in result.lower()
+
+    def test_preserves_technical_term_in_action_phrase(self):
+        """When action phrases contain technical terms, preserve their case."""
+        result = pr_describe._build_multi_commit_summary(
+            ["prevent None and improve error handling"],
+            set(),
+        )
+        # Single summary with None should preserve it
+        assert "None" in result
+
+
+class TestNormalizeObject:
+    """Tests for _normalize_object helper function."""
+
+    def test_removes_trailing_s(self):
+        assert pr_describe._normalize_object("bullet points") == "bullet point"
+        assert pr_describe._normalize_object("errors") == "error"
+
+    def test_removes_leading_articles(self):
+        assert pr_describe._normalize_object("the bullet points") == "bullet point"
+        assert pr_describe._normalize_object("a validation") == "validation"
+        assert pr_describe._normalize_object("an error") == "error"
+
+    def test_lowercases(self):
+        assert pr_describe._normalize_object("Bullet Points") == "bullet point"
+
+    def test_short_words_unchanged(self):
+        # Words <= 3 chars don't get 's' removed
+        assert pr_describe._normalize_object("as") == "as"
+        assert pr_describe._normalize_object("is") == "is"
+
+
+class TestDetectContradictoryActions:
+    """Tests for _detect_contradictory_actions helper function."""
+
+    def test_detects_add_remove_same_object(self):
+        phrases = [("add", "bullet points"), ("remove", "bullet points")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is not None
+        assert "bullet point" in result[1].lower()
+
+    def test_detects_add_remove_singular_plural(self):
+        """Should match even with singular/plural differences."""
+        phrases = [("add", "bullet point"), ("remove", "bullet points")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is not None
+
+    def test_detects_enable_disable(self):
+        phrases = [("enable", "feature flag"), ("disable", "feature flag")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is not None
+
+    def test_no_contradiction_different_objects(self):
+        phrases = [("add", "bullet points"), ("remove", "whitespace")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is None
+
+    def test_no_contradiction_non_opposing_verbs(self):
+        phrases = [("add", "bullet points"), ("improve", "bullet points")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is None
+
+    def test_no_contradiction_single_action(self):
+        phrases = [("add", "bullet points")]
+        result = pr_describe._detect_contradictory_actions(phrases)
+        assert result is None
+
+    def test_no_contradiction_empty_list(self):
+        result = pr_describe._detect_contradictory_actions([])
+        assert result is None
+
 
 class TestExtractActionPhrase:
     """Tests for _extract_action_phrase helper function."""
@@ -895,6 +1004,35 @@ class TestExtractActionPhrase:
         assert result is not None
         assert result[0] == "remove"
         assert result[1] == "spaces"  # Stops at "from"
+
+    def test_preserves_technical_term_case_none(self):
+        """Technical terms like None should preserve their case."""
+        result = pr_describe._extract_action_phrase("prevent None returns")
+        assert result is not None
+        assert result[0] == "prevent"
+        assert result[1] == "None returns"  # None should stay capitalized
+
+    def test_preserves_technical_term_case_true_false(self):
+        """Python boolean literals should preserve case."""
+        result = pr_describe._extract_action_phrase("handle True and False values")
+        assert result is not None
+        assert result[0] == "handle"
+        assert "True" in result[1]
+        assert "False" in result[1]
+
+    def test_preserves_technical_term_case_null(self):
+        """NULL should preserve its uppercase."""
+        result = pr_describe._extract_action_phrase("filter NULL entries")
+        assert result is not None
+        assert result[0] == "filter"
+        assert result[1] == "NULL entries"
+
+    def test_preserves_technical_term_case_error_types(self):
+        """Error type names should preserve their case."""
+        result = pr_describe._extract_action_phrase("handle TypeError exceptions")
+        assert result is not None
+        assert result[0] == "handle"
+        assert "TypeError" in result[1]
 
 
 class TestExtractBranchType:
