@@ -567,23 +567,52 @@ def _extract_action_phrase(text: str) -> tuple[str, str] | None:
 
     Preserves case for technical terms (None, True, False, etc.) by extracting
     from the original text at the matched position rather than from lowercased text.
+
+    Prioritizes verbs at the START of text to avoid matching mid-text noun phrases
+    like "format extraction" where "format" is used as a noun, not a verb.
     """
     text_lower = text.lower()
+
+    def _extract_match(verb: str, match: re.Match) -> tuple[str, str] | None:
+        """Extract and clean the object from a regex match."""
+        obj_start = match.start(1)
+        obj_end = match.end(1)
+        obj = text[obj_start:obj_end].strip()
+        # Clean up trailing punctuation and common suffixes
+        obj = re.sub(r"[.,;:!?]+$", "", obj)
+        # Remove trailing adverbs (words ending in -ly)
+        obj = re.sub(r"\s+\w+ly$", "", obj)
+        if obj and len(obj) < 40:  # Sanity check
+            return (verb, obj)
+        return None
+
+    # FIRST PASS: Look for verbs at the START of text (most reliable)
+    # This catches "add feature X", "remove bullet points", etc.
     for verb in ACTION_VERBS:
-        # Match "verb X" or "verb X from/in/for Y"
+        pattern = rf"^{verb}\s+(.+?)(?:\s+(?:from|in|for|to|on|when|if)\s+|$)"
+        match = re.search(pattern, text_lower)
+        if match:
+            result = _extract_match(verb, match)
+            if result:
+                return result
+
+    # SECOND PASS: Look for verbs mid-text (for "scope: verb object" patterns)
+    # Only if no start-of-text verb found, to avoid matching noun phrases
+    # like "format extraction" where "format" is a noun
+    for verb in ACTION_VERBS:
         pattern = rf"\b{verb}\s+(.+?)(?:\s+(?:from|in|for|to|on|when|if)\s+|$)"
         match = re.search(pattern, text_lower)
         if match:
-            # Extract from ORIGINAL text to preserve case of technical terms
+            # Skip if the verb is followed by a noun-like word ending in -tion, -ment, -ing
+            # These are typically noun phrases like "format extraction", not verb phrases
             obj_start = match.start(1)
-            obj_end = match.end(1)
-            obj = text[obj_start:obj_end].strip()
-            # Clean up trailing punctuation and common suffixes
-            obj = re.sub(r"[.,;:!?]+$", "", obj)
-            # Remove trailing adverbs (words ending in -ly)
-            obj = re.sub(r"\s+\w+ly$", "", obj)
-            if obj and len(obj) < 40:  # Sanity check
-                return (verb, obj)
+            obj_text = text_lower[obj_start:].split()[0] if text_lower[obj_start:].split() else ""
+            if obj_text.endswith(("tion", "ment", "ing", "ness", "ity")):
+                continue
+            result = _extract_match(verb, match)
+            if result:
+                return result
+
     return None
 
 
@@ -640,14 +669,25 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
     """
     Build a meaningful summary from multiple commit summaries.
 
+    Returns ONLY the summary text - scope formatting is handled by generate_pr_title()
+    using conventional commit format: type(scope): summary
+
     Strategy:
-    1. If there's a single summary, use it
-    2. Extract action phrases (verb + object) and combine them
+    1. If there's a single summary, use it (truncated if needed)
+    2. Extract action phrases (verb + object) and combine max 2
     3. Look for common phrases (bigrams) across summaries
-    4. If all commits share a scope, describe improvements to that scope
-    5. Find common action verbs + domain words
-    6. Fall back to listing key changes briefly
+    4. Find common action verbs + domain words
+    5. If >2 actions or title too long, summarize generically
+    6. Keep titles concise (~50 chars target for summary portion)
+
+    Grammar rules:
+    - All actions use verb form: "add", "remove", "extract" (not "extraction")
+    - Max 2 actions combined with "and"
+    - If >2 actions, summarize: "improve X generation"
+    - No scope suffix - caller handles conventional commit format
     """
+    MAX_SUMMARY_LENGTH = 50  # Target length for summary portion
+
     if not summaries:
         return "various updates"
 
@@ -657,7 +697,19 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
         return "various updates"
 
     if len(clean_summaries) == 1:
-        return clean_summaries[0]
+        summary = clean_summaries[0]
+        # Truncate if too long
+        if len(summary) > MAX_SUMMARY_LENGTH:
+            words = summary.split()
+            truncated = []
+            length = 0
+            for w in words:
+                if length + len(w) + 1 > MAX_SUMMARY_LENGTH:
+                    break
+                truncated.append(w)
+                length += len(w) + 1
+            summary = " ".join(truncated)
+        return summary
 
     # Strategy 1: Extract action phrases from summaries
     # This gives us specific "verb + object" descriptions instead of vague "improvements"
@@ -668,45 +720,61 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
             action_phrases.append(phrase)
 
     if action_phrases:
-        # Helper to add scope suffix when available
-        scope_suffix = f" in {list(scopes)[0]}" if len(scopes) == 1 else ""
-
         # Check for contradictory actions FIRST (add X + remove X = refactoring)
         contradiction = _detect_contradictory_actions(action_phrases)
         if contradiction:
             _, obj = contradiction
             # Use "refactor X handling" or "update X" for contradictory actions
-            return f"refactor {obj} handling{scope_suffix}"
+            return f"refactor {obj} handling"
 
         # Group by verb
         verbs_to_objects: dict[str, list[str]] = defaultdict(list)
         for verb, obj in action_phrases:
             verbs_to_objects[verb].append(obj)
 
-        # If all actions share the same verb, combine objects
+        # If all actions share the same verb, combine objects (max 2)
         if len(verbs_to_objects) == 1:
             verb = list(verbs_to_objects.keys())[0]
             objects = verbs_to_objects[verb]
-            if len(set(objects)) == 1:
-                return f"{verb} {objects[0]}{scope_suffix}"
-            # Multiple different objects - mention first two
-            unique_objs = list(dict.fromkeys(objects))[:2]
-            if len(unique_objs) == 2:
-                return f"{verb} {unique_objs[0]} and {unique_objs[1]}{scope_suffix}"
-            return f"{verb} {unique_objs[0]}{scope_suffix}"
+            unique_objs = list(dict.fromkeys(objects))
 
-        # Multiple verbs - use the most common one, or combine two
-        sorted_verbs = sorted(verbs_to_objects.keys(), key=lambda v: len(verbs_to_objects[v]), reverse=True)
+            if len(unique_objs) == 1:
+                result = f"{verb} {unique_objs[0]}"
+            elif len(unique_objs) == 2:
+                result = f"{verb} {unique_objs[0]} and {unique_objs[1]}"
+            else:
+                # >2 objects with same verb - summarize
+                result = f"{verb} {unique_objs[0]} and more"
+
+            # Length check - truncate if too long
+            if len(result) <= MAX_SUMMARY_LENGTH:
+                return result
+            return f"{verb} {unique_objs[0]}"
+
+        # Multiple verbs - combine max 2
+        sorted_verbs = sorted(
+            verbs_to_objects.keys(),
+            key=lambda v: len(verbs_to_objects[v]),
+            reverse=True,
+        )
+
+        if len(sorted_verbs) >= 2:
+            v1, v2 = sorted_verbs[0], sorted_verbs[1]
+            o1, o2 = verbs_to_objects[v1][0], verbs_to_objects[v2][0]
+            combined = f"{v1} {o1} and {v2} {o2}"
+
+            if len(combined) <= MAX_SUMMARY_LENGTH:
+                return combined
+
+            # Too long - just use main action
+            result = f"{v1} {o1}"
+            if len(result) <= MAX_SUMMARY_LENGTH:
+                return result
+
+        # Just use the most common action
         main_verb = sorted_verbs[0]
         main_obj = verbs_to_objects[main_verb][0]
-
-        if len(sorted_verbs) >= 2 and len(verbs_to_objects[sorted_verbs[1]]) > 0:
-            # Two different actions - mention both
-            second_verb = sorted_verbs[1]
-            second_obj = verbs_to_objects[second_verb][0]
-            return f"{main_verb} {main_obj} and {second_verb} {second_obj}{scope_suffix}"
-
-        return f"{main_verb} {main_obj}{scope_suffix}"
+        return f"{main_verb} {main_obj}"
 
     # Strategy 2: Look for bigrams appearing in MAJORITY (>50%) of summaries
     # (e.g., "structured output" in 2/3 commits should still match)
@@ -727,8 +795,8 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
             return f"improve {phrase}"
 
     # Strategy 3: If all commits share a single scope, describe improvements
+    # (Note: scope will be added by caller in conventional commit format)
     if len(scopes) == 1:
-        scope = list(scopes)[0]
         words_per_summary = [set(_extract_key_words(s)) for s in clean_summaries]
         if words_per_summary:
             common = set.intersection(*words_per_summary)
@@ -737,15 +805,15 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
                 actions = [w for w in common if w in ACTION_VERBS]
                 nouns = [w for w in common if w not in ACTION_VERBS]
                 if actions and nouns:
-                    return f"{actions[0]} {nouns[0]} in {scope}"
+                    return f"{actions[0]} {nouns[0]}"
                 if actions:
-                    return f"{actions[0]} {scope} handling"
+                    return f"{actions[0]} handling"
                 if nouns:
-                    return f"improve {nouns[0]} in {scope}"
-        # Fall back to scope with improve verb instead of vague "improvements"
-        return f"improve {scope} handling"
+                    return f"improve {nouns[0]}"
+        # Fall back to generic improvement (scope added by caller)
+        return "improve handling"
 
-    # Strategy 3: Find common theme words and build natural phrase
+    # Strategy 4: Find common theme words and build natural phrase
     words_per_summary = [set(_extract_key_words(s)) for s in clean_summaries]
     if len(words_per_summary) > 1:
         common = set.intersection(*words_per_summary)
@@ -796,7 +864,7 @@ def _build_multi_commit_summary(summaries: list[str], scopes: set[str]) -> str:
             # Common action found but no specific nouns
             return f"{actions[0]} various components"
 
-    # Strategy 5: Extract key nouns from each summary and list domains
+    # Strategy 6: Extract key nouns from each summary and list domains
     # Filter out common verbs/adjectives to find actual domain nouns
     common_verbs = {
         "add",
@@ -940,7 +1008,12 @@ def generate_pr_title(commits: list[CommitInfo], config: Config, branch_name: st
         commit = commits[0]
         if commit.commit_type:
             _, _, summary = parse_conventional_commit(commit.subject)
-            return config.title_format.format(
+            # Use conventional commit format with scope when present
+            if commit.scope:
+                title_format = "{type}({scope}): {summary}"
+            else:
+                title_format = config.title_format
+            return title_format.format(
                 type=commit.commit_type,
                 scope=commit.scope or "",
                 summary=summary.capitalize() if summary else "update",
@@ -1011,7 +1084,13 @@ def generate_pr_title(commits: list[CommitInfo], config: Config, branch_name: st
         summary_text = _build_multi_commit_summary(summaries, scopes)
         scope_text = list(scopes)[0] if len(scopes) == 1 else ""
 
-        return config.title_format.format(
+        # Use conventional commit format with scope when present
+        if scope_text:
+            title_format = "{type}({scope}): {summary}"
+        else:
+            title_format = config.title_format
+
+        return title_format.format(
             type=dominant_type,
             scope=scope_text,
             summary=summary_text,

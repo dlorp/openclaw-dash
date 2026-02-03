@@ -803,12 +803,19 @@ class TestBuildMultiCommitSummary:
         result = pr_describe._build_multi_commit_summary(["add user authentication"], set())
         assert "add user authentication" in result
 
-    def test_shared_scope_mentioned(self):
+    def test_shared_scope_combines_actions(self):
+        """When commits share a scope, actions should be combined cleanly.
+
+        Note: scope is added by generate_pr_title() in conventional commit format,
+        not by _build_multi_commit_summary().
+        """
         result = pr_describe._build_multi_commit_summary(
             ["add login", "add logout"],
             {"auth"},
         )
-        assert "auth" in result.lower()
+        # Should combine the actions
+        assert "add" in result.lower()
+        assert "login" in result.lower() or "logout" in result.lower()
 
     def test_finds_common_words(self):
         result = pr_describe._build_multi_commit_summary(
@@ -873,13 +880,18 @@ class TestBuildMultiCommitSummary:
         assert "refactor" in result.lower()
 
     def test_contradictory_with_scope(self):
-        """Contradictory actions with a scope should include the scope."""
+        """Contradictory actions should become refactor regardless of scope.
+
+        Note: scope is added by generate_pr_title() in conventional commit format,
+        not by _build_multi_commit_summary().
+        """
         result = pr_describe._build_multi_commit_summary(
             ["add validation", "remove validation"],
             {"parser"},
         )
         assert "refactor" in result.lower()
-        assert "parser" in result.lower()
+        # Scope is NOT in summary - it's added by generate_pr_title()
+        assert "validation" in result.lower()
 
     def test_preserves_technical_term_none(self):
         """Technical terms like None should be preserved in multi-commit summaries."""
