@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 # Configuration - customize for your setup
-DEFAULT_REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]
+DEFAULT_REPOS = ["synapse-engine", "r3LAY", "t3rra1n", "openclaw-dash"]
 STATE_FILE = Path(__file__).parent / ".pr_state.json"
 
 
