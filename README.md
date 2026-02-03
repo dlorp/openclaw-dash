@@ -128,6 +128,9 @@ Bundled automation tools:
 | `smart-todo-scanner` | Context-aware TODO categorization |
 | `dep-shepherd` | Dependency auditing and updates |
 | `pr-describe` | Automated PR description generation |
+| `pr-create` | Streamlined PR creation with auto-generated content |
+| `audit` | Security scanning (secrets, vulnerabilities, dangerous patterns) |
+| `version-bump` | Semantic version management based on conventional commits |
 
 ## Requirements
 
