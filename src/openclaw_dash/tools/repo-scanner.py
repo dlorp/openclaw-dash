@@ -55,44 +55,58 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int = GIT_TIMEOUT) -> 
 
 
 def count_todos(repo_path: Path) -> dict:
-    """Count TODOs and FIXMEs in a repo."""
+    """Count TODOs and FIXMEs in tracked files only (via git ls-files)."""
     todos = {"TODO": 0, "FIXME": 0, "HACK": 0, "XXX": 0}
     files_with_todos: list[str] = []
 
-    for ext in ["py", "ts", "tsx", "js", "jsx"]:
-        try:
-            grep_result = subprocess.run(
-                [
-                    "grep",
-                    "-rn",
-                    r"TODO\|FIXME\|HACK\|XXX",
-                    f"--include=*.{ext}",
-                    ".",
-                ],
-                capture_output=True,
-                text=True,
-                cwd=repo_path,
-                timeout=GIT_TIMEOUT,
-            )
-        except subprocess.TimeoutExpired:
-            continue
-        output = grep_result.stdout.strip()
-        if output:
-            for line in output.split("\n"):
-                if "node_modules" in line or "__pycache__" in line or ".git" in line:
-                    continue
-                if "TODO" in line:
-                    todos["TODO"] += 1
-                if "FIXME" in line:
-                    todos["FIXME"] += 1
-                if "HACK" in line:
-                    todos["HACK"] += 1
-                if "XXX" in line:
-                    todos["XXX"] += 1
-                if ":" in line:
-                    fname = line.split(":")[0]
-                    if fname not in files_with_todos:
-                        files_with_todos.append(fname)
+    # Get list of tracked files from git
+    try:
+        ls_result = subprocess.run(
+            ["git", "ls-files"],
+            capture_output=True,
+            text=True,
+            cwd=repo_path,
+            timeout=GIT_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return {"counts": todos, "total": 0, "files_affected": 0}
+
+    tracked_files = ls_result.stdout.strip().split("\n") if ls_result.stdout.strip() else []
+
+    # Filter to source files we care about
+    extensions = {".py", ".ts", ".tsx", ".js", ".jsx"}
+    source_files = [f for f in tracked_files if Path(f).suffix in extensions]
+
+    if not source_files:
+        return {"counts": todos, "total": 0, "files_affected": 0}
+
+    # Use grep on just the tracked source files
+    try:
+        grep_result = subprocess.run(
+            ["grep", "-Hn", r"TODO\|FIXME\|HACK\|XXX", "--", *source_files],
+            capture_output=True,
+            text=True,
+            cwd=repo_path,
+            timeout=GIT_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return {"counts": todos, "total": 0, "files_affected": 0}
+
+    output = grep_result.stdout.strip()
+    if output:
+        for line in output.split("\n"):
+            if "TODO" in line:
+                todos["TODO"] += 1
+            if "FIXME" in line:
+                todos["FIXME"] += 1
+            if "HACK" in line:
+                todos["HACK"] += 1
+            if "XXX" in line:
+                todos["XXX"] += 1
+            if ":" in line:
+                fname = line.split(":")[0]
+                if fname not in files_with_todos:
+                    files_with_todos.append(fname)
 
     return {
         "counts": todos,
@@ -219,11 +233,11 @@ def format_markdown(results: list[dict], style: str = "verbose") -> str:
         total_todos += todos["total"]
         total_prs += len(prs)
 
-        if todos["total"] == 0:
-            status = "✨"
-        elif todos["total"] < 10:
-            status = "🟢"
-        elif todos["total"] < 50:
+        # Status based on open PR count
+        pr_count = len(prs)
+        if pr_count == 0:
+            status = "✅"
+        elif pr_count <= 3:
             status = "🟡"
         else:
             status = "🔴"
@@ -267,11 +281,11 @@ def format_plain(results: list[dict], style: str = "verbose") -> str:
         total_todos += todos["total"]
         total_prs += len(prs)
 
-        if todos["total"] == 0:
+        # Status based on open PR count
+        pr_count = len(prs)
+        if pr_count == 0:
             status = "OK"
-        elif todos["total"] < 10:
-            status = "GOOD"
-        elif todos["total"] < 50:
+        elif pr_count <= 3:
             status = "WARN"
         else:
             status = "ALERT"
