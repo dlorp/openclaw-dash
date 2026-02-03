@@ -131,12 +131,14 @@ def collect() -> dict[str, Any]:
         - total: Total number of sub-agents
         - active: Number of active sub-agents
         - collected_at: Timestamp of collection
+        - error: Error message if collection failed (optional)
     """
     # Return mock data in demo mode
     if is_demo_mode():
         sessions = mock_sessions()
+        fetch_error = None
     else:
-        sessions = _fetch_sessions()
+        sessions, fetch_error = _fetch_sessions()
 
     agents: list[Agent] = []
 
@@ -189,16 +191,27 @@ def collect() -> dict[str, Any]:
 
     active_count = sum(1 for a in agents if a.status == AgentStatus.ACTIVE)
 
-    return {
+    result = {
         "agents": [a.to_dict() for a in agents],
         "total": len(agents),
         "active": active_count,
         "collected_at": datetime.now().isoformat(),
     }
 
+    # Include error information if fetch failed but we have no agents
+    if fetch_error and not agents:
+        result["error"] = fetch_error
+        result["_error_type"] = "fetch_failed"
 
-def _fetch_sessions() -> list[dict[str, Any]]:
-    """Fetch sessions from OpenClaw CLI."""
+    return result
+
+
+def _fetch_sessions() -> tuple[list[dict[str, Any]], str | None]:
+    """Fetch sessions from OpenClaw CLI with error tracking.
+
+    Returns:
+        Tuple of (sessions_list, error_message_or_none).
+    """
     try:
         result = subprocess.run(
             ["openclaw", "sessions", "list", "--json"],
@@ -207,12 +220,23 @@ def _fetch_sessions() -> list[dict[str, Any]]:
             timeout=15,
         )
         if result.returncode == 0:
-            data = json.loads(result.stdout)
-            return data.get("sessions", [])
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
-        pass
+            try:
+                data = json.loads(result.stdout)
+                return data.get("sessions", []), None
+            except json.JSONDecodeError as e:
+                return [], f"Invalid JSON response: {e}"
+        else:
+            error = result.stderr.strip() if result.stderr else f"Exit code {result.returncode}"
+            return [], error
 
-    return []
+    except subprocess.TimeoutExpired:
+        return [], "Command timed out after 15s"
+
+    except FileNotFoundError:
+        return [], "OpenClaw CLI not found"
+
+    except OSError as e:
+        return [], f"OS error: {e}"
 
 
 def get_status_icon(status: str) -> str:
