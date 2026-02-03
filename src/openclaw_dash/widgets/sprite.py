@@ -217,20 +217,20 @@ class SpriteWidget(Static):
 
     def on_mount(self) -> None:
         """Handle widget mount - render initial state."""
-        self._render()
+        self._do_render()
 
     def watch_state(self, new_state: SpriteState) -> None:
         """React to state changes."""
         # Update status text to default if not custom
         if not self.status_text or self.status_text in DEFAULT_STATUS_TEXT.values():
             self.status_text = DEFAULT_STATUS_TEXT.get(new_state, "")
-        self._render()
+        self._do_render()
 
     def watch_status_text(self, new_text: str) -> None:
         """React to status text changes."""
-        self._render()
+        self._do_render()
 
-    def _render(self) -> None:
+    def _do_render(self) -> None:
         """Render the sprite display."""
         try:
             display = self.query_one("#sprite-display", Static)
