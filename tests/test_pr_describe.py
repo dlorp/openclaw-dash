@@ -5,16 +5,21 @@ This tool generates structured PR descriptions from git diffs.
 
 import importlib.util
 import json
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Load the module with dash in filename using importlib
+# NOTE: Must register in sys.modules BEFORE exec_module() for Python 3.10+
+# dataclass compatibility. The dataclass decorator needs to resolve the module
+# namespace via sys.modules during class creation.
 _spec = importlib.util.spec_from_file_location(
     "pr_describe",
     Path(__file__).parent.parent / "src" / "openclaw_dash" / "tools" / "pr-describe.py",
 )
 pr_describe = importlib.util.module_from_spec(_spec)
+sys.modules["pr_describe"] = pr_describe
 _spec.loader.exec_module(pr_describe)
 
 
@@ -220,6 +225,7 @@ class TestGenerateSummary:
     """Tests for generate_summary function."""
 
     def test_single_commit_summary(self):
+        config = pr_describe.Config()
         commits = [
             pr_describe.CommitInfo(
                 hash="abc123",
@@ -228,52 +234,57 @@ class TestGenerateSummary:
             )
         ]
         files = []
-        result = pr_describe.generate_summary(commits, files)
+        result = pr_describe.generate_summary(commits, files, config)
         assert "Add user authentication" in result
         assert "OAuth2" in result
 
     def test_multiple_commits_summary(self):
+        config = pr_describe.Config()
         commits = [
             pr_describe.CommitInfo(hash="abc", subject="feat: Add login"),
             pr_describe.CommitInfo(hash="def", subject="feat: Add logout"),
             pr_describe.CommitInfo(hash="ghi", subject="feat: Add session management"),
         ]
         files = []
-        result = pr_describe.generate_summary(commits, files)
+        result = pr_describe.generate_summary(commits, files, config)
         # Direct bullet list without intro fluff
         assert "- Add login" in result
         assert "- Add logout" in result
         assert "- Add session management" in result
 
     def test_fix_commits_summary_lists_changes(self):
+        config = pr_describe.Config()
         commits = [
             pr_describe.CommitInfo(hash="abc", subject="fix: Resolve null pointer"),
             pr_describe.CommitInfo(hash="def", subject="fix: Handle edge case"),
         ]
-        result = pr_describe.generate_summary(commits, [])
+        result = pr_describe.generate_summary(commits, [], config)
         # Direct list of changes without template intro
         assert "- Resolve null pointer" in result
         assert "- Handle edge case" in result
 
     def test_refactor_commits_summary_lists_changes(self):
+        config = pr_describe.Config()
         commits = [
             pr_describe.CommitInfo(hash="abc", subject="refactor: Extract utils"),
             pr_describe.CommitInfo(hash="def", subject="refactor: Simplify logic"),
         ]
-        result = pr_describe.generate_summary(commits, [])
+        result = pr_describe.generate_summary(commits, [], config)
         # Direct list of changes without template intro
         assert "- Extract utils" in result
         assert "- Simplify logic" in result
 
     def test_no_commits(self):
-        result = pr_describe.generate_summary([], [])
+        config = pr_describe.Config()
+        result = pr_describe.generate_summary([], [], config)
         assert "No commits" in result
 
     def test_many_commits_truncated(self):
+        config = pr_describe.Config()
         commits = [
             pr_describe.CommitInfo(hash=f"hash{i}", subject=f"Commit {i}") for i in range(20)
         ]
-        result = pr_describe.generate_summary(commits, [])
+        result = pr_describe.generate_summary(commits, [], config)
         assert "more commits" in result.lower()
 
 
@@ -353,7 +364,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Summary" in result
         assert "Test summary" in result
 
@@ -366,7 +377,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 2, "additions": 10, "deletions": 5, "commits": 1},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Changes" in result
         assert "**Added:**" in result
         assert "`new.py`" in result
@@ -382,7 +393,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Testing" in result
         assert "- [ ] Run unit tests" in result
         assert "- [ ] Test API endpoints" in result
@@ -396,7 +407,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Notes" in result
         assert "Breaking Changes" in result
 
@@ -409,7 +420,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 5, "additions": 100, "deletions": 50, "commits": 3},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "3 commits" in result
         assert "5 files changed" in result
         assert "+100/-50" in result
@@ -423,7 +434,7 @@ class TestFormatMarkdown:
             commits=[],
             stats={"files_changed": 20, "additions": 0, "deletions": 0, "commits": 1},
         )
-        result = pr_describe.format_markdown(desc)
+        result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "... and" in result
         assert "more" in result
 
