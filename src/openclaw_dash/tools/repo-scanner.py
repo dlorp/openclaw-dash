@@ -191,7 +191,7 @@ def format_todo_counts(todos: dict) -> str:
 
 def format_report(results: list[dict]) -> str:
     """Format results as a readable report."""
-    lines = ["## 🔍 Repo Status", ""]
+    lines = ["## Repo Status", ""]
     lines.append(f"**Scanned:** {datetime.now().strftime('%Y-%m-%d %H:%M AKST')}")
     lines.append("")
 

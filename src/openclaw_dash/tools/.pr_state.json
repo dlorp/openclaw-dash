@@ -1,5 +1,50 @@
 {
   "prs": {
+    "synapse-engine#58": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": null,
+      "createdAt": "2026-02-03T07:55:00Z",
+      "mergedAt": null,
+      "number": 58,
+      "state": "OPEN",
+      "title": "security: replace pickle with JSON for CGRAG metadata serialization",
+      "repo": "synapse-engine"
+    },
+    "synapse-engine#57": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": null,
+      "createdAt": "2026-02-03T07:54:38Z",
+      "mergedAt": null,
+      "number": 57,
+      "state": "OPEN",
+      "title": "fix(security): prevent path traversal in CGRAG indexer",
+      "repo": "synapse-engine"
+    },
+    "synapse-engine#56": {
+      "author": {
+        "id": "MDQ6VXNlcjU0MjQ4MzE1",
+        "is_bot": false,
+        "login": "dlorp",
+        "name": ""
+      },
+      "closedAt": null,
+      "createdAt": "2026-02-03T07:51:04Z",
+      "mergedAt": null,
+      "number": 56,
+      "state": "OPEN",
+      "title": "\ud83d\udd12 Security: Replace pickle with JSON for CGRAG metadata",
+      "repo": "synapse-engine"
+    },
     "synapse-engine#55": {
       "author": {
         "id": "MDQ6VXNlcjU0MjQ4MzE1",
@@ -255,50 +300,20 @@
       "title": "fix(ci): enforce CI quality - fix PYTHONPATH and remove silent failures",
       "repo": "synapse-engine"
     },
-    "synapse-engine#38": {
+    "r3LAY#69": {
       "author": {
         "id": "MDQ6VXNlcjU0MjQ4MzE1",
         "is_bot": false,
         "login": "dlorp",
         "name": ""
       },
-      "closedAt": "2026-02-02T03:52:49Z",
-      "createdAt": "2026-02-02T03:49:19Z",
-      "mergedAt": "2026-02-02T03:52:49Z",
-      "number": 38,
-      "state": "MERGED",
-      "title": "test: Add comprehensive unit tests for EventBus service",
-      "repo": "synapse-engine"
-    },
-    "synapse-engine#37": {
-      "author": {
-        "id": "MDQ6VXNlcjU0MjQ4MzE1",
-        "is_bot": false,
-        "login": "dlorp",
-        "name": ""
-      },
-      "closedAt": "2026-02-02T02:31:50Z",
-      "createdAt": "2026-02-02T02:24:18Z",
+      "closedAt": null,
+      "createdAt": "2026-02-03T07:49:08Z",
       "mergedAt": null,
-      "number": 37,
-      "state": "CLOSED",
-      "title": "fix: align README with standards",
-      "repo": "synapse-engine"
-    },
-    "synapse-engine#36": {
-      "author": {
-        "id": "MDQ6VXNlcjU0MjQ4MzE1",
-        "is_bot": false,
-        "login": "dlorp",
-        "name": ""
-      },
-      "closedAt": "2026-02-02T02:30:11Z",
-      "createdAt": "2026-02-02T02:19:07Z",
-      "mergedAt": null,
-      "number": 36,
-      "state": "CLOSED",
-      "title": "fix: replace all MAGI references with Synapse Engine",
-      "repo": "synapse-engine"
+      "number": 69,
+      "state": "OPEN",
+      "title": "fix(security): Add path validation to prevent path traversal in file attachments",
+      "repo": "r3LAY"
     },
     "r3LAY#68": {
       "author": {
@@ -585,20 +600,20 @@
       "title": "fix: remove personal info and fix license for public release",
       "repo": "r3LAY"
     },
-    "r3LAY#48": {
+    "t3rra1n#31": {
       "author": {
         "id": "MDQ6VXNlcjU0MjQ4MzE1",
         "is_bot": false,
         "login": "dlorp",
         "name": ""
       },
-      "closedAt": "2026-02-02T01:13:13Z",
-      "createdAt": "2026-02-02T00:50:43Z",
+      "closedAt": null,
+      "createdAt": "2026-02-03T07:49:38Z",
       "mergedAt": null,
-      "number": 48,
-      "state": "CLOSED",
-      "title": "docs: add Code of Conduct and Contributing guide",
-      "repo": "r3LAY"
+      "number": 31,
+      "state": "OPEN",
+      "title": "security: use SecretStr for API keys to prevent leakage",
+      "repo": "t3rra1n"
     },
     "t3rra1n#30": {
       "author": {
@@ -884,22 +899,7 @@
       "state": "MERGED",
       "title": "Fix TODOs in corruption_preview.py",
       "repo": "t3rra1n"
-    },
-    "t3rra1n#11": {
-      "author": {
-        "id": "MDQ6VXNlcjU0MjQ4MzE1",
-        "is_bot": false,
-        "login": "dlorp",
-        "name": ""
-      },
-      "closedAt": "2026-02-01T20:52:56Z",
-      "createdAt": "2026-02-01T20:48:19Z",
-      "mergedAt": "2026-02-01T20:52:56Z",
-      "number": 11,
-      "state": "MERGED",
-      "title": "fix: implement session_analytics TODOs for real data extraction",
-      "repo": "t3rra1n"
     }
   },
-  "last_check": "2026-02-02T22:45:00.373681"
+  "last_check": "2026-02-02T23:07:04.066228"
 }
