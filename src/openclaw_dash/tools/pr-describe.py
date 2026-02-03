@@ -633,11 +633,43 @@ def get_code_snippets(repo_path: Path, base: str, head: str, files: list[FileCha
     return snippets
 
 
+def extract_structured_section(commits: list[CommitInfo], section: str) -> str | None:
+    """Extract explicit What:, Why:, or How: sections from commit bodies.
+    
+    Args:
+        commits: List of commit info objects
+        section: Section name to extract ("What", "Why", or "How")
+    
+    Returns:
+        The extracted section text, or None if not found
+    """
+    pattern = re.compile(f"^{section}:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
+    
+    for commit in commits:
+        if not commit.body:
+            continue
+            
+        match = pattern.search(commit.body)
+        if match:
+            return match.group(1).strip()
+    
+    return None
+
+
 def generate_what_section(commits: list[CommitInfo]) -> str:
-    """Generate the What section - one sentence summary from commit message."""
+    """Generate the What section - one sentence summary from commit message.
+    
+    First looks for explicit "What:" sections in commit bodies, then falls back to inference.
+    """
     if not commits:
         return "No changes found"
 
+    # First, try to extract explicit "What:" section
+    explicit_what = extract_structured_section(commits, "What")
+    if explicit_what:
+        return explicit_what
+
+    # Fallback to existing inference logic
     # For single commit, extract the summary part
     if len(commits) == 1:
         commit = commits[0]
@@ -664,10 +696,19 @@ def generate_what_section(commits: list[CommitInfo]) -> str:
 
 
 def generate_why_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
-    """Generate the Why section - infer motivation from commit types and changes."""
+    """Generate the Why section - infer motivation from commit types and changes.
+    
+    First looks for explicit "Why:" sections in commit bodies, then falls back to inference.
+    """
     if not commits:
         return "No context available"
 
+    # First, try to extract explicit "Why:" section
+    explicit_why = extract_structured_section(commits, "Why")
+    if explicit_why:
+        return explicit_why
+
+    # Fallback to existing inference logic
     # Look for "Resolves" or problem statements in commit bodies
     specific_reasons = []
     for commit in commits:
@@ -719,10 +760,19 @@ def generate_why_section(commits: list[CommitInfo], files: list[FileChange]) -> 
 
 
 def generate_how_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
-    """Generate the How section - brief explanation of approach."""
+    """Generate the How section - brief explanation of approach.
+    
+    First looks for explicit "How:" sections in commit bodies, then falls back to inference.
+    """
     if not commits:
         return "No implementation details available"
 
+    # First, try to extract explicit "How:" section
+    explicit_how = extract_structured_section(commits, "How")
+    if explicit_how:
+        return explicit_how
+
+    # Fallback to existing inference logic
     # Extract specific implementation details from commit bodies
     implementation_details = []
 

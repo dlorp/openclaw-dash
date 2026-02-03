@@ -353,7 +353,36 @@ Include:
 
 ### Commit Messages
 
-Use clear, descriptive commit messages:
+#### Structured Commit Format (Recommended)
+
+For better PR generation and automated tools, use the structured commit format:
+
+```
+feat(collector): add sparkline visualization to metrics panel
+
+What: Display 7-day trend sparklines in the metrics dashboard
+Why: Users need quick visual context for metric changes over time  
+How: Added sparkline() function and historical data tracking
+```
+
+The structured format includes:
+- **What**: One sentence describing what this commit does
+- **Why**: What was broken, missing, or needed improvement
+- **How**: Brief technical approach
+
+#### Template Setup
+
+Configure git to use the commit message template:
+
+```bash
+git config --local commit.template .gitmessage
+```
+
+This will pre-populate commit messages with the structured format.
+
+#### Conventional Commits
+
+Traditional format is also supported:
 
 ```
 feat: add sparkline visualization to metrics panel
@@ -370,6 +399,13 @@ Prefixes:
 - `test:` — Test changes
 - `refactor:` — Code refactoring
 - `chore:` — Maintenance tasks
+
+#### Benefits
+
+The structured format enables:
+- **Better PR descriptions**: `pr-describe.py` extracts What/Why/How directly
+- **Clearer change intent**: Explicit motivation and approach
+- **Improved maintainability**: Future developers understand the context
 
 ## Getting Help
 
