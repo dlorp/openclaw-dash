@@ -444,17 +444,17 @@ class TestRunCommand:
     """Tests for the run helper function."""
 
     def test_run_successful_command(self):
-        code, stdout, stderr = pr_describe.run("echo hello")
+        code, stdout, stderr = pr_describe.run(["echo", "hello"])
         assert code == 0
         assert "hello" in stdout
 
     def test_run_failed_command(self):
-        code, stdout, stderr = pr_describe.run("exit 1")
+        code, stdout, stderr = pr_describe.run(["sh", "-c", "exit 1"])
         assert code == 1
 
     def test_run_with_cwd(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            code, stdout, _ = pr_describe.run("pwd", cwd=Path(tmpdir))
+            code, stdout, _ = pr_describe.run(["pwd"], cwd=Path(tmpdir))
             assert code == 0
             # stdout should contain the temp directory path
 
@@ -515,9 +515,11 @@ class TestGetDefaultBranch:
     @patch.object(pr_describe, "run")
     def test_returns_master_if_no_main(self, mock_run):
         def side_effect(cmd, **kwargs):
-            if "main" in cmd:
+            # cmd is now a list, check if any element contains "main" or "master"
+            cmd_str = " ".join(cmd)
+            if "refs/heads/main" in cmd_str:
                 return (1, "", "")  # main doesn't exist
-            elif "master" in cmd:
+            elif "refs/heads/master" in cmd_str:
                 return (0, "", "")  # master exists
             return (1, "", "")
 
