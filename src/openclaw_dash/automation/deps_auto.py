@@ -39,11 +39,11 @@ class UpdateResult:
     pr_url: str | None = None
 
 
-def run(cmd: str, cwd: Path | None = None, timeout: int = 300) -> tuple[int, str, str]:
-    """Run a shell command and return (returncode, stdout, stderr)."""
+def run(cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> tuple[int, str, str]:
+    """Run a command and return (returncode, stdout, stderr)."""
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=timeout
+            cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
@@ -127,7 +127,7 @@ class DepsAutomation:
         results = []
         for repo in self.config.repos:
             code, stdout, stderr = run(
-                f"{sys.executable} {dep_shepherd} --repo {repo} --json", timeout=300
+                [sys.executable, str(dep_shepherd), "--repo", repo, "--json"], timeout=300
             )
 
             if code == 0 and stdout:
@@ -154,7 +154,7 @@ class DepsAutomation:
         branch_name = f"deps/update-{package}-{latest}".replace(".", "-").replace("@", "-")
 
         # Check if branch already exists
-        code, existing, _ = run(f"git branch --list {branch_name}", cwd=repo_path)
+        code, existing, _ = run(["git", "branch", "--list", branch_name], cwd=repo_path)
         if existing.strip():
             return UpdateResult(
                 repo=repo,
@@ -168,7 +168,7 @@ class DepsAutomation:
             )
 
         # Also check remote
-        _, remote_branches, _ = run(f"git ls-remote --heads origin {branch_name}", cwd=repo_path)
+        _, remote_branches, _ = run(["git", "ls-remote", "--heads", "origin", branch_name], cwd=repo_path)
         if remote_branches.strip():
             return UpdateResult(
                 repo=repo,
@@ -194,9 +194,12 @@ class DepsAutomation:
             )
 
         # Create and checkout branch
-        run("git checkout main 2>/dev/null || git checkout master", cwd=repo_path)
-        run("git pull", cwd=repo_path)
-        code, _, stderr = run(f"git checkout -b {branch_name}", cwd=repo_path)
+        # Try main first, fall back to master
+        code, _, _ = run(["git", "checkout", "main"], cwd=repo_path)
+        if code != 0:
+            run(["git", "checkout", "master"], cwd=repo_path)
+        run(["git", "pull"], cwd=repo_path)
+        code, _, stderr = run(["git", "checkout", "-b", branch_name], cwd=repo_path)
 
         if code != 0:
             return UpdateResult(
@@ -231,19 +234,19 @@ class DepsAutomation:
             security_tag = "🔒 " if is_security else ""
             commit_msg = f"{security_tag}Update {package} from {current} to {latest}"
 
-            run("git add -A", cwd=repo_path)
-            code, _, stderr = run(f'git commit -m "{commit_msg}"', cwd=repo_path)
+            run(["git", "add", "-A"], cwd=repo_path)
+            code, _, stderr = run(["git", "commit", "-m", commit_msg], cwd=repo_path)
             if code != 0:
                 raise Exception(f"Commit failed: {stderr}")
 
-            code, _, stderr = run(f"git push -u origin {branch_name}", cwd=repo_path)
+            code, _, stderr = run(["git", "push", "-u", "origin", branch_name], cwd=repo_path)
             if code != 0:
                 raise Exception(f"Push failed: {stderr}")
 
             # Create PR
             pr_body = self._generate_pr_body(package, current, latest, is_security, test_output)
             code, stdout, stderr = run(
-                f'gh pr create --title "{commit_msg}" --body "{pr_body}" --base main', cwd=repo_path
+                ["gh", "pr", "create", "--title", commit_msg, "--body", pr_body, "--base", "main"], cwd=repo_path
             )
 
             if code != 0:
@@ -266,9 +269,11 @@ class DepsAutomation:
 
         except Exception as e:
             # Cleanup on failure
-            run("git checkout -- .", cwd=repo_path)
-            run("git checkout main 2>/dev/null || git checkout master", cwd=repo_path)
-            run(f"git branch -D {branch_name}", cwd=repo_path)
+            run(["git", "checkout", "--", "."], cwd=repo_path)
+            code, _, _ = run(["git", "checkout", "main"], cwd=repo_path)
+            if code != 0:
+                run(["git", "checkout", "master"], cwd=repo_path)
+            run(["git", "branch", "-D", branch_name], cwd=repo_path)
 
             return UpdateResult(
                 repo=repo,
@@ -282,7 +287,9 @@ class DepsAutomation:
             )
 
         finally:
-            run("git checkout main 2>/dev/null || git checkout master", cwd=repo_path)
+            code, _, _ = run(["git", "checkout", "main"], cwd=repo_path)
+            if code != 0:
+                run(["git", "checkout", "master"], cwd=repo_path)
 
     def _update_pip_dep(self, repo_path: Path, package: str, version: str) -> bool:
         """Update a pip dependency in requirements.txt or pyproject.toml."""
@@ -326,31 +333,31 @@ class DepsAutomation:
 
     def _update_npm_dep(self, repo_path: Path, package: str, version: str) -> bool:
         """Update an npm dependency."""
-        code, _, stderr = run(f"npm install {package}@{version} --save", cwd=repo_path, timeout=180)
+        code, _, stderr = run(["npm", "install", f"{package}@{version}", "--save"], cwd=repo_path, timeout=180)
         return code == 0
 
     def _run_tests(self, repo_path: Path) -> tuple[bool, str]:
         """Run tests in a repo."""
         test_commands = [
-            "pytest -x -q",
-            "python -m pytest -x -q",
-            "npm test",
-            "make test",
+            (["pytest", "-x", "-q"], "pytest"),
+            (["python", "-m", "pytest", "-x", "-q"], "pytest"),
+            (["npm", "test"], "npm test"),
+            (["make", "test"], "make test"),
         ]
 
-        for cmd in test_commands:
-            if "pytest" in cmd and not list(repo_path.glob("**/test_*.py")):
+        for cmd, cmd_name in test_commands:
+            if "pytest" in cmd_name and not list(repo_path.glob("**/test_*.py")):
                 continue
-            if "npm test" in cmd and not (repo_path / "package.json").exists():
+            if "npm test" in cmd_name and not (repo_path / "package.json").exists():
                 continue
-            if "make test" in cmd and not (repo_path / "Makefile").exists():
+            if "make test" in cmd_name and not (repo_path / "Makefile").exists():
                 continue
 
             code, stdout, stderr = run(cmd, cwd=repo_path, timeout=300)
             if code == 0:
-                return True, f"Tests passed: {cmd}"
+                return True, f"Tests passed: {cmd_name}"
             elif code != 127:
-                return False, f"Tests failed ({cmd}): {stderr or stdout}"
+                return False, f"Tests failed ({cmd_name}): {stderr or stdout}"
 
         return True, "No test suite found"
 

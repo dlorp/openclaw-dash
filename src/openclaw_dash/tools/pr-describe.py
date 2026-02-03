@@ -2,39 +2,92 @@
 """
 pr-describe.py — Generate structured PR descriptions from git diffs.
 
-Features:
-- Analyze git diff between branches
-- Infer intent from commit messages
-- Categorize changed files (added, modified, removed)
-- Suggest testing scenarios
-- Flag breaking changes, new dependencies, config changes
+Analyzes git diff between branches, infers intent from commit messages,
+categorizes changes, and flags breaking changes or new dependencies.
 
-Usage:
-    python3 pr-describe.py [branch]              # Current branch vs main
-    python3 pr-describe.py --base develop        # Compare against develop
-    python3 pr-describe.py --json                # Output as JSON
-    python3 pr-describe.py --clipboard           # Copy to clipboard
+Examples:
+    pr-describe.py                      # Current branch vs main
+    pr-describe.py feature-xyz          # Compare feature-xyz vs main
+    pr-describe.py --base develop       # Compare against develop
+    pr-describe.py --format json        # Output as JSON
+    pr-describe.py --clipboard          # Copy to clipboard
+    pr-describe.py --title              # Just output suggested PR title
+    pr-describe.py --include-comments   # Include existing PR discussion
 
 Module usage:
     from pr_describe import generate_pr_description
     desc = generate_pr_description("/path/to/repo", "main", "feature-branch")
 """
 
+from __future__ import annotations
+
+import argparse
 import json
 import re
 import subprocess
 import sys
 from collections import defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional, Union
+
+# Try to import yaml, fall back gracefully
+try:
+    import yaml
+
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
+
+# Config file location
+CONFIG_DIR = Path.home() / ".config" / "openclaw-dash"
+CONFIG_FILE = CONFIG_DIR / "pr-describe.yaml"
+
+# Default configuration
+DEFAULT_CONFIG = {
+    "output_style": "verbose",  # verbose|concise|minimal
+    "include_testing": True,
+    "include_breaking_changes": True,
+    "title_format": "{type}: {summary}",  # Template for PR titles
+    "max_files_shown": 15,
+    "max_commits_shown": 7,
+}
+
+# Conventional commit types
+COMMIT_TYPES = {
+    "feat": "feature",
+    "fix": "fix",
+    "docs": "docs",
+    "style": "style",
+    "refactor": "refactor",
+    "test": "test",
+    "chore": "chore",
+    "ci": "ci",
+    "perf": "perf",
+    "build": "build",
+    "revert": "revert",
+}
 
 # File categorization patterns
 FILE_CATEGORIES = {
     "tests": [r"test_", r"_test\.", r"\.test\.", r"tests/", r"__tests__/", r"spec/"],
     "docs": [r"\.md$", r"docs/", r"README", r"CHANGELOG", r"\.rst$"],
-    "config": [r"\.json$", r"\.ya?ml$", r"\.toml$", r"\.ini$", r"\.env", r"Makefile", r"Dockerfile"],
-    "deps": [r"requirements", r"package\.json$", r"package-lock\.json$", r"pyproject\.toml$", r"poetry\.lock$", r"Cargo\.toml$"],
+    "config": [
+        r"\.json$",
+        r"\.ya?ml$",
+        r"\.toml$",
+        r"\.ini$",
+        r"\.env",
+        r"Makefile",
+        r"Dockerfile",
+    ],
+    "deps": [
+        r"requirements",
+        r"package\.json$",
+        r"package-lock\.json$",
+        r"pyproject\.toml$",
+        r"poetry\.lock$",
+        r"Cargo\.toml$",
+    ],
     "ci": [r"\.github/", r"\.gitlab-ci", r"\.circleci/", r"Jenkinsfile", r"\.travis"],
 }
 
@@ -49,8 +102,17 @@ BREAKING_PATTERNS = [
     r"deprecated",
 ]
 
-# Dependency patterns
-DEP_FILES = ["requirements.txt", "requirements-dev.txt", "pyproject.toml", "package.json", "Cargo.toml"]
+
+@dataclass
+class Config:
+    """Configuration for pr-describe."""
+
+    output_style: str = "verbose"
+    include_testing: bool = True
+    include_breaking_changes: bool = True
+    title_format: str = "{type}: {summary}"
+    max_files_shown: int = 15
+    max_commits_shown: int = 7
 
 
 @dataclass
@@ -67,6 +129,15 @@ class CommitInfo:
     hash: str
     subject: str
     body: str = ""
+    commit_type: str = ""  # feat, fix, etc.
+    scope: str = ""  # Optional scope from conventional commits
+
+
+@dataclass
+class PRComment:
+    author: str
+    body: str
+    created_at: str = ""
 
 
 @dataclass
@@ -75,16 +146,42 @@ class PRDescription:
     changes: dict[str, list[str]]
     testing: list[str]
     notes: list[str]
-    commits: Union[list[CommitInfo], list[dict]]
+    commits: list[CommitInfo | dict]
     stats: dict[str, int]
+    title: str = ""
+    comments: list[PRComment] = field(default_factory=list)
 
 
-def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str, str]:
-    """Run a shell command and return (returncode, stdout, stderr)."""
+def load_config() -> Config:
+    """Load configuration from file, creating defaults if needed."""
+    config_dict = DEFAULT_CONFIG.copy()
+
+    if CONFIG_FILE.exists() and HAS_YAML:
+        try:
+            with open(CONFIG_FILE) as f:
+                user_config = yaml.safe_load(f) or {}
+                config_dict.update(user_config)
+        except Exception:
+            pass  # Use defaults on error
+
+    return Config(**config_dict)
+
+
+def ensure_config_exists() -> None:
+    """Create config file with defaults if it doesn't exist."""
+    if not HAS_YAML:
+        return
+
+    if not CONFIG_FILE.exists():
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(CONFIG_FILE, "w") as f:
+            yaml.dump(DEFAULT_CONFIG, f, default_flow_style=False, sort_keys=False)
+
+
+def run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
+    """Run a command and return (returncode, stdout, stderr)."""
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=60
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=60)
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
@@ -94,36 +191,54 @@ def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str, str]:
 
 def get_current_branch(repo_path: Path) -> str:
     """Get the current git branch name."""
-    code, stdout, _ = run("git rev-parse --abbrev-ref HEAD", cwd=repo_path)
+    code, stdout, _ = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_path)
     return stdout if code == 0 else "HEAD"
 
 
 def get_default_branch(repo_path: Path) -> str:
     """Get the default branch (main or master)."""
     # Try main first
-    code, _, _ = run("git show-ref --verify refs/heads/main", cwd=repo_path)
+    code, _, _ = run(["git", "show-ref", "--verify", "refs/heads/main"], cwd=repo_path)
     if code == 0:
         return "main"
 
     # Fall back to master
-    code, _, _ = run("git show-ref --verify refs/heads/master", cwd=repo_path)
+    code, _, _ = run(["git", "show-ref", "--verify", "refs/heads/master"], cwd=repo_path)
     if code == 0:
         return "master"
 
     # Try to get from remote
-    code, stdout, _ = run("git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d: -f2", cwd=repo_path)
-    if code == 0 and stdout.strip():
-        return stdout.strip()
+    code, stdout, _ = run(["git", "remote", "show", "origin"], cwd=repo_path)
+    if code == 0 and stdout:
+        for line in stdout.split("\n"):
+            if "HEAD branch" in line:
+                return line.split(":")[-1].strip()
 
     return "main"
+
+
+def parse_conventional_commit(subject: str) -> tuple[str, str, str]:
+    """
+    Parse a conventional commit message.
+
+    Returns (type, scope, summary) where type and scope may be empty.
+    """
+    # Pattern: type(scope): summary or type: summary
+    match = re.match(r"^(\w+)(?:\(([^)]+)\))?:\s*(.+)$", subject)
+    if match:
+        commit_type = match.group(1).lower()
+        scope = match.group(2) or ""
+        summary = match.group(3)
+        if commit_type in COMMIT_TYPES:
+            return commit_type, scope, summary
+    return "", "", subject
 
 
 def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
     """Get commits between base and head branches."""
     # Format: hash|||subject|||body
     code, stdout, _ = run(
-        f'git log {base}..{head} --format="%H|||%s|||%b---COMMIT---"',
-        cwd=repo_path
+        ["git", "log", f"{base}..{head}", "--format=%H|||%s|||%b---COMMIT---"], cwd=repo_path
     )
 
     if code != 0 or not stdout:
@@ -136,11 +251,17 @@ def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
             continue
         parts = entry.split("|||", 2)
         if len(parts) >= 2:
-            commits.append(CommitInfo(
-                hash=parts[0][:8],
-                subject=parts[1].strip(),
-                body=parts[2].strip() if len(parts) > 2 else ""
-            ))
+            subject = parts[1].strip()
+            commit_type, scope, _ = parse_conventional_commit(subject)
+            commits.append(
+                CommitInfo(
+                    hash=parts[0][:8],
+                    subject=subject,
+                    body=parts[2].strip() if len(parts) > 2 else "",
+                    commit_type=commit_type,
+                    scope=scope,
+                )
+            )
 
     return commits
 
@@ -148,42 +269,34 @@ def get_commits(repo_path: Path, base: str, head: str) -> list[CommitInfo]:
 def get_changed_files(repo_path: Path, base: str, head: str) -> list[FileChange]:
     """Get list of changed files with status."""
     # Get file statuses
-    code, stdout, _ = run(
-        f'git diff {base}...{head} --name-status',
-        cwd=repo_path
-    )
+    code, stdout, _ = run(["git", "diff", f"{base}...{head}", "--name-status"], cwd=repo_path)
 
     if code != 0:
         return []
 
     files = []
-    for line in stdout.split('\n'):
+    for line in stdout.split("\n"):
         if not line.strip():
             continue
-        parts = line.split('\t')
+        parts = line.split("\t")
         if len(parts) >= 2:
             status = parts[0][0]  # First char: A, M, D, R, etc.
             filepath = parts[-1]  # Last part is the path (handles renames)
 
-            files.append(FileChange(
-                path=filepath,
-                status=status,
-                category=categorize_file(filepath)
-            ))
+            files.append(
+                FileChange(path=filepath, status=status, category=categorize_file(filepath))
+            )
 
     # Get numstat for additions/deletions
-    code, stdout, _ = run(
-        f'git diff {base}...{head} --numstat',
-        cwd=repo_path
-    )
+    code, stdout, _ = run(["git", "diff", f"{base}...{head}", "--numstat"], cwd=repo_path)
 
     if code == 0 and stdout:
         numstat = {}
-        for line in stdout.split('\n'):
-            parts = line.split('\t')
+        for line in stdout.split("\n"):
+            parts = line.split("\t")
             if len(parts) == 3:
-                adds = int(parts[0]) if parts[0] != '-' else 0
-                dels = int(parts[1]) if parts[1] != '-' else 0
+                adds = int(parts[0]) if parts[0] != "-" else 0
+                dels = int(parts[1]) if parts[1] != "-" else 0
                 numstat[parts[2]] = (adds, dels)
 
         for f in files:
@@ -218,14 +331,16 @@ def detect_breaking_changes(commits: list[CommitInfo], diff_text: str) -> list[s
                 break
 
     # Check diff for API changes (function/class removals)
-    removed_defs = re.findall(r'^-\s*(def|class|function|export)\s+(\w+)', diff_text, re.MULTILINE)
+    removed_defs = re.findall(r"^-\s*(def|class|function|export)\s+(\w+)", diff_text, re.MULTILINE)
     for kind, name in removed_defs:
         breaking.append(f"Removed {kind} `{name}`")
 
     return list(set(breaking))[:5]  # Dedupe and limit
 
 
-def detect_new_dependencies(repo_path: Path, base: str, head: str, files: list[FileChange]) -> list[str]:
+def detect_new_dependencies(
+    repo_path: Path, base: str, head: str, files: list[FileChange]
+) -> list[str]:
     """Detect new dependencies added."""
     new_deps = []
 
@@ -233,8 +348,7 @@ def detect_new_dependencies(repo_path: Path, base: str, head: str, files: list[F
 
     for dep_file in dep_changes:
         code, stdout, _ = run(
-            f'git diff {base}...{head} -- "{dep_file.path}"',
-            cwd=repo_path
+            ["git", "diff", f"{base}...{head}", "--", dep_file.path], cwd=repo_path
         )
 
         if code != 0:
@@ -242,9 +356,9 @@ def detect_new_dependencies(repo_path: Path, base: str, head: str, files: list[F
 
         # Python requirements
         if "requirements" in dep_file.path:
-            for match in re.finditer(r'^\+([a-zA-Z0-9_-]+)', stdout, re.MULTILINE):
+            for match in re.finditer(r"^\+([a-zA-Z0-9_-]+)", stdout, re.MULTILINE):
                 pkg = match.group(1)
-                if not pkg.startswith('#') and pkg not in ['#', '-r', '-e']:
+                if not pkg.startswith("#") and pkg not in ["#", "-r", "-e"]:
                     new_deps.append(f"pip: {pkg}")
 
         # package.json
@@ -257,7 +371,7 @@ def detect_new_dependencies(repo_path: Path, base: str, head: str, files: list[F
         if "pyproject.toml" in dep_file.path:
             for match in re.finditer(r'^\+\s*"?([a-zA-Z0-9_-]+)', stdout, re.MULTILINE):
                 pkg = match.group(1)
-                if pkg and not pkg.startswith('['):
+                if pkg and not pkg.startswith("["):
                     new_deps.append(f"pip: {pkg}")
 
     return list(set(new_deps))[:10]
@@ -275,7 +389,72 @@ def detect_config_changes(files: list[FileChange]) -> list[str]:
     return changes
 
 
-def generate_summary(commits: list[CommitInfo], files: list[FileChange]) -> str:
+def generate_pr_title(commits: list[CommitInfo], config: Config) -> str:
+    """
+    Generate a PR title from commits using conventional commit format.
+
+    If multiple commits, uses the dominant type and summarizes.
+    """
+    if not commits:
+        return "Untitled PR"
+
+    # Count commit types
+    type_counts: dict[str, int] = defaultdict(int)
+    typed_commits = []
+    for commit in commits:
+        if commit.commit_type:
+            type_counts[commit.commit_type] += 1
+            typed_commits.append(commit)
+
+    # Single commit - use it directly
+    if len(commits) == 1:
+        commit = commits[0]
+        if commit.commit_type:
+            _, _, summary = parse_conventional_commit(commit.subject)
+            return config.title_format.format(
+                type=commit.commit_type,
+                scope=commit.scope or "",
+                summary=summary.capitalize(),
+            )
+        return commit.subject
+
+    # Multiple commits - find dominant type
+    if type_counts:
+        dominant_type = max(type_counts, key=lambda k: type_counts[k])
+
+        # Get scopes for the dominant type
+        scopes = set()
+        summaries = []
+        for c in typed_commits:
+            if c.commit_type == dominant_type:
+                if c.scope:
+                    scopes.add(c.scope)
+                _, _, summary = parse_conventional_commit(c.subject)
+                summaries.append(summary)
+
+        # Build summary
+        if len(summaries) == 1:
+            summary_text = summaries[0]
+        elif len(scopes) == 1:
+            summary_text = f"multiple {list(scopes)[0]} changes"
+        else:
+            summary_text = (
+                f"{len(typed_commits)} {COMMIT_TYPES.get(dominant_type, dominant_type)} changes"
+            )
+
+        scope_text = list(scopes)[0] if len(scopes) == 1 else ""
+
+        return config.title_format.format(
+            type=dominant_type,
+            scope=scope_text,
+            summary=summary_text,
+        )
+
+    # No conventional commits - use first commit subject
+    return commits[0].subject
+
+
+def generate_summary(commits: list[CommitInfo], files: list[FileChange], config: Config) -> str:
     """Generate a summary based on commits and file changes."""
     if not commits:
         return "No commits found in this branch."
@@ -283,43 +462,30 @@ def generate_summary(commits: list[CommitInfo], files: list[FileChange]) -> str:
     # Use the main commit messages to form summary
     if len(commits) == 1:
         summary = commits[0].subject
-        if commits[0].body:
+        if commits[0].body and config.output_style == "verbose":
             summary += f"\n\n{commits[0].body}"
         return summary
 
-    # Multiple commits - create a bulleted summary
+    # Multiple commits - list changes directly without intro fluff
     lines = []
+    max_commits = config.max_commits_shown if config.output_style == "verbose" else 3
 
-    # Try to find the overall theme
-    all_subjects = " ".join(c.subject for c in commits).lower()
-
-    if "fix" in all_subjects:
-        lines.append("This PR includes bug fixes and improvements:")
-    elif "feat" in all_subjects or "add" in all_subjects:
-        lines.append("This PR adds new features and functionality:")
-    elif "refactor" in all_subjects:
-        lines.append("This PR refactors existing code:")
-    elif "docs" in all_subjects:
-        lines.append("This PR updates documentation:")
-    else:
-        lines.append("This PR includes the following changes:")
-
-    lines.append("")
-
-    for commit in commits[:7]:  # Limit to 7 commits
+    for commit in commits[:max_commits]:
         # Clean up conventional commit prefixes
         subject = commit.subject
-        subject = re.sub(r'^(feat|fix|docs|style|refactor|test|chore|ci|perf|build)(\([^)]+\))?:\s*', '', subject)
+        subject = re.sub(
+            r"^(feat|fix|docs|style|refactor|test|chore|ci|perf|build)(\([^)]+\))?:\s*", "", subject
+        )
         lines.append(f"- {subject}")
 
-    if len(commits) > 7:
-        lines.append(f"- ... and {len(commits) - 7} more commits")
+    if len(commits) > max_commits:
+        lines.append(f"- ... and {len(commits) - max_commits} more commits")
 
     return "\n".join(lines)
 
 
 def generate_testing_suggestions(files: list[FileChange], commits: list[CommitInfo]) -> list[str]:
-    """Generate testing suggestions based on changed code paths."""
+    """Generate actionable testing suggestions based on changed code paths."""
     suggestions = []
 
     # Group files by type
@@ -327,81 +493,117 @@ def generate_testing_suggestions(files: list[FileChange], commits: list[CommitIn
     for f in files:
         by_category[f.category].append(f)
 
-    # Source code changes
     source_files = by_category.get("source", [])
+    test_files = by_category.get("tests", [])
+
+    # Test file changes - specific and actionable
+    if test_files:
+        test_paths = [f.path for f in test_files[:3]]
+        suggestions.append(f"Run updated tests: `pytest {' '.join(test_paths)}`")
+
+    # Source code changes - identify specific modules
     if source_files:
-        # Identify modules/components changed
         modules = set()
         for f in source_files:
             parts = Path(f.path).parts
             if len(parts) > 1:
                 modules.add(parts[0])
-            else:
-                modules.add(Path(f.path).stem)
-
         if modules:
-            suggestions.append(f"Run unit tests for: {', '.join(list(modules)[:5])}")
+            module_list = list(modules)[:3]
+            suggestions.append(f"Run tests for changed modules: `pytest {' '.join(module_list)}/`")
 
-    # API/endpoint changes
-    api_files = [f for f in source_files if any(x in f.path.lower() for x in ["api", "route", "endpoint", "view", "controller"])]
+    # API/endpoint changes - actionable
+    api_files = [
+        f
+        for f in source_files
+        if any(x in f.path.lower() for x in ["api", "route", "endpoint", "view", "controller"])
+    ]
     if api_files:
-        suggestions.append("Test API endpoints for request/response changes")
+        endpoints = [Path(f.path).stem for f in api_files[:3]]
+        suggestions.append(f"Verify API behavior for: {', '.join(endpoints)}")
 
-    # Test file changes
-    test_files = by_category.get("tests", [])
-    if test_files:
-        suggestions.append("Review and run updated tests")
-    elif source_files:
-        suggestions.append("Consider adding tests for new functionality")
+    # Database/migration files - specific action
+    db_files = [f for f in files if any(x in f.path.lower() for x in ["migration", "schema"])]
+    if db_files:
+        suggestions.append("Run migrations on fresh DB: `alembic upgrade head`")
 
-    # Config changes
+    # Config changes - specific action
     config_files = by_category.get("config", [])
     if config_files:
-        suggestions.append("Verify configuration changes in development environment")
+        config_names = [Path(f.path).name for f in config_files[:3]]
+        suggestions.append(f"Validate config: {', '.join(config_names)}")
 
-    # Database/migration files
-    db_files = [f for f in files if any(x in f.path.lower() for x in ["migration", "schema", "model", "database"])]
-    if db_files:
-        suggestions.append("Test database migrations on staging data")
-
-    # Frontend changes
-    frontend_files = [f for f in source_files if any(x in f.path for x in [".tsx", ".jsx", ".vue", ".svelte"])]
-    if frontend_files:
-        suggestions.append("Visual regression testing for UI changes")
-
-    # Performance-related
-    perf_commits = [c for c in commits if "perf" in c.subject.lower() or "optim" in c.subject.lower()]
-    if perf_commits:
-        suggestions.append("Benchmark performance changes")
-
-    return suggestions[:6] if suggestions else ["Run full test suite"]
+    # Only return actionable suggestions, skip generic fallbacks
+    return suggestions[:5]
 
 
 def get_diff_text(repo_path: Path, base: str, head: str) -> str:
     """Get the full diff text."""
-    code, stdout, _ = run(f'git diff {base}...{head}', cwd=repo_path)
+    code, stdout, _ = run(["git", "diff", f"{base}...{head}"], cwd=repo_path)
     return stdout if code == 0 else ""
 
 
+def get_pr_comments(repo_path: Path, head_branch: str) -> list[PRComment]:
+    """
+    Get existing PR comments using gh CLI.
+
+    Returns empty list if no PR exists or gh is not available.
+    """
+    # Check if gh is available
+    code, _, _ = run(["which", "gh"])
+    if code != 0:
+        return []
+
+    # Try to get PR number for this branch
+    code, stdout, _ = run(
+        ["gh", "pr", "view", head_branch, "--json", "comments"],
+        cwd=repo_path,
+    )
+
+    if code != 0 or not stdout:
+        return []
+
+    try:
+        data = json.loads(stdout)
+        comments = []
+        for c in data.get("comments", []):
+            comments.append(
+                PRComment(
+                    author=c.get("author", {}).get("login", "unknown"),
+                    body=c.get("body", ""),
+                    created_at=c.get("createdAt", ""),
+                )
+            )
+        return comments
+    except (json.JSONDecodeError, KeyError):
+        return []
+
+
 def generate_pr_description(
-    repo_path: Union[str, Path],
+    repo_path: str | Path,
     base_branch: str,
-    head_branch: str
-) -> str:
+    head_branch: str,
+    config: Config | None = None,
+    include_comments: bool = False,
+) -> PRDescription:
     """
     Generate a PR description for the given branches.
-    
+
     This is the main module API for use by other tools (e.g., dep-shepherd).
-    
+
     Args:
         repo_path: Path to the git repository
         base_branch: The target branch (e.g., "main")
         head_branch: The source branch (e.g., "feature-xyz")
-    
+        config: Optional configuration (uses defaults if not provided)
+        include_comments: Whether to fetch existing PR comments
+
     Returns:
-        Formatted markdown PR description
+        PRDescription dataclass with all analysis results
     """
     repo_path = Path(repo_path)
+    if config is None:
+        config = load_config()
 
     # Gather data
     commits = get_commits(repo_path, base_branch, head_branch)
@@ -409,12 +611,18 @@ def generate_pr_description(
     diff_text = get_diff_text(repo_path, base_branch, head_branch)
 
     # Analyze
-    summary = generate_summary(commits, files)
-    testing = generate_testing_suggestions(files, commits)
+    title = generate_pr_title(commits, config)
+    summary = generate_summary(commits, files, config)
+    testing = generate_testing_suggestions(files, commits) if config.include_testing else []
 
-    breaking = detect_breaking_changes(commits, diff_text)
+    breaking = (
+        detect_breaking_changes(commits, diff_text) if config.include_breaking_changes else []
+    )
     new_deps = detect_new_dependencies(repo_path, base_branch, head_branch, files)
     config_changes = detect_config_changes(files)
+
+    # Get PR comments if requested
+    comments = get_pr_comments(repo_path, head_branch) if include_comments else []
 
     # Group files by status
     changes = {
@@ -434,7 +642,7 @@ def generate_pr_description(
         notes.append("📦 **New Dependencies:**")
         for d in new_deps:
             notes.append(f"  - {d}")
-    if config_changes:
+    if config_changes and config.output_style != "minimal":
         notes.append("⚙️ **Configuration Changes:**")
         for c in config_changes:
             notes.append(f"  - {c}")
@@ -447,18 +655,19 @@ def generate_pr_description(
         "commits": len(commits),
     }
 
-    # Format markdown
-    return format_markdown(PRDescription(
+    return PRDescription(
+        title=title,
         summary=summary,
         changes=changes,
         testing=testing,
         notes=notes,
         commits=[asdict(c) for c in commits],
         stats=stats,
-    ))
+        comments=[asdict(c) for c in comments],
+    )
 
 
-def format_markdown(desc: PRDescription) -> str:
+def format_markdown(desc: PRDescription, config: Config) -> str:
     """Format PRDescription as markdown."""
     lines = []
 
@@ -468,46 +677,50 @@ def format_markdown(desc: PRDescription) -> str:
     lines.append(desc.summary)
     lines.append("")
 
-    # Changes
-    lines.append("## Changes")
-    lines.append("")
-
-    if desc.changes.get("added"):
-        lines.append("**Added:**")
-        for f in desc.changes["added"][:15]:
-            lines.append(f"- `{f}`")
-        if len(desc.changes["added"]) > 15:
-            lines.append(f"- ... and {len(desc.changes['added']) - 15} more")
+    # Changes (skip in minimal mode)
+    if config.output_style != "minimal":
+        lines.append("## Changes")
         lines.append("")
 
-    if desc.changes.get("modified"):
-        lines.append("**Modified:**")
-        for f in desc.changes["modified"][:15]:
-            lines.append(f"- `{f}`")
-        if len(desc.changes["modified"]) > 15:
-            lines.append(f"- ... and {len(desc.changes['modified']) - 15} more")
-        lines.append("")
+        max_files = config.max_files_shown if config.output_style == "verbose" else 10
 
-    if desc.changes.get("removed"):
-        lines.append("**Removed:**")
-        for f in desc.changes["removed"][:10]:
-            lines.append(f"- `{f}`")
-        if len(desc.changes["removed"]) > 10:
-            lines.append(f"- ... and {len(desc.changes['removed']) - 10} more")
-        lines.append("")
+        if desc.changes.get("added"):
+            lines.append("**Added:**")
+            for f in desc.changes["added"][:max_files]:
+                lines.append(f"- `{f}`")
+            if len(desc.changes["added"]) > max_files:
+                lines.append(f"- ... and {len(desc.changes['added']) - max_files} more")
+            lines.append("")
 
-    if desc.changes.get("renamed"):
-        lines.append("**Renamed:**")
-        for f in desc.changes["renamed"][:10]:
-            lines.append(f"- `{f}`")
-        lines.append("")
+        if desc.changes.get("modified"):
+            lines.append("**Modified:**")
+            for f in desc.changes["modified"][:max_files]:
+                lines.append(f"- `{f}`")
+            if len(desc.changes["modified"]) > max_files:
+                lines.append(f"- ... and {len(desc.changes['modified']) - max_files} more")
+            lines.append("")
 
-    # Testing
-    lines.append("## Testing")
-    lines.append("")
-    for t in desc.testing:
-        lines.append(f"- [ ] {t}")
-    lines.append("")
+        if desc.changes.get("removed"):
+            lines.append("**Removed:**")
+            for f in desc.changes["removed"][:10]:
+                lines.append(f"- `{f}`")
+            if len(desc.changes["removed"]) > 10:
+                lines.append(f"- ... and {len(desc.changes['removed']) - 10} more")
+            lines.append("")
+
+        if desc.changes.get("renamed"):
+            lines.append("**Renamed:**")
+            for f in desc.changes["renamed"][:10]:
+                lines.append(f"- `{f}`")
+            lines.append("")
+
+    # Testing (if enabled)
+    if desc.testing and config.include_testing:
+        lines.append("## Testing")
+        lines.append("")
+        for t in desc.testing:
+            lines.append(f"- [ ] {t}")
+        lines.append("")
 
     # Notes (if any)
     if desc.notes:
@@ -517,9 +730,87 @@ def format_markdown(desc: PRDescription) -> str:
             lines.append(note)
         lines.append("")
 
-    # Stats footer
-    lines.append("---")
-    lines.append(f"*{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed (+{desc.stats['additions']}/-{desc.stats['deletions']})*")
+    # Comments (if any)
+    if desc.comments and config.output_style == "verbose":
+        lines.append("## PR Discussion Context")
+        lines.append("")
+        for comment in desc.comments[:5]:
+            if isinstance(comment, dict):
+                lines.append(f"**@{comment['author']}:** {comment['body'][:200]}")
+            else:
+                lines.append(f"**@{comment.author}:** {comment.body[:200]}")
+            lines.append("")
+
+    # Stats footer (skip in minimal mode)
+    if config.output_style != "minimal":
+        lines.append("---")
+        lines.append(
+            f"*{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed "
+            f"(+{desc.stats['additions']}/-{desc.stats['deletions']})*"
+        )
+
+    return "\n".join(lines)
+
+
+def format_plain(desc: PRDescription, config: Config) -> str:
+    """Format PRDescription as plain text (no markdown)."""
+    lines = []
+
+    # Summary
+    lines.append("SUMMARY")
+    lines.append("-" * 40)
+    lines.append(desc.summary)
+    lines.append("")
+
+    # Changes (skip in minimal mode)
+    if config.output_style != "minimal":
+        lines.append("CHANGES")
+        lines.append("-" * 40)
+
+        if desc.changes.get("added"):
+            lines.append("Added:")
+            for f in desc.changes["added"][: config.max_files_shown]:
+                lines.append(f"  + {f}")
+
+        if desc.changes.get("modified"):
+            lines.append("Modified:")
+            for f in desc.changes["modified"][: config.max_files_shown]:
+                lines.append(f"  ~ {f}")
+
+        if desc.changes.get("removed"):
+            lines.append("Removed:")
+            for f in desc.changes["removed"][:10]:
+                lines.append(f"  - {f}")
+
+        lines.append("")
+
+    # Testing
+    if desc.testing and config.include_testing:
+        lines.append("TESTING")
+        lines.append("-" * 40)
+        for t in desc.testing:
+            # Remove markdown backticks
+            t_plain = t.replace("`", "")
+            lines.append(f"  [ ] {t_plain}")
+        lines.append("")
+
+    # Notes
+    if desc.notes:
+        lines.append("NOTES")
+        lines.append("-" * 40)
+        for note in desc.notes:
+            # Remove markdown formatting
+            note_plain = re.sub(r"\*\*|\`", "", note)
+            lines.append(note_plain)
+        lines.append("")
+
+    # Stats
+    if config.output_style != "minimal":
+        lines.append("-" * 40)
+        lines.append(
+            f"{desc.stats['commits']} commits, {desc.stats['files_changed']} files changed "
+            f"(+{desc.stats['additions']}/-{desc.stats['deletions']})"
+        )
 
     return "\n".join(lines)
 
@@ -532,21 +823,21 @@ def format_json(desc: PRDescription) -> str:
 def copy_to_clipboard(text: str) -> bool:
     """Copy text to clipboard. Returns True on success."""
     # Try pbcopy (macOS)
-    code, _, _ = run("which pbcopy")
+    code, _, _ = run(["which", "pbcopy"])
     if code == 0:
         proc = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)
         proc.communicate(text.encode())
         return proc.returncode == 0
 
     # Try xclip (Linux)
-    code, _, _ = run("which xclip")
+    code, _, _ = run(["which", "xclip"])
     if code == 0:
         proc = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE)
         proc.communicate(text.encode())
         return proc.returncode == 0
 
     # Try xsel (Linux)
-    code, _, _ = run("which xsel")
+    code, _, _ = run(["which", "xsel"])
     if code == 0:
         proc = subprocess.Popen(["xsel", "--clipboard", "--input"], stdin=subprocess.PIPE)
         proc.communicate(text.encode())
@@ -556,39 +847,119 @@ def copy_to_clipboard(text: str) -> bool:
 
 
 def main():
-    # Parse arguments
-    output_json = "--json" in sys.argv
-    to_clipboard = "--clipboard" in sys.argv
+    parser = argparse.ArgumentParser(
+        description=__doc__.split("\n\n")[0],  # First paragraph of docstring
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                      Compare current branch vs main
+  %(prog)s feature-xyz          Compare feature-xyz vs main
+  %(prog)s --base develop       Compare current branch vs develop
+  %(prog)s --format json        Output JSON
+  %(prog)s --title              Just output suggested PR title
+  %(prog)s --include-comments   Include PR discussion context
+  %(prog)s --style minimal      Minimal output
 
-    # Get base branch
-    base_branch = None
-    if "--base" in sys.argv:
-        idx = sys.argv.index("--base")
-        if idx + 1 < len(sys.argv):
-            base_branch = sys.argv[idx + 1]
+Config file: ~/.config/openclaw-dash/pr-describe.yaml
+""",
+    )
+    parser.add_argument(
+        "branch",
+        nargs="?",
+        help="branch to describe (default: current branch)",
+    )
+    parser.add_argument(
+        "--base",
+        metavar="BRANCH",
+        help="base branch to compare against (default: main or master)",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["markdown", "plain", "json"],
+        default="markdown",
+        help="output format (default: markdown)",
+    )
+    parser.add_argument(
+        "--style",
+        choices=["verbose", "concise", "minimal"],
+        help="output style (overrides config)",
+    )
+    parser.add_argument(
+        "--title",
+        action="store_true",
+        help="output just the suggested PR title",
+    )
+    parser.add_argument(
+        "--include-comments",
+        action="store_true",
+        help="include existing PR discussion (requires gh CLI)",
+    )
+    parser.add_argument(
+        "--clipboard",
+        action="store_true",
+        help="copy output to clipboard",
+    )
+    parser.add_argument(
+        "--no-testing",
+        action="store_true",
+        help="omit testing suggestions",
+    )
+    parser.add_argument(
+        "--no-breaking",
+        action="store_true",
+        help="omit breaking change detection",
+    )
+    parser.add_argument(
+        "--init-config",
+        action="store_true",
+        help="create default config file and exit",
+    )
+    # Keep --json for backward compatibility
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help=argparse.SUPPRESS,  # Hidden, use --format json instead
+    )
 
-    # Get head branch (positional arg, not a flag)
-    head_branch = None
-    for arg in sys.argv[1:]:
-        if not arg.startswith("-") and arg != base_branch:
-            head_branch = arg
-            break
+    args = parser.parse_args()
+
+    # Handle --init-config
+    if args.init_config:
+        if not HAS_YAML:
+            print("Error: PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+            sys.exit(1)
+        ensure_config_exists()
+        print(f"Config file created: {CONFIG_FILE}")
+        sys.exit(0)
+
+    # Load config
+    config = load_config()
+
+    # Apply CLI overrides
+    if args.style:
+        config.output_style = args.style
+    if args.no_testing:
+        config.include_testing = False
+    if args.no_breaking:
+        config.include_breaking_changes = False
+
+    # Handle --json backward compatibility
+    output_format = args.format
+    if args.json:
+        output_format = "json"
 
     # Default to current directory
     repo_path = Path.cwd()
 
     # Check if we're in a git repo
-    code, _, _ = run("git rev-parse --git-dir", cwd=repo_path)
+    code, _, _ = run(["git", "rev-parse", "--git-dir"], cwd=repo_path)
     if code != 0:
         print("Error: Not a git repository", file=sys.stderr)
         sys.exit(1)
 
     # Determine branches
-    if not base_branch:
-        base_branch = get_default_branch(repo_path)
-
-    if not head_branch:
-        head_branch = get_current_branch(repo_path)
+    base_branch = args.base if args.base else get_default_branch(repo_path)
+    head_branch = args.branch if args.branch else get_current_branch(repo_path)
 
     # Check if branches are the same
     if base_branch == head_branch:
@@ -597,62 +968,35 @@ def main():
         sys.exit(1)
 
     # Check if there are commits
-    code, stdout, _ = run(f"git rev-list {base_branch}..{head_branch} --count", cwd=repo_path)
+    code, stdout, _ = run(
+        ["git", "rev-list", f"{base_branch}..{head_branch}", "--count"], cwd=repo_path
+    )
     if code != 0 or stdout == "0":
         print(f"Error: No commits between {base_branch} and {head_branch}", file=sys.stderr)
         sys.exit(1)
 
+    # Generate description
+    desc = generate_pr_description(
+        repo_path, base_branch, head_branch, config, include_comments=args.include_comments
+    )
+
+    # Handle --title flag
+    if args.title:
+        print(desc.title)
+        return
+
     print(f"Analyzing {head_branch} vs {base_branch}...", file=sys.stderr)
 
-    # Generate description
-    output = generate_pr_description(repo_path, base_branch, head_branch)
-
-    # Handle JSON output
-    if output_json:
-        commits = get_commits(repo_path, base_branch, head_branch)
-        files = get_changed_files(repo_path, base_branch, head_branch)
-        diff_text = get_diff_text(repo_path, base_branch, head_branch)
-
-        summary = generate_summary(commits, files)
-        testing = generate_testing_suggestions(files, commits)
-        breaking = detect_breaking_changes(commits, diff_text)
-        new_deps = detect_new_dependencies(repo_path, base_branch, head_branch, files)
-        config_changes = detect_config_changes(files)
-
-        changes = {
-            "added": [f.path for f in files if f.status == "A"],
-            "modified": [f.path for f in files if f.status == "M"],
-            "removed": [f.path for f in files if f.status == "D"],
-            "renamed": [f.path for f in files if f.status == "R"],
-        }
-
-        notes = []
-        if breaking:
-            notes.extend([f"Breaking: {b}" for b in breaking])
-        if new_deps:
-            notes.extend([f"New dep: {d}" for d in new_deps])
-        if config_changes:
-            notes.extend([f"Config: {c}" for c in config_changes])
-
-        stats = {
-            "files_changed": len(files),
-            "additions": sum(f.additions for f in files),
-            "deletions": sum(f.deletions for f in files),
-            "commits": len(commits),
-        }
-
-        desc = PRDescription(
-            summary=summary,
-            changes=changes,
-            testing=testing,
-            notes=notes,
-            commits=[asdict(c) for c in commits],
-            stats=stats,
-        )
+    # Format output
+    if output_format == "json":
         output = format_json(desc)
+    elif output_format == "plain":
+        output = format_plain(desc, config)
+    else:
+        output = format_markdown(desc, config)
 
     # Copy to clipboard if requested
-    if to_clipboard:
+    if args.clipboard:
         if copy_to_clipboard(output):
             print("✅ Copied to clipboard!", file=sys.stderr)
         else:

@@ -102,8 +102,8 @@ class AuditResult:
 class SecurityAudit:
     """Main security audit class."""
 
-    def __init__(self, openclaw_dir: Path | None = None):
-        self.openclaw_dir = openclaw_dir or Path.home() / ".openclaw"
+    def __init__(self, openclaw_dir: Path | str | None = None):
+        self.openclaw_dir = Path(openclaw_dir) if openclaw_dir else Path.home() / ".openclaw"
         self.result = AuditResult()
 
     def _should_skip(self, path: Path) -> bool:
@@ -357,3 +357,132 @@ def run_audit(deep: bool = False, openclaw_dir: Path | None = None) -> AuditResu
     """Convenience function to run a security audit."""
     audit = SecurityAudit(openclaw_dir=openclaw_dir)
     return audit.run(deep=deep)
+
+
+def _severity_color(severity: str) -> str:
+    """Return ANSI color code for severity level."""
+    colors = {
+        "critical": "\033[91m",  # Red
+        "high": "\033[93m",  # Yellow
+        "medium": "\033[33m",  # Orange-ish
+        "low": "\033[94m",  # Blue
+        "info": "\033[90m",  # Gray
+    }
+    return colors.get(severity, "")
+
+
+def _reset_color() -> str:
+    """Return ANSI reset code."""
+    return "\033[0m"
+
+
+def pretty_print_results(result: AuditResult) -> None:
+    """Pretty print audit results to stdout."""
+    summary = result.summary
+    total = sum(summary.values())
+
+    print("\n" + "=" * 60)
+    print("🔒 Security Audit Results")
+    print("=" * 60)
+    print(f"Scanned: {result.scanned_files} files, {result.scanned_dirs} directories")
+    print(f"Duration: {result.duration_ms}ms")
+    print(f"Timestamp: {result.timestamp}")
+    print("-" * 60)
+
+    # Summary counts
+    print("\n📊 Summary:")
+    if total == 0:
+        print("  ✅ No issues found!")
+    else:
+        for sev in ["critical", "high", "medium", "low", "info"]:
+            count = summary.get(sev, 0)
+            if count > 0:
+                color = _severity_color(sev)
+                reset = _reset_color()
+                icon = {
+                    "critical": "🔴",
+                    "high": "🟠",
+                    "medium": "🟡",
+                    "low": "🔵",
+                    "info": "⚪",
+                }.get(sev, "•")
+                print(f"  {icon} {color}{sev.upper()}: {count}{reset}")
+
+    # Detailed findings
+    if result.findings:
+        print("\n📋 Findings:\n")
+        for i, finding in enumerate(result.findings, 1):
+            color = _severity_color(finding.severity)
+            reset = _reset_color()
+
+            print(f"{i}. {color}[{finding.severity.upper()}]{reset} {finding.title}")
+            print(f"   Category: {finding.category}")
+            if finding.path:
+                loc = finding.path
+                if finding.line:
+                    loc += f":{finding.line}"
+                print(f"   Location: {loc}")
+            print(f"   {finding.description}")
+            if finding.recommendation:
+                print(f"   💡 {finding.recommendation}")
+            if finding.auto_fixable:
+                print("   🔧 Auto-fixable")
+            print()
+
+    print("=" * 60 + "\n")
+
+
+def main() -> int:
+    """CLI entry point for security audit."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="audit",
+        description="Security audit tool for OpenClaw configurations and workspaces.",
+        epilog="Example: python -m openclaw_dash.security.audit --path ~/.openclaw --deep",
+    )
+    parser.add_argument(
+        "--path",
+        "-p",
+        type=Path,
+        default=None,
+        help="Path to directory to audit (default: ~/.openclaw)",
+    )
+    parser.add_argument(
+        "--json",
+        "-j",
+        action="store_true",
+        dest="json_output",
+        help="Output results as JSON instead of pretty-printed text",
+    )
+    parser.add_argument(
+        "--deep",
+        "-d",
+        action="store_true",
+        help="Enable deep scan (includes workspace files)",
+    )
+
+    args = parser.parse_args()
+
+    # Run the audit
+    target_path = args.path if args.path else None
+    result = run_audit(deep=args.deep, openclaw_dir=target_path)
+
+    # Output results
+    if args.json_output:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        pretty_print_results(result)
+
+    # Exit code based on findings
+    if result.critical_count > 0:
+        return 2
+    if result.high_count > 0:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())

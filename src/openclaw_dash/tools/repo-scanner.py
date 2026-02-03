@@ -9,45 +9,79 @@ Tracks:
 - Last commit activity
 
 Usage:
-    python3 repo-scanner.py [--json] [--update-discord]
+    python3 repo-scanner.py [--format FORMAT] [--save] [--repo-base PATH] [--org ORG]
 
 Configuration:
-    Set GITHUB_ORG environment variable or edit GITHUB_ORG below.
-    Set REPOS list and REPO_BASE path to match your setup.
+    Config file: ~/.config/openclaw-dash/tools.yaml
+    Or set GITHUB_ORG environment variable (required for PR checks).
 """
 
+from __future__ import annotations
+
+import argparse
 import json
-import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
-# Configuration - customize for your setup
-GITHUB_ORG = os.environ.get("GITHUB_ORG", "")  # Set your GitHub username/org
-REPOS = ["synapse-engine", "r3LAY", "t3rra1n"]  # Your repos
-REPO_BASE = Path.home() / "repos"  # Local path to cloned repos
+# Use shared config module for common settings
+from config import get_config as get_shared_config
+from config import get_config_path, get_repo_base
+
+GIT_TIMEOUT = 30
 
 
-def run(cmd: str, cwd: Optional[Path] = None) -> tuple[int, str]:
-    """Run a shell command and return (returncode, output)."""
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd)
-    return result.returncode, result.stdout.strip()
+def load_config() -> dict[str, Any]:
+    """Load configuration using shared config module."""
+    # Get shared config with tool-specific overrides
+    shared = get_shared_config("repo-scanner")
+
+    return {
+        "repos": shared.get("repos", []),
+        "repo_base": str(get_repo_base()),
+        "github_org": shared.get("github_org", ""),
+        "output_style": shared.get("output_format", "text"),
+    }
+
+
+def run(cmd: list[str], cwd: Path | None = None, timeout: int = GIT_TIMEOUT) -> tuple[int, str]:
+    """Run a command and return (returncode, output)."""
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout)
+        return result.returncode, result.stdout.strip()
+    except subprocess.TimeoutExpired:
+        return -1, f"Command timed out after {timeout}s"
 
 
 def count_todos(repo_path: Path) -> dict:
     """Count TODOs and FIXMEs in a repo."""
     todos = {"TODO": 0, "FIXME": 0, "HACK": 0, "XXX": 0}
-    files_with_todos = []
+    files_with_todos: list[str] = []
 
     for ext in ["py", "ts", "tsx", "js", "jsx"]:
-        _, output = run(
-            f'grep -rn "TODO\\|FIXME\\|HACK\\|XXX" --include="*.{ext}" . 2>/dev/null | grep -v node_modules | grep -v __pycache__ | grep -v ".git"',
-            cwd=repo_path,
-        )
+        try:
+            grep_result = subprocess.run(
+                [
+                    "grep",
+                    "-rn",
+                    r"TODO\|FIXME\|HACK\|XXX",
+                    f"--include=*.{ext}",
+                    ".",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=repo_path,
+                timeout=GIT_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            continue
+        output = grep_result.stdout.strip()
         if output:
             for line in output.split("\n"):
+                if "node_modules" in line or "__pycache__" in line or ".git" in line:
+                    continue
                 if "TODO" in line:
                     todos["TODO"] += 1
                 if "FIXME" in line:
@@ -56,7 +90,6 @@ def count_todos(repo_path: Path) -> dict:
                     todos["HACK"] += 1
                 if "XXX" in line:
                     todos["XXX"] += 1
-                # Extract filename
                 if ":" in line:
                     fname = line.split(":")[0]
                     if fname not in files_with_todos:
@@ -71,18 +104,53 @@ def count_todos(repo_path: Path) -> dict:
 
 def count_tests(repo_path: Path) -> int:
     """Count test files/functions."""
-    _, output = run(
-        'find . -name "test_*.py" -o -name "*.test.ts" -o -name "*.test.tsx" 2>/dev/null | grep -v node_modules | wc -l',
-        cwd=repo_path,
-    )
-    return int(output.strip()) if output.strip().isdigit() else 0
+    try:
+        find_result = subprocess.run(
+            [
+                "find",
+                ".",
+                "-name",
+                "test_*.py",
+                "-o",
+                "-name",
+                "*.test.ts",
+                "-o",
+                "-name",
+                "*.test.tsx",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=repo_path,
+            timeout=GIT_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return 0
+    output = find_result.stdout.strip()
+    if not output:
+        return 0
+    count = sum(1 for line in output.split("\n") if line.strip() and "node_modules" not in line)
+    return count
 
 
-def get_open_prs(repo: str) -> list:
+def get_open_prs(repo: str, github_org: str) -> list:
     """Get open PRs for a repo."""
-    if not GITHUB_ORG:
+    if not github_org:
         return []
-    _, output = run(f"gh pr list -R {GITHUB_ORG}/{repo} --state open --json number,title --limit 10")
+    _, output = run(
+        [
+            "gh",
+            "pr",
+            "list",
+            "-R",
+            f"{github_org}/{repo}",
+            "--state",
+            "open",
+            "--json",
+            "number,title",
+            "--limit",
+            "10",
+        ]
+    )
     try:
         return json.loads(output) if output else []
     except json.JSONDecodeError:
@@ -91,35 +159,52 @@ def get_open_prs(repo: str) -> list:
 
 def get_last_commit(repo_path: Path) -> str:
     """Get last commit info."""
-    _, output = run('git log -1 --format="%h %s (%cr)"', cwd=repo_path)
+    _, output = run(["git", "log", "-1", "--format=%h %s (%cr)"], cwd=repo_path)
     return output or "Unknown"
 
 
-def scan_repo(repo: str) -> dict:
+def scan_repo(repo: str, repo_base: Path, github_org: str) -> dict:
     """Scan a single repo for health metrics."""
-    repo_path = REPO_BASE / repo
+    repo_path = repo_base / repo
 
     if not repo_path.exists():
-        return {"error": f"Repo not found: {repo_path}"}
+        return {"name": repo, "error": f"Repo not found: {repo_path}"}
 
-    # Pull latest
-    run("git fetch --quiet", cwd=repo_path)
+    run(["git", "fetch", "--quiet"], cwd=repo_path)
 
     return {
         "name": repo,
         "path": str(repo_path),
         "todos": count_todos(repo_path),
         "test_files": count_tests(repo_path),
-        "open_prs": get_open_prs(repo),
+        "open_prs": get_open_prs(repo, github_org),
         "last_commit": get_last_commit(repo_path),
         "scanned_at": datetime.now().isoformat(),
     }
 
 
-def format_report(results: list[dict]) -> str:
-    """Format results as a readable report."""
-    lines = ["## 🔍 Repo Health Scan", ""]
-    lines.append(f"**Scanned:** {datetime.now().strftime('%Y-%m-%d %H:%M AKST')}")
+def format_todo_counts(todos: dict, style: str = "verbose") -> str:
+    """Format TODO counts."""
+    total = todos["total"]
+    counts = todos["counts"]
+
+    if style == "concise":
+        return str(total)
+
+    parts = []
+    for key in ["TODO", "FIXME", "HACK", "XXX"]:
+        if counts.get(key, 0) > 0:
+            parts.append(f"{counts[key]} {key}")
+
+    if parts:
+        return f"{total} TODOs ({', '.join(parts)})"
+    return f"{total} TODOs"
+
+
+def format_markdown(results: list[dict], style: str = "verbose") -> str:
+    """Format results as markdown."""
+    lines = ["## Repo Status", ""]
+    lines.append(f"**Scanned:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
 
     total_todos = 0
@@ -129,6 +214,7 @@ def format_report(results: list[dict]) -> str:
         if "error" in r:
             lines.append(f"### ❌ {r.get('name', 'Unknown')}")
             lines.append(f"Error: {r['error']}")
+            lines.append("")
             continue
 
         name = r["name"]
@@ -138,7 +224,6 @@ def format_report(results: list[dict]) -> str:
         total_todos += todos["total"]
         total_prs += len(prs)
 
-        # Status emoji
         if todos["total"] == 0:
             status = "✨"
         elif todos["total"] < 10:
@@ -149,22 +234,78 @@ def format_report(results: list[dict]) -> str:
             status = "🔴"
 
         lines.append(f"### {status} {name}")
-        lines.append(f"- **TODOs:** {todos['total']} ({todos['counts']})")
+        lines.append(f"- **TODOs:** {format_todo_counts(todos, style)}")
         lines.append(f"- **Test files:** {r['test_files']}")
         lines.append(f"- **Open PRs:** {len(prs)}")
-        if prs:
+
+        if style == "verbose" and prs:
             for pr in prs[:3]:
                 lines.append(f"  - #{pr['number']}: {pr['title'][:50]}")
+
         lines.append(f"- **Last commit:** {r['last_commit']}")
         lines.append("")
 
     lines.append("---")
-    lines.append(f"**Totals:** {total_todos} TODOs | {total_prs} open PRs")
+    lines.append(f"**Totals:** {total_todos} TODOs, {total_prs} open PRs")
 
     return "\n".join(lines)
 
 
-def save_snapshot(results: list[dict], path: Path):
+def format_plain(results: list[dict], style: str = "verbose") -> str:
+    """Format results as plain text."""
+    lines = ["REPO STATUS", "=" * 40]
+    lines.append(f"Scanned: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    lines.append("")
+
+    total_todos = 0
+    total_prs = 0
+
+    for r in results:
+        if "error" in r:
+            lines.append(f"[ERROR] {r.get('name', 'Unknown')}: {r['error']}")
+            lines.append("")
+            continue
+
+        name = r["name"]
+        todos = r["todos"]
+        prs = r["open_prs"]
+
+        total_todos += todos["total"]
+        total_prs += len(prs)
+
+        if todos["total"] == 0:
+            status = "OK"
+        elif todos["total"] < 10:
+            status = "GOOD"
+        elif todos["total"] < 50:
+            status = "WARN"
+        else:
+            status = "ALERT"
+
+        lines.append(f"[{status}] {name}")
+        lines.append(f"  TODOs: {format_todo_counts(todos, style)}")
+        lines.append(f"  Tests: {r['test_files']} files")
+        lines.append(f"  PRs:   {len(prs)} open")
+
+        if style == "verbose" and prs:
+            for pr in prs[:3]:
+                lines.append(f"         #{pr['number']}: {pr['title'][:50]}")
+
+        lines.append(f"  Last:  {r['last_commit']}")
+        lines.append("")
+
+    lines.append("-" * 40)
+    lines.append(f"TOTALS: {total_todos} TODOs, {total_prs} open PRs")
+
+    return "\n".join(lines)
+
+
+def format_json(results: list[dict], _style: str = "verbose") -> str:
+    """Format results as JSON."""
+    return json.dumps(results, indent=2)
+
+
+def save_snapshot(results: list[dict], path: Path) -> Path:
     """Save results as JSON snapshot for trending."""
     snapshots_dir = path.parent / "snapshots"
     snapshots_dir.mkdir(exist_ok=True)
@@ -175,7 +316,6 @@ def save_snapshot(results: list[dict], path: Path):
     with open(snapshot_file, "w") as f:
         json.dump(results, f, indent=2)
 
-    # Keep only last 30 snapshots
     snapshots = sorted(snapshots_dir.glob("health_*.json"))
     for old in snapshots[:-30]:
         old.unlink()
@@ -183,23 +323,115 @@ def save_snapshot(results: list[dict], path: Path):
     return snapshot_file
 
 
+def progress(msg: str, current: int, total: int) -> None:
+    """Print progress indicator."""
+    print(f"[{current}/{total}] {msg}...", file=sys.stderr)
+
+
 def main():
-    output_json = "--json" in sys.argv
-    save_snapshot_flag = "--save" in sys.argv
+    config = load_config()
+
+    parser = argparse.ArgumentParser(
+        description="Scan repos for health metrics (TODOs, tests, PRs, commits).",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Examples:
+  %(prog)s                        # Scan repos, print markdown report
+  %(prog)s --format json          # Output as JSON
+  %(prog)s --format plain         # Output as plain text
+  %(prog)s --repo-base ~/code     # Use custom repo directory
+  %(prog)s --org myorg            # Override GitHub org
+  %(prog)s --save                 # Save snapshot for trending
+
+Configuration:
+  Config file: {get_config_path()}
+  Example config (tools.yaml):
+    github_org: myorg
+    repos:
+      - repo1
+      - repo2
+    repo_base: ~/repos
+    output_format: text  # or json
+
+Environment:
+  GITHUB_ORG    GitHub username/org (can be set in config or via --org)
+""",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["markdown", "plain", "json"],
+        default="markdown",
+        metavar="FORMAT",
+        help="Output format: markdown (default), plain, json",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output as JSON (deprecated, use --format json)",
+    )
+    parser.add_argument("--save", action="store_true", help="Save snapshot for trending")
+    parser.add_argument(
+        "--repo-base",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help=f"Base directory for repos (default: {config['repo_base']})",
+    )
+    parser.add_argument(
+        "--org",
+        metavar="ORG",
+        help="GitHub org/user (default: GITHUB_ORG env var or config)",
+    )
+    parser.add_argument(
+        "--style",
+        choices=["verbose", "concise"],
+        default=None,
+        metavar="STYLE",
+        help="Output style: verbose (default) or concise",
+    )
+    args = parser.parse_args()
+
+    # Resolve configuration with CLI overrides
+    repo_base = args.repo_base or Path(config["repo_base"]).expanduser()
+    github_org = args.org or config["github_org"]
+    repos = config["repos"]
+    output_style = args.style or config["output_style"]
+
+    # Handle deprecated --json flag
+    output_format = args.format
+    if args.json:
+        output_format = "json"
+
+    if not github_org:
+        print(
+            "Error: GitHub org not configured.\n"
+            f"Set via --org, GITHUB_ORG env var, or config file:\n"
+            f"  {get_config_path()}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if not repo_base.exists():
+        print(f"Error: Repo base directory not found: {repo_base}", file=sys.stderr)
+        sys.exit(1)
 
     results = []
-    for repo in REPOS:
-        print(f"Scanning {repo}...", file=sys.stderr)
-        results.append(scan_repo(repo))
+    total = len(repos)
+    for i, repo in enumerate(repos, 1):
+        progress(f"Scanning {repo}", i, total)
+        results.append(scan_repo(repo, repo_base, github_org))
 
-    if save_snapshot_flag:
+    if args.save:
         snapshot = save_snapshot(results, Path(__file__))
         print(f"Saved snapshot: {snapshot}", file=sys.stderr)
 
-    if output_json:
-        print(json.dumps(results, indent=2))
-    else:
-        print(format_report(results))
+    # Format output
+    formatters = {
+        "markdown": format_markdown,
+        "plain": format_plain,
+        "json": format_json,
+    }
+    print(formatters[output_format](results, output_style))
 
 
 if __name__ == "__main__":

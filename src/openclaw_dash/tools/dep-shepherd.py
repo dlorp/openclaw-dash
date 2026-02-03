@@ -78,11 +78,11 @@ class RepoAudit:
     errors: list[str]
 
 
-def run(cmd: str, cwd: Optional[Path] = None, timeout: int = 120) -> tuple[int, str, str]:
-    """Run a shell command and return (returncode, stdout, stderr)."""
+def run(cmd: list[str], cwd: Optional[Path] = None, timeout: int = 120) -> tuple[int, str, str]:
+    """Run a command and return (returncode, stdout, stderr)."""
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=timeout
+            cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
@@ -93,7 +93,7 @@ def run(cmd: str, cwd: Optional[Path] = None, timeout: int = 120) -> tuple[int, 
 
 def tool_available(tool: str) -> bool:
     """Check if a command-line tool is available."""
-    code, _, _ = run(f"which {tool}")
+    code, _, _ = run(["which", tool])
     return code == 0
 
 
@@ -130,7 +130,7 @@ def run_pip_audit(repo_path: Path, requirements_file: Path) -> list[Vulnerabilit
 
     vulnerabilities = []
     code, stdout, stderr = run(
-        f"pip-audit -r {requirements_file} --format json 2>/dev/null",
+        ["pip-audit", "-r", str(requirements_file), "--format", "json"],
         cwd=repo_path,
         timeout=180
     )
@@ -160,7 +160,7 @@ def run_safety_check(repo_path: Path, requirements_file: Path) -> list[Vulnerabi
 
     vulnerabilities = []
     code, stdout, stderr = run(
-        f"safety check -r {requirements_file} --json 2>/dev/null",
+        ["safety", "check", "-r", str(requirements_file), "--json"],
         cwd=repo_path,
         timeout=180
     )
@@ -202,7 +202,7 @@ def get_pip_outdated(repo_path: Path) -> list[OutdatedDep]:
 
     # Try pip list --outdated
     code, stdout, stderr = run(
-        "pip list --outdated --format json 2>/dev/null",
+        ["pip", "list", "--outdated", "--format", "json"],
         cwd=repo_path
     )
 
@@ -232,7 +232,7 @@ def run_npm_audit(package_dir: Path) -> list[Vulnerability]:
         return vulnerabilities
 
     code, stdout, stderr = run(
-        "npm audit --json 2>/dev/null",
+        ["npm", "audit", "--json"],
         cwd=package_dir,
         timeout=180
     )
@@ -262,7 +262,7 @@ def get_npm_outdated(package_dir: Path) -> list[OutdatedDep]:
     outdated = []
 
     code, stdout, stderr = run(
-        "npm outdated --json 2>/dev/null",
+        ["npm", "outdated", "--json"],
         cwd=package_dir
     )
 
@@ -377,28 +377,28 @@ def scan_repo(repo: str) -> RepoAudit:
 
 def run_tests(repo_path: Path) -> tuple[bool, str]:
     """Run tests in a repo. Returns (passed, output)."""
-    # Try common test commands
+    # Try common test commands (as lists)
     test_commands = [
-        "pytest -x -q",
-        "python -m pytest -x -q",
-        "npm test",
-        "make test",
+        (["pytest", "-x", "-q"], "pytest"),
+        (["python", "-m", "pytest", "-x", "-q"], "pytest"),
+        (["npm", "test"], "npm test"),
+        (["make", "test"], "make test"),
     ]
 
-    for cmd in test_commands:
+    for cmd, cmd_name in test_commands:
         # Check if test framework exists
-        if "pytest" in cmd and not (repo_path / "pytest.ini").exists() and not list(repo_path.glob("test_*.py")) and not list(repo_path.glob("**/test_*.py")):
+        if "pytest" in cmd_name and not (repo_path / "pytest.ini").exists() and not list(repo_path.glob("test_*.py")) and not list(repo_path.glob("**/test_*.py")):
             continue
-        if "npm test" in cmd and not (repo_path / "package.json").exists():
+        if "npm test" in cmd_name and not (repo_path / "package.json").exists():
             continue
-        if "make test" in cmd and not (repo_path / "Makefile").exists():
+        if "make test" in cmd_name and not (repo_path / "Makefile").exists():
             continue
 
         code, stdout, stderr = run(cmd, cwd=repo_path, timeout=300)
         if code == 0:
-            return True, f"Tests passed: {cmd}"
+            return True, f"Tests passed: {cmd_name}"
         elif code != 127:  # 127 = command not found
-            return False, f"Tests failed ({cmd}): {stderr or stdout}"
+            return False, f"Tests failed ({cmd_name}): {stderr or stdout}"
 
     # No tests found - consider it a pass
     return True, "No test suite found"
@@ -410,13 +410,13 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
     branch_name = f"deps/update-{dep.package}-{dep.latest_version}".replace(".", "-")
 
     # Check if branch already exists
-    code, _, _ = run(f"git branch --list {branch_name}", cwd=repo_path)
-    _, existing, _ = run(f"git branch --list {branch_name}", cwd=repo_path)
+    code, _, _ = run(["git", "branch", "--list", branch_name], cwd=repo_path)
+    _, existing, _ = run(["git", "branch", "--list", branch_name], cwd=repo_path)
     if existing.strip():
         return False, f"Branch {branch_name} already exists"
 
     # Create branch
-    code, _, stderr = run(f"git checkout -b {branch_name}", cwd=repo_path)
+    code, _, stderr = run(["git", "checkout", "-b", branch_name], cwd=repo_path)
     if code != 0:
         return False, f"Failed to create branch: {stderr}"
 
@@ -452,7 +452,7 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
 
         elif dep.dep_type == "npm":
             code, _, stderr = run(
-                f"npm install {dep.package}@{dep.latest_version} --save",
+                ["npm", "install", f"{dep.package}@{dep.latest_version}", "--save"],
                 cwd=repo_path,
                 timeout=180
             )
@@ -463,22 +463,22 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
         tests_passed, test_output = run_tests(repo_path)
         if not tests_passed:
             # Revert and return
-            run("git checkout -- .", cwd=repo_path)
-            run("git checkout main", cwd=repo_path)
-            run(f"git branch -D {branch_name}", cwd=repo_path)
+            run(["git", "checkout", "--", "."], cwd=repo_path)
+            run(["git", "checkout", "main"], cwd=repo_path)
+            run(["git", "branch", "-D", branch_name], cwd=repo_path)
             return False, f"Tests failed, skipping PR: {test_output}"
 
         # Commit
         security_tag = "🔒 " if dep.is_security else ""
         commit_msg = f"{security_tag}Update {dep.package} from {dep.current_version} to {dep.latest_version}"
 
-        run("git add -A", cwd=repo_path)
-        code, _, stderr = run(f'git commit -m "{commit_msg}"', cwd=repo_path)
+        run(["git", "add", "-A"], cwd=repo_path)
+        code, _, stderr = run(["git", "commit", "-m", commit_msg], cwd=repo_path)
         if code != 0:
             raise Exception(f"Commit failed: {stderr}")
 
         # Push
-        code, _, stderr = run(f"git push -u origin {branch_name}", cwd=repo_path)
+        code, _, stderr = run(["git", "push", "-u", "origin", branch_name], cwd=repo_path)
         if code != 0:
             raise Exception(f"Push failed: {stderr}")
 
@@ -522,7 +522,7 @@ Updates **{dep.package}** from `{dep.current_version}` to `{dep.latest_version}`
 """
 
         code, stdout, stderr = run(
-            f'gh pr create --title "{commit_msg}" --body "{pr_body}" --base main',
+            ["gh", "pr", "create", "--title", commit_msg, "--body", pr_body, "--base", "main"],
             cwd=repo_path
         )
         if code != 0:
@@ -532,14 +532,14 @@ Updates **{dep.package}** from `{dep.current_version}` to `{dep.latest_version}`
 
     except Exception as e:
         # Cleanup on failure
-        run("git checkout -- .", cwd=repo_path)
-        run("git checkout main", cwd=repo_path)
-        run(f"git branch -D {branch_name}", cwd=repo_path)
+        run(["git", "checkout", "--", "."], cwd=repo_path)
+        run(["git", "checkout", "main"], cwd=repo_path)
+        run(["git", "branch", "-D", branch_name], cwd=repo_path)
         return False, str(e)
 
     finally:
         # Always return to main
-        run("git checkout main", cwd=repo_path)
+        run(["git", "checkout", "main"], cwd=repo_path)
 
 
 def create_update_prs(results: list[RepoAudit], dry_run: bool = False) -> list[dict]:

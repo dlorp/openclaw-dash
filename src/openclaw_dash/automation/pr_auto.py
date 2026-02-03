@@ -58,11 +58,11 @@ class BranchInfo:
     author: str
 
 
-def run(cmd: str, cwd: Path | None = None, timeout: int = 60) -> tuple[int, str, str]:
-    """Run a shell command and return (returncode, stdout, stderr)."""
+def run(cmd: list[str], cwd: Path | None = None, timeout: int = 60) -> tuple[int, str, str]:
+    """Run a command and return (returncode, stdout, stderr)."""
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=timeout
+            cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout
         )
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
@@ -81,7 +81,7 @@ class PRAutomation:
     def get_open_prs(self) -> list[PRInfo]:
         """Get all open PRs for the repository."""
         code, stdout, stderr = run(
-            "gh pr list --json number,title,headRefName,state,mergeable,statusCheckRollup,reviews,labels,author,createdAt,url",
+            ["gh", "pr", "list", "--json", "number,title,headRefName,state,mergeable,statusCheckRollup,reviews,labels,author,createdAt,url"],
             cwd=self.repo_path,
         )
 
@@ -169,9 +169,9 @@ class PRAutomation:
                     )
                 else:
                     # Merge the PR
-                    merge_cmd = f"gh pr merge {pr.number} --merge"
+                    merge_cmd = ["gh", "pr", "merge", str(pr.number), "--merge"]
                     if config.delete_branch_after_merge:
-                        merge_cmd += " --delete-branch"
+                        merge_cmd.append("--delete-branch")
 
                     code, stdout, stderr = run(merge_cmd, cwd=self.repo_path)
 
@@ -211,23 +211,28 @@ class PRAutomation:
     def get_remote_branches(self) -> list[BranchInfo]:
         """Get all remote branches with their info."""
         # Fetch latest
-        run("git fetch --prune", cwd=self.repo_path)
+        run(["git", "fetch", "--prune"], cwd=self.repo_path)
 
         # Get branches with last commit date
         code, stdout, stderr = run(
-            "git for-each-ref --sort=-committerdate refs/remotes/origin "
-            '--format="%(refname:short)|%(committerdate:iso)|%(authorname)"',
+            ["git", "for-each-ref", "--sort=-committerdate", "refs/remotes/origin",
+             "--format=%(refname:short)|%(committerdate:iso)|%(authorname)"],
             cwd=self.repo_path,
         )
 
         if code != 0:
             raise RuntimeError(f"Failed to list branches: {stderr}")
 
-        # Get list of merged branches
+        # Get list of merged branches (try main first, fall back to master)
         _, merged_stdout, _ = run(
-            "git branch -r --merged origin/main 2>/dev/null || git branch -r --merged origin/master",
+            ["git", "branch", "-r", "--merged", "origin/main"],
             cwd=self.repo_path,
         )
+        if not merged_stdout:
+            _, merged_stdout, _ = run(
+                ["git", "branch", "-r", "--merged", "origin/master"],
+                cwd=self.repo_path,
+            )
         merged_branches = {b.strip() for b in merged_stdout.split("\n") if b.strip()}
 
         branches = []
@@ -323,7 +328,7 @@ class PRAutomation:
                 )
             else:
                 code, stdout, stderr = run(
-                    f"git push origin --delete {branch.name}", cwd=self.repo_path
+                    ["git", "push", "origin", "--delete", branch.name], cwd=self.repo_path
                 )
 
                 if code == 0:
