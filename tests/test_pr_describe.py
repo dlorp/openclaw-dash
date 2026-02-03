@@ -355,18 +355,19 @@ class TestGenerateTestingSuggestions:
 class TestFormatMarkdown:
     """Tests for format_markdown function."""
 
-    def test_includes_summary_section(self):
+    def test_includes_what_section(self):
         desc = pr_describe.PRDescription(
             summary="Test summary",
             changes={},
             testing=[],
             notes=[],
-            commits=[],
-            stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
+            commits=[pr_describe.CommitInfo(hash="abc123", subject="feat: Add new feature")],
+            stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 1},
         )
         result = pr_describe.format_markdown(desc, pr_describe.Config())
-        assert "## Summary" in result
-        assert "Test summary" in result
+        assert "## What" in result
+        assert "## Why" in result
+        assert "## How" in result
 
     def test_includes_changes_section(self):
         desc = pr_describe.PRDescription(
@@ -374,14 +375,15 @@ class TestFormatMarkdown:
             changes={"added": ["new.py"], "modified": ["old.py"], "removed": [], "renamed": []},
             testing=[],
             notes=[],
-            commits=[],
+            commits=[pr_describe.CommitInfo(hash="abc123", subject="feat: Add feature")],
             stats={"files_changed": 2, "additions": 10, "deletions": 5, "commits": 1},
         )
         result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Changes" in result
-        assert "**Added:**" in result
+        # New format uses "Additional files added:" instead of "**Added:**"
+        assert "**Additional files added:**" in result
         assert "`new.py`" in result
-        assert "**Modified:**" in result
+        assert "**Additional files modified:**" in result
         assert "`old.py`" in result
 
     def test_includes_testing_section(self):
@@ -390,13 +392,14 @@ class TestFormatMarkdown:
             changes={},
             testing=["Run unit tests", "Test API endpoints"],
             notes=[],
-            commits=[],
-            stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
+            commits=[pr_describe.CommitInfo(hash="abc123", subject="feat: Add feature")],
+            stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 1},
         )
         result = pr_describe.format_markdown(desc, pr_describe.Config())
         assert "## Testing" in result
-        assert "- [ ] Run unit tests" in result
-        assert "- [ ] Test API endpoints" in result
+        # New format uses plain text, not checkboxes
+        assert "Run unit tests" in result
+        assert "Test API endpoints" in result
 
     def test_includes_notes_section(self):
         desc = pr_describe.PRDescription(
@@ -411,32 +414,40 @@ class TestFormatMarkdown:
         assert "## Notes" in result
         assert "Breaking Changes" in result
 
-    def test_includes_stats_footer(self):
+    def test_includes_all_template_sections(self):
+        """Verify the What/Why/How/Changes template structure."""
         desc = pr_describe.PRDescription(
             summary="Summary",
-            changes={},
-            testing=[],
-            notes=[],
-            commits=[],
+            changes={"added": ["file.py"]},
+            testing=["Run tests"],
+            notes=["⚠️ **Breaking Changes:**", "  - Removed old API"],
+            commits=[pr_describe.CommitInfo(hash="abc123", subject="feat: Add feature")],
             stats={"files_changed": 5, "additions": 100, "deletions": 50, "commits": 3},
         )
         result = pr_describe.format_markdown(desc, pr_describe.Config())
-        assert "3 commits" in result
-        assert "5 files changed" in result
-        assert "+100/-50" in result
+        # Verify all main sections are present
+        assert "## What" in result
+        assert "## Why" in result
+        assert "## How" in result
+        assert "## Changes" in result
+        assert "## Testing" in result
+        assert "## Notes" in result
 
     def test_truncates_many_files(self):
+        """Verify that file lists are truncated to max_files_shown."""
+        config = pr_describe.Config(max_files_shown=15)
         desc = pr_describe.PRDescription(
             summary="Summary",
             changes={"modified": [f"file{i}.py" for i in range(20)]},
             testing=[],
             notes=[],
-            commits=[],
+            commits=[pr_describe.CommitInfo(hash="abc123", subject="feat: Add feature")],
             stats={"files_changed": 20, "additions": 0, "deletions": 0, "commits": 1},
         )
-        result = pr_describe.format_markdown(desc, pr_describe.Config())
-        assert "... and" in result
-        assert "more" in result
+        result = pr_describe.format_markdown(desc, config)
+        # Should only show max_files_shown files (15), not all 20
+        file_count = result.count("`file")
+        assert file_count <= config.max_files_shown
 
 
 class TestFormatJson:
