@@ -61,6 +61,19 @@ from openclaw_dash.widgets.sessions import (
 from openclaw_dash.widgets.sessions import (
     get_status_icon as get_session_status_icon,
 )
+from openclaw_dash.widgets.states import (
+    StateDisplay,
+    WidgetState,
+    check_and_render_state,
+    format_collector_status_line,
+    get_state_indicator,
+    render_disconnected,
+    render_empty,
+    render_error,
+    render_loading,
+    render_stale,
+    render_unavailable,
+)
 from openclaw_dash.widgets.tabbed_groups import (
     CodeTabGroup,
     RuntimeTabGroup,
@@ -141,4 +154,16 @@ __all__ = [
     # Cron panel
     "CronPanel",
     "CronSummaryPanel",
+    # Widget states
+    "WidgetState",
+    "StateDisplay",
+    "render_loading",
+    "render_error",
+    "render_empty",
+    "render_stale",
+    "render_disconnected",
+    "render_unavailable",
+    "check_and_render_state",
+    "get_state_indicator",
+    "format_collector_status_line",
 ]
