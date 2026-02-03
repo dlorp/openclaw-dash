@@ -6,6 +6,32 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+# PyYAML is optional - only needed for reading config files directly
+try:
+    import yaml
+
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
+
+
+def _parse_yaml_config(config_path: Path) -> dict[str, Any] | None:
+    """Parse YAML config file if PyYAML is available.
+
+    Args:
+        config_path: Path to the YAML config file.
+
+    Returns:
+        Parsed config dict or None if parsing fails.
+    """
+    if not HAS_YAML:
+        return None
+
+    try:
+        return yaml.safe_load(config_path.read_text())  # type: ignore[union-attr]
+    except (OSError, yaml.YAMLError):  # type: ignore[attr-defined]
+        return None
+
 
 def collect() -> dict[str, Any]:
     """Collect channel connection status."""
@@ -22,10 +48,8 @@ def collect() -> dict[str, Any]:
         config_path = Path.home() / ".openclaw" / "config.yml"
 
     if config_path.exists():
-        try:
-            import yaml  # type: ignore[import-untyped]
-
-            config = yaml.safe_load(config_path.read_text())
+        config = _parse_yaml_config(config_path)
+        if config is not None:
             channels_config = config.get("channels", {})
 
             for channel_type in ["discord", "telegram", "signal", "slack", "whatsapp"]:
@@ -56,9 +80,6 @@ def collect() -> dict[str, Any]:
                     result["total"] += 1
                     if status == "connected":
                         result["connected"] += 1
-
-        except Exception:
-            pass
 
     # Fallback: try openclaw CLI if available
     if not result["channels"]:
