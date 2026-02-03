@@ -240,27 +240,30 @@ class TestGenerateSummary:
         ]
         files = []
         result = pr_describe.generate_summary(commits, files)
-        assert (
-            "new features" in result.lower()
-            or "adds" in result.lower()
-            or "following changes" in result.lower()
-        )
+        # Direct bullet list without intro fluff
+        assert "- Add login" in result
+        assert "- Add logout" in result
+        assert "- Add session management" in result
 
-    def test_fix_commits_theme(self):
+    def test_fix_commits_summary_lists_changes(self):
         commits = [
             pr_describe.CommitInfo(hash="abc", subject="fix: Resolve null pointer"),
             pr_describe.CommitInfo(hash="def", subject="fix: Handle edge case"),
         ]
         result = pr_describe.generate_summary(commits, [])
-        assert "fix" in result.lower() or "bug" in result.lower() or "improvement" in result.lower()
+        # Direct list of changes without template intro
+        assert "- Resolve null pointer" in result
+        assert "- Handle edge case" in result
 
-    def test_refactor_commits_theme(self):
+    def test_refactor_commits_summary_lists_changes(self):
         commits = [
             pr_describe.CommitInfo(hash="abc", subject="refactor: Extract utils"),
             pr_describe.CommitInfo(hash="def", subject="refactor: Simplify logic"),
         ]
         result = pr_describe.generate_summary(commits, [])
-        assert "refactor" in result.lower() or "changes" in result.lower()
+        # Direct list of changes without template intro
+        assert "- Extract utils" in result
+        assert "- Simplify logic" in result
 
     def test_no_commits(self):
         result = pr_describe.generate_summary([], [])
@@ -283,7 +286,8 @@ class TestGenerateTestingSuggestions:
             pr_describe.FileChange(path="src/auth/logout.py", status="M", category="source"),
         ]
         result = pr_describe.generate_testing_suggestions(files, [])
-        assert any("unit tests" in s.lower() for s in result)
+        # Now gives actionable pytest command
+        assert any("pytest" in s.lower() or "test" in s.lower() for s in result)
 
     def test_api_changes_suggestion(self):
         files = [
@@ -320,18 +324,21 @@ class TestGenerateTestingSuggestions:
             pr_describe.FileChange(path="components/Button.tsx", status="M", category="source"),
         ]
         result = pr_describe.generate_testing_suggestions(files, [])
-        assert any("visual" in s.lower() or "ui" in s.lower() for s in result)
+        # Should suggest running tests for the changed module
+        assert any("pytest" in s.lower() or "components" in s.lower() for s in result)
 
-    def test_performance_commits_suggestion(self):
+    def test_performance_commits_no_generic_suggestion(self):
+        # Vague "benchmark performance changes" was removed per voice fixes
         commits = [pr_describe.CommitInfo(hash="abc", subject="perf: Optimize query")]
         files = [pr_describe.FileChange(path="src/db.py", status="M", category="source")]
         result = pr_describe.generate_testing_suggestions(files, commits)
-        assert any("benchmark" in s.lower() or "performance" in s.lower() for s in result)
+        # Should still get actionable suggestions for source changes
+        assert any("pytest" in s.lower() or "test" in s.lower() for s in result)
 
-    def test_no_files_default_suggestion(self):
+    def test_no_files_returns_empty(self):
+        # Empty input now returns empty list instead of generic fallback
         result = pr_describe.generate_testing_suggestions([], [])
-        assert len(result) >= 1
-        assert any("test" in s.lower() for s in result)
+        assert result == []
 
 
 class TestFormatMarkdown:
