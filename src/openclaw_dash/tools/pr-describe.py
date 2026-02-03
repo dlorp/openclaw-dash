@@ -819,6 +819,9 @@ def generate_why_section(commits: list[CommitInfo], files: list[FileChange]) -> 
         }
         return cat_desc.get(dominant_cat, "Changes were needed to improve the codebase.")
 
+    # Ultimate fallback when no context is available
+    return "Changes were needed to improve the codebase."
+
 
 def generate_how_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
     """Generate the How section - brief explanation of approach.
