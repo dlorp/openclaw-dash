@@ -635,30 +635,30 @@ def get_code_snippets(repo_path: Path, base: str, head: str, files: list[FileCha
 
 def extract_structured_section(commits: list[CommitInfo], section: str) -> str | None:
     """Extract explicit What:, Why:, or How: sections from commit bodies.
-    
+
     Args:
         commits: List of commit info objects
         section: Section name to extract ("What", "Why", or "How")
-    
+
     Returns:
         The extracted section text, or None if not found
     """
-    pattern = re.compile(f"^{section}:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
-    
+    pattern = re.compile(rf"^{section}:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
+
     for commit in commits:
         if not commit.body:
             continue
-            
+
         match = pattern.search(commit.body)
         if match:
             return match.group(1).strip()
-    
+
     return None
 
 
 def generate_what_section(commits: list[CommitInfo]) -> str:
     """Generate the What section - one sentence summary from commit message.
-    
+
     First looks for explicit "What:" sections in commit bodies, then falls back to inference.
     """
     if not commits:
@@ -697,7 +697,7 @@ def generate_what_section(commits: list[CommitInfo]) -> str:
 
 def generate_why_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
     """Generate the Why section - infer motivation from commit types and changes.
-    
+
     First looks for explicit "Why:" sections in commit bodies, then falls back to inference.
     """
     if not commits:
@@ -735,33 +735,97 @@ def generate_why_section(commits: list[CommitInfo], files: list[FileChange]) -> 
             # Combine multiple specific reasons with better formatting
             return " and ".join(specific_reasons).replace(". and ", " and ")
 
-    # Fallback: analyze commit subjects for context
-    problems = []
+    # Look for issue references: "Resolves", "Fixes", "Closes" in subject
     for commit in commits:
-        _, _, summary = parse_conventional_commit(commit.subject)
-        if summary:
-            # Extract the problem being solved from the action
-            if "missing" in summary.lower():
-                problems.append(f"{summary} tools were missing")
-            elif "hanging" in summary.lower():
-                problems.append(f"process was {summary}")
-            elif "gracefully" in summary.lower():
-                problems.append(f"{summary} was causing crashes")
-            else:
-                problems.append(f"{summary} was needed")
+        issue_match = re.search(
+            r"(?:resolves?|fixes?|closes?)\s+#?(\d+|[A-Z]+-\d+)",
+            commit.subject,
+            re.IGNORECASE
+        )
+        if issue_match:
+            specific_reasons.append(f"Addresses issue #{issue_match.group(1)}")
 
-    if problems:
-        if len(problems) == 1:
-            return problems[0]
-        else:
-            return " and ".join(problems)
+        # Also check body for issue refs and "because/since/due to" phrases
+        if commit.body:
+            for line in commit.body.split('\n'):
+                line = line.strip()
+                issue_match = re.search(
+                    r"(?:resolves?|fixes?|closes?)\s+#?(\d+|[A-Z]+-\d+)",
+                    line,
+                    re.IGNORECASE
+                )
+                if issue_match:
+                    specific_reasons.append(f"Addresses issue #{issue_match.group(1)}")
+                    continue
 
-    return "Improvements were needed"
+                reason_match = re.search(
+                    r"(?:because|since|due to)\s+(.+)",
+                    line,
+                    re.IGNORECASE
+                )
+                if reason_match:
+                    reason = reason_match.group(1).strip().rstrip('.')
+                    if len(reason) > 10:
+                        specific_reasons.append(reason.capitalize())
+
+    # Dedupe while preserving order
+    seen = set()
+    unique_reasons = []
+    for r in specific_reasons:
+        r_lower = r.lower()
+        if r_lower not in seen:
+            seen.add(r_lower)
+            unique_reasons.append(r)
+
+    if unique_reasons:
+        return " ".join(unique_reasons[:3]) if len(unique_reasons) > 1 else unique_reasons[0]
+
+    # Infer from commit types
+    type_counts = defaultdict(int)
+    for commit in commits:
+        if commit.commit_type:
+            type_counts[commit.commit_type] += 1
+
+    if type_counts:
+        dominant_type = max(type_counts, key=lambda k: type_counts[k])
+        type_reasons = {
+            "fix": "The previous behavior had bugs or issues that needed correction.",
+            "feat": "This capability was missing or requested.",
+            "refactor": "The code needed restructuring for better maintainability.",
+            "perf": "Performance improvements were needed.",
+            "docs": "Documentation was missing, outdated, or unclear.",
+            "test": "Test coverage was insufficient or tests needed updates.",
+            "chore": "Maintenance tasks were needed.",
+            "ci": "CI/CD pipeline needed updates or fixes.",
+            "style": "Code style or formatting needed cleanup.",
+        }
+        if dominant_type in type_reasons:
+            return type_reasons[dominant_type]
+
+    # Fallback based on file categories
+    categories = defaultdict(int)
+    for f in files:
+        categories[f.category] += 1
+
+    if categories:
+        dominant_cat = max(categories, key=lambda k: categories[k])
+        cat_desc = {
+            "source": "The codebase needed updates to improve functionality.",
+            "tests": "Test coverage needed improvements.",
+            "docs": "Documentation needed updates.",
+            "config": "Configuration needed adjustments.",
+            "ci": "CI/CD pipeline needed updates.",
+            "deps": "Dependencies needed updates.",
+        }
+        return cat_desc.get(dominant_cat, "Changes were needed to improve the codebase.")
+
+    # Ultimate fallback when no context is available
+    return "Changes were needed to improve the codebase."
 
 
 def generate_how_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
     """Generate the How section - brief explanation of approach.
-    
+
     First looks for explicit "How:" sections in commit bodies, then falls back to inference.
     """
     if not commits:
@@ -802,28 +866,91 @@ def generate_how_section(commits: list[CommitInfo], files: list[FileChange]) -> 
             result += f". Plus {len(implementation_details) - 2} additional improvements"
             return result + "."
 
-    # Fallback: infer from commit subjects and file changes
-    approaches = []
+    # Describe based on files changed - be specific about modules
+    if files:
+        modules = defaultdict(list)
+        for f in files:
+            parts = Path(f.path).parts
+            if len(parts) > 1:
+                mod = parts[0] if parts[0] not in ("src", "lib", "app") else (parts[1] if len(parts) > 1 else parts[0])
+                modules[mod].append(f)
+            else:
+                modules["root"].append(f)
+
+        descriptions = []
+        status_verbs = {"A": "Added", "M": "Modified", "D": "Removed", "R": "Renamed"}
+
+        for module, module_files in list(modules.items())[:3]:
+            status_counts = defaultdict(int)
+            for f in module_files:
+                status_counts[f.status] += 1
+            dominant_status = max(status_counts, key=lambda k: status_counts[k])
+            verb = status_verbs.get(dominant_status, "Updated")
+
+            file_types = set(Path(f.path).suffix for f in module_files)
+            if ".py" in file_types:
+                descriptions.append(f"{verb} `{module}` module")
+            elif ".md" in file_types or ".rst" in file_types:
+                descriptions.append(f"{verb} `{module}` documentation")
+            elif any(f.category == "config" for f in module_files):
+                descriptions.append(f"{verb} `{module}` configuration")
+            elif any(f.category == "tests" for f in module_files):
+                descriptions.append(f"{verb} `{module}` tests")
+            else:
+                descriptions.append(f"{verb} `{module}` files")
+
+        if descriptions:
+            return ". ".join(descriptions) + "."
+
+    # Describe based on commit summaries
+    actions = []
     for commit in commits:
         _, _, summary = parse_conventional_commit(commit.subject)
         if summary:
-            if "gracefully" in summary.lower():
-                approaches.append("Added error handling and graceful fallbacks")
-            elif "prevent" in summary.lower() and "hanging" in summary.lower():
-                approaches.append("Added directory filtering and loop prevention")
-            elif "missing" in summary.lower():
-                approaches.append("Added tool availability checks")
-            elif "handle" in summary.lower():
-                approaches.append("Improved error handling")
+            s_lower = summary.lower()
+            if s_lower.startswith("add "):
+                actions.append("Added " + summary[4:])
+            elif s_lower.startswith("fix "):
+                actions.append("Fixed " + summary[4:])
+            elif s_lower.startswith("update "):
+                actions.append("Updated " + summary[7:])
+            elif s_lower.startswith("remove "):
+                actions.append("Removed " + summary[7:])
+            elif s_lower.startswith("refactor "):
+                actions.append("Refactored " + summary[9:])
+            elif s_lower.startswith("improve "):
+                actions.append("Improved " + summary[8:])
+            else:
+                actions.append(summary[0].upper() + summary[1:] if summary else summary)
 
-    if approaches:
-        if len(approaches) == 1:
-            return approaches[0] + "."
-        else:
-            return ". ".join(approaches) + "."
+    if actions:
+        seen = set()
+        unique_actions = []
+        for a in actions:
+            a_lower = a.lower()
+            if a_lower not in seen:
+                seen.add(a_lower)
+                unique_actions.append(a)
 
-    # Ultimate fallback
-    return "Implemented targeted fixes to resolve the identified issues."
+        return ". ".join(unique_actions[:3]) + "."
+
+    # Ultimate fallback - describe file changes numerically
+    added = sum(1 for f in files if f.status == "A")
+    modified = sum(1 for f in files if f.status == "M")
+    removed = sum(1 for f in files if f.status == "D")
+
+    parts = []
+    if added:
+        parts.append(f"added {added} file{'s' if added > 1 else ''}")
+    if modified:
+        parts.append(f"modified {modified} file{'s' if modified > 1 else ''}")
+    if removed:
+        parts.append(f"removed {removed} file{'s' if removed > 1 else ''}")
+
+    if parts:
+        return "Changes " + ", ".join(parts) + "."
+
+    return f"Updated {len(files)} file{'s' if len(files) != 1 else ''}."
 
 
 def generate_pr_description(

@@ -30,8 +30,19 @@ def run(cmd: list[str]) -> tuple[int, str]:
     return result.returncode, result.stdout.strip()
 
 
-def get_prs(org: str, repo: str, state: str = "all") -> list[dict]:
-    """Get PRs for a repo."""
+def get_prs(org: str, repo: str, state: str = "all", fetch_ci: bool = False) -> list[dict]:
+    """Get PRs for a repo.
+
+    Args:
+        org: GitHub org/user
+        repo: Repository name
+        state: PR state filter (all, open, closed, merged)
+        fetch_ci: If True, include statusCheckRollup in the query
+    """
+    fields = "number,title,state,createdAt,mergedAt,closedAt,author,headRefName"
+    if fetch_ci:
+        fields += ",statusCheckRollup"
+
     returncode, output = run(
         [
             "gh",
@@ -42,7 +53,7 @@ def get_prs(org: str, repo: str, state: str = "all") -> list[dict]:
             "--state",
             state,
             "--json",
-            "number,title,state,createdAt,mergedAt,closedAt,author,headRefName,statusCheckRollup",
+            fields,
             "--limit",
             "20",
         ]
@@ -58,6 +69,91 @@ def get_prs(org: str, repo: str, state: str = "all") -> list[dict]:
         return json.loads(output) if output else []
     except json.JSONDecodeError:
         return []
+
+
+def extract_ci_status(status_check_rollup: list[dict] | None) -> str:
+    """Extract CI status from GitHub's statusCheckRollup.
+
+    Args:
+        status_check_rollup: List of check runs/status contexts from GitHub API
+
+    Returns:
+        One of: "success", "failure", "pending", "unknown"
+    """
+    if not status_check_rollup:
+        return "unknown"
+
+    if not isinstance(status_check_rollup, list) or len(status_check_rollup) == 0:
+        return "unknown"
+
+    # Parse each check - handles both CheckRun and StatusContext types
+    # CheckRun has: conclusion (SUCCESS, FAILURE, etc.) and status (COMPLETED, IN_PROGRESS, etc.)
+    # StatusContext has: state (SUCCESS, PENDING, FAILURE, ERROR)
+    statuses = []
+    for check in status_check_rollup:
+        if not isinstance(check, dict):
+            continue
+
+        # Try conclusion field first (CheckRun items)
+        conclusion = check.get("conclusion")
+        if conclusion:
+            statuses.append(conclusion.upper())
+        # Check if it's in progress (conclusion is null but status indicates running)
+        elif check.get("status") in (
+            "IN_PROGRESS",
+            "PENDING",
+            "QUEUED",
+            "REQUESTED",
+            "WAITING",
+        ):
+            statuses.append("PENDING")
+        # Try state field (StatusContext items)
+        elif check.get("state"):
+            statuses.append(check["state"].upper())
+
+    if not statuses:
+        return "unknown"
+
+    # Determine overall status:
+    # - Any FAILURE/ERROR/CANCELLED/TIMED_OUT/ACTION_REQUIRED = failure
+    # - Any PENDING/IN_PROGRESS/QUEUED (and no failures) = pending
+    # - All SUCCESS/NEUTRAL/SKIPPED = success
+    failure_states = {
+        "FAILURE",
+        "ERROR",
+        "CANCELLED",
+        "TIMED_OUT",
+        "ACTION_REQUIRED",
+        "STARTUP_FAILURE",
+    }
+    pending_states = {
+        "PENDING",
+        "IN_PROGRESS",
+        "QUEUED",
+        "REQUESTED",
+        "WAITING",
+        "EXPECTED",
+    }
+    success_states = {"SUCCESS", "NEUTRAL", "SKIPPED", "STALE"}
+
+    if any(s in failure_states for s in statuses):
+        return "failure"
+    elif any(s in pending_states for s in statuses):
+        return "pending"
+    elif all(s in success_states for s in statuses):
+        return "success"
+    else:
+        return "unknown"
+
+
+def get_ci_icon(ci_status: str) -> str:
+    """Get emoji icon for CI status."""
+    return {
+        "success": "✅",
+        "failure": "❌",
+        "pending": "⏳",
+        "unknown": "❓",
+    }.get(ci_status, "❓")
 
 
 def validate_org(org: str) -> bool:
@@ -96,6 +192,31 @@ def save_state(state: dict):
     STATE_FILE.write_text(json.dumps(state, indent=2))
 
 
+def truncate_title(title: str, max_length: int = 50) -> str:
+    """Truncate title at word boundary with ellipsis.
+
+    Args:
+        title: The title to truncate
+        max_length: Maximum length before truncation
+
+    Returns:
+        Truncated title with ellipsis if needed, or full title if short enough
+    """
+    if len(title) <= max_length:
+        return title
+
+    # Find the last space before max_length
+    truncated = title[:max_length]
+    last_space = truncated.rfind(" ")
+
+    if last_space > 0:
+        # Cut at word boundary
+        return title[:last_space] + "..."
+    else:
+        # No space found, fall back to hard cut
+        return truncated + "..."
+
+
 def format_age(created_at: str | None) -> str:
     """Format PR age as human readable with date validation."""
     if not created_at or not isinstance(created_at, str):
@@ -115,67 +236,6 @@ def format_age(created_at: str | None) -> str:
         # Invalid date format or missing timezone info
         print(f"Warning: Invalid date '{created_at}': {e}", file=sys.stderr)
         return "?"
-
-
-def calculate_age_days(created_at: str | None) -> int | None:
-    """Calculate PR age in days for structured output."""
-    if not created_at or not isinstance(created_at, str):
-        return None
-
-    try:
-        created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-        age = datetime.now(created.tzinfo) - created
-        return age.days
-    except (ValueError, AttributeError, TypeError):
-        return None
-
-
-def extract_ci_status(status_check_rollup) -> str:
-    """Extract CI status from GitHub's statusCheckRollup."""
-    if not status_check_rollup:
-        return "unknown"
-
-    # statusCheckRollup is a list of status checks
-    if not isinstance(status_check_rollup, list) or len(status_check_rollup) == 0:
-        return "unknown"
-
-    # Look for overall status - if any check failed, consider it failed
-    # If all are success/neutral, consider it success
-    # If any are pending, consider it pending
-    statuses = []
-    for check in status_check_rollup:
-        if isinstance(check, dict) and "state" in check:
-            statuses.append(check["state"].lower())
-
-    if not statuses:
-        return "unknown"
-
-    if "failure" in statuses or "error" in statuses:
-        return "failure"
-    elif "pending" in statuses:
-        return "pending"
-    elif all(s in ["success", "neutral"] for s in statuses):
-        return "success"
-    else:
-        return "unknown"
-
-
-def normalize_pr_data(pr: dict, repo: str) -> dict:
-    """Normalize PR data for consistent structure."""
-    return {
-        "number": pr["number"],
-        "repo": repo,
-        "title": pr["title"],
-        "status": pr["state"].lower(),  # open, merged, closed
-        "ci_status": extract_ci_status(pr.get("statusCheckRollup")),
-        "age": calculate_age_days(pr.get("createdAt")),
-        "age_formatted": format_age(pr.get("createdAt")),
-        "created_at": pr.get("createdAt"),
-        "merged_at": pr.get("mergedAt"),
-        "closed_at": pr.get("closedAt"),
-        "author": pr.get("author", {}).get("login") if pr.get("author") else None,
-        "head_ref": pr.get("headRefName"),
-    }
 
 
 def check_changes(old_state: dict, current_prs: dict) -> dict[str, list[Any]]:
@@ -209,14 +269,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  pr-tracker.py                        Show current PR status
-  pr-tracker.py --check                Check for changes since last run
-  pr-tracker.py --json                 Output as structured JSON
-  pr-tracker.py --repo myrepo          Scan a specific repo
-  pr-tracker.py --org myorg            Override GITHUB_ORG
-  pr-tracker.py --status open          Show only open PRs
-  pr-tracker.py --status merged --json Get merged PRs as JSON
+  pr-tracker.py                  Show current PR status
+  pr-tracker.py --ci             Show with actual CI status
+  pr-tracker.py --check          Check for changes since last run
+  pr-tracker.py --json           Output as JSON
+  pr-tracker.py --repo myrepo    Scan a specific repo
+  pr-tracker.py --org myorg      Override GITHUB_ORG
 """,
+    )
+    parser.add_argument(
+        "--ci",
+        action="store_true",
+        help="Fetch and show actual CI status (slower, requires API calls)",
     )
     parser.add_argument(
         "--check",
@@ -241,9 +305,9 @@ Examples:
         help="GitHub org/user (default: GITHUB_ORG env var)",
     )
     parser.add_argument(
-        "--status",
-        choices=["open", "merged", "closed"],
-        help="Filter PRs by status",
+        "--full",
+        action="store_true",
+        help="Show full PR titles without truncation",
     )
     args = parser.parse_args()
 
@@ -266,78 +330,41 @@ Examples:
 
     # Gather current PRs
     all_prs = {}
-    normalized_prs = {
-        "open": [],
-        "merged": [],
-        "closed": [],
-    }
+    open_prs = []
 
     for repo in repos:
-        # Filter repos if specified
-        if args.repo and repo not in args.repo:
-            continue
-
-        prs = get_prs(org, repo, "all")
+        prs = get_prs(org, repo, "all", fetch_ci=args.ci)
         for pr in prs:
-            # Normalize PR data
-            normalized_pr = normalize_pr_data(pr, repo)
-
-            # Store for state tracking (keep original format for compatibility)
             pr["repo"] = repo
             pr_key = f"{repo}#{pr['number']}"
+            # Extract CI status if --ci flag was passed
+            if args.ci:
+                pr["ci_status"] = extract_ci_status(pr.get("statusCheckRollup"))
             all_prs[pr_key] = pr
-
-            # Categorize normalized PRs
-            status = normalized_pr["status"]
-            if status in normalized_prs:
-                normalized_prs[status].append(normalized_pr)
-
-    # Apply status filter
-    if args.status:
-        filtered_prs = {args.status: normalized_prs.get(args.status, [])}
-        # Keep other categories empty but present for consistency
-        for status_key in ["open", "merged", "closed"]:
-            if status_key not in filtered_prs:
-                filtered_prs[status_key] = []
-        normalized_prs = filtered_prs
+            if pr["state"] == "OPEN":
+                open_prs.append(pr)
 
     # Check for changes
     changes = check_changes(old_state, all_prs)
-
-    # Normalize change data too
-    normalized_changes = {}
-    for change_type, prs in changes.items():
-        normalized_changes[change_type] = [
-            normalize_pr_data(pr, pr["repo"]) for pr in prs
-        ]
 
     # Save new state
     save_state({"prs": all_prs})
 
     if args.output_json:
-        output = {
+        output_data = {
+            "open_prs": open_prs,
+            "changes": changes,
             "timestamp": datetime.now().isoformat(),
-            "summary": {
-                "total_open": len(normalized_prs["open"]),
-                "total_merged": len(normalized_prs["merged"]),
-                "total_closed": len(normalized_prs["closed"]),
-            },
-            "open_prs": normalized_prs["open"],
-            "merged_prs": normalized_prs["merged"],
-            "closed_prs": normalized_prs["closed"],
-            "new_prs": normalized_changes.get("new", []),
-            "ci_status": {
-                "success": len([pr for pr in normalized_prs["open"] if pr["ci_status"] == "success"]),
-                "failure": len([pr for pr in normalized_prs["open"] if pr["ci_status"] == "failure"]),
-                "pending": len([pr for pr in normalized_prs["open"] if pr["ci_status"] == "pending"]),
-                "unknown": len([pr for pr in normalized_prs["open"] if pr["ci_status"] == "unknown"]),
-            },
         }
-
-        if args.check:
-            output["changes"] = normalized_changes
-
-        print(json.dumps(output, indent=2))
+        # Add CI summary if --ci flag was passed
+        if args.ci:
+            output_data["ci_summary"] = {
+                "success": len([p for p in open_prs if p.get("ci_status") == "success"]),
+                "failure": len([p for p in open_prs if p.get("ci_status") == "failure"]),
+                "pending": len([p for p in open_prs if p.get("ci_status") == "pending"]),
+                "unknown": len([p for p in open_prs if p.get("ci_status") == "unknown"]),
+            }
+        print(json.dumps(output_data, indent=2))
         return
 
     # Format output
@@ -347,52 +374,34 @@ Examples:
 
     # Report changes if in check mode
     if args.check and old_state.get("last_check"):
-        if normalized_changes.get("merged"):
+        if changes["merged"]:
             lines.append("### ✅ Merged Since Last Check")
-            for pr in normalized_changes["merged"]:
+            for pr in changes["merged"]:
                 lines.append(f"- **{pr['repo']}#{pr['number']}**: {pr['title']}")
             lines.append("")
 
-        if normalized_changes.get("closed"):
+        if changes["closed"]:
             lines.append("### ❌ Closed Without Merge")
-            for pr in normalized_changes["closed"]:
+            for pr in changes["closed"]:
                 lines.append(f"- **{pr['repo']}#{pr['number']}**: {pr['title']}")
             lines.append("")
 
-        if normalized_changes.get("new"):
-            lines.append("### 🆕 New PRs")
-            for pr in normalized_changes["new"]:
+        if changes["new"]:
+            lines.append("### New PRs")
+            for pr in changes["new"]:
                 lines.append(f"- **{pr['repo']}#{pr['number']}**: {pr['title']}")
             lines.append("")
 
-    # Display PRs based on filter or show all sections
-    if args.status:
-        # Show only filtered status
-        status_labels = {
-            "open": "Open PRs",
-            "merged": "Merged PRs",
-            "closed": "Closed PRs"
-        }
-        lines.append(f"### {status_labels[args.status]}")
-        prs_to_show = normalized_prs[args.status]
-        if prs_to_show:
-            for pr in sorted(prs_to_show, key=lambda x: x["created_at"] or ""):
-                age = pr["age_formatted"]
-                ci_icon = {"success": "✅", "failure": "❌", "pending": "🟡", "unknown": "❓"}[pr["ci_status"]]
-                lines.append(f"- **{pr['repo']}#{pr['number']}** ({age}) {ci_icon}: {pr['title'][:50]}")
-        else:
-            lines.append(f"No {args.status} PRs.")
+    # Open PRs
+    lines.append("### Open PRs")
+    if open_prs:
+        for pr in sorted(open_prs, key=lambda x: x["createdAt"]):
+            age = format_age(pr["createdAt"])
+            ci_icon = get_ci_icon(pr.get("ci_status", "unknown"))
+            title = pr["title"] if args.full else truncate_title(pr["title"])
+            lines.append(f"- **{pr['repo']}#{pr['number']}** ({age}) {ci_icon}: {title}")
     else:
-        # Show open PRs by default
-        lines.append("### Open PRs")
-        open_prs = normalized_prs["open"]
-        if open_prs:
-            for pr in sorted(open_prs, key=lambda x: x["created_at"] or ""):
-                age = pr["age_formatted"]
-                ci_icon = {"success": "✅", "failure": "❌", "pending": "🟡", "unknown": "❓"}[pr["ci_status"]]
-                lines.append(f"- **{pr['repo']}#{pr['number']}** ({age}) {ci_icon}: {pr['title'][:50]}")
-        else:
-            lines.append("No open PRs.")
+        lines.append("No open PRs.")
 
     print("\n".join(lines))
 
