@@ -183,12 +183,14 @@ def parse_status_output(output: str) -> OpenClawStatus:
                 if parts[0].lower() in ("channel", "item"):
                     continue
                 if len(parts) >= 4:
-                    status.channels.append({
-                        "name": parts[0],
-                        "enabled": parts[1].upper() == "ON",
-                        "state": parts[2],
-                        "detail": parts[3] if len(parts) > 3 else "",
-                    })
+                    status.channels.append(
+                        {
+                            "name": parts[0],
+                            "enabled": parts[1].upper() == "ON",
+                            "state": parts[2],
+                            "detail": parts[3] if len(parts) > 3 else "",
+                        }
+                    )
 
             elif current_section == "sessions":
                 # Skip header row
@@ -196,15 +198,17 @@ def parse_status_output(output: str) -> OpenClawStatus:
                     continue
                 if len(parts) >= 5:
                     tokens_used, tokens_max, context_pct = parse_tokens(parts[4])
-                    status.sessions.append(SessionInfo(
-                        key=parts[0],
-                        kind=parts[1],
-                        age=parts[2],
-                        model=parts[3],
-                        tokens_used=tokens_used,
-                        tokens_max=tokens_max,
-                        context_pct=context_pct,
-                    ))
+                    status.sessions.append(
+                        SessionInfo(
+                            key=parts[0],
+                            kind=parts[1],
+                            age=parts[2],
+                            model=parts[3],
+                            tokens_used=tokens_used,
+                            tokens_max=tokens_max,
+                            context_pct=context_pct,
+                        )
+                    )
 
     status.update_available = "update available" in output.lower()
     return status
@@ -251,15 +255,17 @@ def status_to_sessions_data(status: OpenClawStatus) -> dict[str, Any]:
     """Convert parsed status to sessions collector format."""
     sessions = []
     for s in status.sessions:
-        sessions.append({
-            "key": s.key,
-            "kind": s.kind,
-            "age": s.age,
-            "model": s.model,
-            "totalTokens": s.tokens_used,
-            "contextTokens": s.tokens_max,
-            "context_pct": s.context_pct,
-        })
+        sessions.append(
+            {
+                "key": s.key,
+                "kind": s.kind,
+                "age": s.age,
+                "model": s.model,
+                "totalTokens": s.tokens_used,
+                "contextTokens": s.tokens_max,
+                "context_pct": s.context_pct,
+            }
+        )
 
     return {
         "sessions": sessions,

@@ -9,7 +9,7 @@ from typing import Any
 
 def collect() -> dict[str, Any]:
     """Collect channel connection status."""
-    result = {
+    result: dict[str, Any] = {
         "channels": [],
         "connected": 0,
         "total": 0,
@@ -23,7 +23,7 @@ def collect() -> dict[str, Any]:
 
     if config_path.exists():
         try:
-            import yaml
+            import yaml  # type: ignore[import-untyped]
 
             config = yaml.safe_load(config_path.read_text())
             channels_config = config.get("channels", {})

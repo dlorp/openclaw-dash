@@ -1,7 +1,10 @@
 """Main TUI application."""
 
+from typing import Any
+
 from textual.app import App, ComposeResult
 from textual.containers import Container
+from textual.widget import Widget
 from textual.widgets import Collapsible, DataTable, Footer, Header, Static
 
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
@@ -121,13 +124,13 @@ class ReposPanel(Static):
     """Repository status panel."""
 
     def compose(self) -> ComposeResult:
-        table = DataTable(id="repos-table", zebra_stripes=True)
+        table: DataTable[str] = DataTable(id="repos-table", zebra_stripes=True)
         table.add_columns("Repo", "Health", "PRs", "Last Commit")
         yield table
 
     def refresh_data(self) -> None:
         data = repos.collect()
-        table = self.query_one("#repos-table", DataTable)
+        table: DataTable[str] = self.query_one("#repos-table", DataTable)
         table.clear()
         for r in data.get("repos", []):
             table.add_row(
@@ -286,6 +289,8 @@ class DashboardApp(App):
     config: Config
     refresh_interval: int
     _compact_mode: bool = False
+    _jump_mode: bool = False
+    _jump_key_mapping: dict[str, str] = {}
 
     def __init__(self, refresh_interval: int | None = None, watch_mode: bool = False) -> None:
         """Initialize the dashboard app.
@@ -592,7 +597,7 @@ class DashboardApp(App):
 
         self.action_refresh()
         self._mounted = True  # Enable notifications after initial load
-        self.set_interval(self.refresh_interval, self._auto_refresh)
+        self.set_interval(self.refresh_interval, self._do_auto_refresh)
 
     def _apply_responsive_layout(self, width: int, height: int) -> None:
         """Apply responsive layout based on terminal size."""
@@ -610,11 +615,11 @@ class DashboardApp(App):
             except Exception:
                 pass
 
-    def on_resize(self, event) -> None:
+    def on_resize(self, event: Any) -> None:
         """Handle terminal resize."""
         self._apply_responsive_layout(event.size.width, event.size.height)
 
-    def _auto_refresh(self) -> None:
+    def _do_auto_refresh(self) -> None:
         """Auto-refresh without notification (for timer-based refresh)."""
         # Refresh metric boxes bar
         try:
@@ -642,8 +647,8 @@ class DashboardApp(App):
                 # Skip resources panel if disabled
                 if panel_cls == ResourcesPanel and not self.config.show_resources:
                     continue
-                panel = self.query_one(panel_cls)
-                panel.refresh_data()
+                auto_refresh_panel: Static = self.query_one(panel_cls)  # type: ignore[arg-type]
+                auto_refresh_panel.refresh_data()  # type: ignore[attr-defined]
             except Exception:
                 pass
 
@@ -684,9 +689,12 @@ class DashboardApp(App):
                 # Skip resources panel if disabled
                 if panel_cls == ResourcesPanel and not self.config.show_resources:
                     continue
-                panel = self.query_one(panel_cls)
-                panel.refresh_data()
-                refreshed += 1
+                try:
+                    refresh_panel: Static = self.query_one(panel_cls)  # type: ignore[arg-type]
+                    refresh_panel.refresh_data()  # type: ignore[attr-defined]
+                    refreshed += 1
+                except Exception:
+                    pass
             except Exception as e:
                 errors.append((panel_cls.__name__, str(e)))
 
@@ -715,45 +723,45 @@ class DashboardApp(App):
         focused = self.focused
         if focused is not None:
             # Find scrollable parent or use focused widget
-            widget = focused
+            widget: Widget | None = focused
             while widget is not None:
                 if hasattr(widget, "scroll_down"):
                     widget.scroll_down()
                     return
-                widget = widget.parent
+                widget = widget.parent if isinstance(widget.parent, Widget) else None
 
     def action_scroll_up(self) -> None:
         """Scroll the focused panel up (vim k key)."""
         focused = self.focused
         if focused is not None:
-            widget = focused
+            widget: Widget | None = focused
             while widget is not None:
                 if hasattr(widget, "scroll_up"):
                     widget.scroll_up()
                     return
-                widget = widget.parent
+                widget = widget.parent if isinstance(widget.parent, Widget) else None
 
     def action_scroll_end(self) -> None:
         """Scroll to the bottom of focused panel (vim G key)."""
         focused = self.focused
         if focused is not None:
-            widget = focused
+            widget: Widget | None = focused
             while widget is not None:
                 if hasattr(widget, "scroll_end"):
                     widget.scroll_end()
                     return
-                widget = widget.parent
+                widget = widget.parent if isinstance(widget.parent, Widget) else None
 
     def action_scroll_home(self) -> None:
         """Scroll to the top of focused panel (vim gg / Home key)."""
         focused = self.focused
         if focused is not None:
-            widget = focused
+            widget: Widget | None = focused
             while widget is not None:
                 if hasattr(widget, "scroll_home"):
                     widget.scroll_home()
                     return
-                widget = widget.parent
+                widget = widget.parent if isinstance(widget.parent, Widget) else None
 
     def action_toggle_resources(self) -> None:
         """Toggle the resources panel visibility and save preference."""
@@ -784,7 +792,7 @@ class DashboardApp(App):
             return
 
         # Find the collapsible in the focused widget's hierarchy
-        widget = focused
+        widget: Widget | None = focused
         while widget is not None:
             # Check if we're inside a panel container
             if hasattr(widget, "id") and widget.id and widget.id.endswith("-panel"):
@@ -796,7 +804,7 @@ class DashboardApp(App):
                 except Exception:
                     pass
                 return
-            widget = widget.parent
+            widget = widget.parent if isinstance(widget.parent, Widget) else None
 
     def action_collapse_all(self) -> None:
         """Collapse all panels."""

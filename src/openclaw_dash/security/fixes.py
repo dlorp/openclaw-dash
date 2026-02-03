@@ -174,6 +174,7 @@ class SecurityFixer:
 
         action = FixAction(
             finding_title=f"Update {package} to {version}",
+            action="pending",
             command=" ".join(cmd),
         )
 

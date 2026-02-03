@@ -170,10 +170,10 @@ class CollapsiblePanel(Container):
         """Toggle the collapsed state."""
         self.collapsed = not self._collapsed
 
-    def expand(self) -> None:
+    def expand_panel(self) -> None:
         """Expand the panel."""
         self.collapsed = False
 
-    def collapse(self) -> None:
+    def collapse_panel(self) -> None:
         """Collapse the panel."""
         self.collapsed = True

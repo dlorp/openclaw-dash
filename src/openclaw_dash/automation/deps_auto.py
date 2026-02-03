@@ -19,7 +19,7 @@ class DepsConfig:
     dry_run: bool = False
     state_file: Path | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.state_file is None:
             self.state_file = Path.home() / ".openclaw" / "deps_auto_state.json"
 

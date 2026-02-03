@@ -189,16 +189,16 @@ class DepsPanel(Static):
 
         # No vulnerabilities
         if not vulns:
-            lines = [
+            no_vuln_lines: list[str] = [
                 f"[green]{STATUS_SYMBOLS['check']} No vulnerabilities[/]",
                 separator(28, "dotted"),
                 f"[dim]Scanned {result.packages_scanned} packages[/]",
             ]
             if result.errors:
-                lines.append(
+                no_vuln_lines.append(
                     f"[yellow]{STATUS_SYMBOLS['warning']} {len(result.errors)} warnings[/]"
                 )
-            content.update("\n".join(lines))
+            content.update("\n".join(no_vuln_lines))
             return
 
         lines: list[str] = []

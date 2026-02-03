@@ -115,9 +115,9 @@ class MetricBox(Static):
             self._status = status
             self.add_class(f"status-{status}")
 
-        self._render()
+        self._do_render()
 
-    def _render(self) -> None:
+    def _do_render(self) -> None:
         """Render the metric content."""
         lines = [
             f"[bold {COLORS['turquoise']}]{self._label}[/]",
@@ -128,7 +128,7 @@ class MetricBox(Static):
         self.update("\n".join(lines))
 
     def on_mount(self) -> None:
-        self._render()
+        self._do_render()
 
 
 class MetricBoxesBar(Static):

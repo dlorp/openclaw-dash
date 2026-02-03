@@ -26,8 +26,8 @@ class TestCollapsiblePanelBasics:
         expected_methods = [
             "compose",
             "toggle",
-            "expand",
-            "collapse",
+            "expand_panel",
+            "collapse_panel",
             "update_summary",
         ]
         for method in expected_methods:
@@ -173,7 +173,7 @@ class TestCollapsiblePanelMethods:
             panel_id="test-panel",
             collapsed=True,
         )
-        panel.expand()
+        panel.expand_panel()
         assert panel._collapsed is False
 
     def test_expand_when_expanded(self):
@@ -184,7 +184,7 @@ class TestCollapsiblePanelMethods:
             panel_id="test-panel",
             collapsed=False,
         )
-        panel.expand()
+        panel.expand_panel()
         assert panel._collapsed is False
 
     def test_collapse_when_expanded(self):
@@ -195,7 +195,7 @@ class TestCollapsiblePanelMethods:
             panel_id="test-panel",
             collapsed=False,
         )
-        panel.collapse()
+        panel.collapse_panel()
         assert panel._collapsed is True
 
     def test_collapse_when_collapsed(self):
@@ -206,7 +206,7 @@ class TestCollapsiblePanelMethods:
             panel_id="test-panel",
             collapsed=True,
         )
-        panel.collapse()
+        panel.collapse_panel()
         assert panel._collapsed is True
 
     def test_get_summary_with_function(self):
@@ -427,11 +427,11 @@ class TestCollapsiblePanelIntegration:
             assert panel.collapsed is True
 
             # Expand
-            panel.expand()
+            panel.expand_panel()
             assert panel._collapsed is False
 
             # Collapse
-            panel.collapse()
+            panel.collapse_panel()
             assert panel._collapsed is True
 
 

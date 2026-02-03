@@ -26,6 +26,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import Any, Optional
 
 # Import pr-describe for PR description generation
 try:
@@ -51,7 +52,7 @@ class Severity(Enum):
 class Vulnerability:
     package: str
     installed_version: str
-    fixed_version: str | None
+    fixed_version: Optional[str]
     severity: str
     description: str
     source: str  # pip-audit, safety, npm
@@ -70,14 +71,14 @@ class OutdatedDep:
 class RepoAudit:
     name: str
     path: str
-    vulnerabilities: list
-    outdated: list
-    dep_files: list
+    vulnerabilities: list[Any]
+    outdated: list[Any]
+    dep_files: list[str]
     scanned_at: str
-    errors: list
+    errors: list[str]
 
 
-def run(cmd: str, cwd: Path | None = None, timeout: int = 120) -> tuple[int, str, str]:
+def run(cmd: str, cwd: Optional[Path] = None, timeout: int = 120) -> tuple[int, str, str]:
     """Run a shell command and return (returncode, stdout, stderr)."""
     try:
         result = subprocess.run(
@@ -96,9 +97,9 @@ def tool_available(tool: str) -> bool:
     return code == 0
 
 
-def find_dep_files(repo_path: Path) -> dict:
+def find_dep_files(repo_path: Path) -> dict[str, list[Path]]:
     """Find dependency files in a repo."""
-    files = {
+    files: dict[str, list[Path]] = {
         "pip": [],
         "npm": [],
     }
@@ -224,7 +225,7 @@ def get_pip_outdated(repo_path: Path) -> list[OutdatedDep]:
 
 def run_npm_audit(package_dir: Path) -> list[Vulnerability]:
     """Run npm audit on a package.json directory."""
-    vulnerabilities = []
+    vulnerabilities: list[Vulnerability] = []
 
     # Check if package-lock.json exists (required for npm audit)
     if not (package_dir / "package-lock.json").exists():
@@ -286,7 +287,7 @@ def get_npm_outdated(package_dir: Path) -> list[OutdatedDep]:
 def scan_repo(repo: str) -> RepoAudit:
     """Scan a single repo for dependency issues."""
     repo_path = REPO_BASE / repo
-    errors = []
+    errors: list[str] = []
 
     if not repo_path.exists():
         return RepoAudit(
@@ -301,10 +302,10 @@ def scan_repo(repo: str) -> RepoAudit:
 
     # Find dependency files
     dep_files = find_dep_files(repo_path)
-    all_dep_files = []
+    all_dep_files: list[str] = []
 
-    vulnerabilities = []
-    outdated = []
+    vulnerabilities: list[Vulnerability] = []
+    outdated: list[OutdatedDep] = []
 
     # Scan Python dependencies
     for req_file in dep_files["pip"]:

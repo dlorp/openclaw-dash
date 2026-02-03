@@ -24,6 +24,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Configuration - customize for your setup
 GITHUB_ORG = os.environ.get("GITHUB_ORG", "")  # Set your GitHub username/org
@@ -77,9 +78,9 @@ def format_age(created_at: str) -> str:
         return f"{age.seconds // 60}m"
 
 
-def check_changes(old_state: dict, current_prs: dict) -> dict:
+def check_changes(old_state: dict, current_prs: dict) -> dict[str, list[Any]]:
     """Detect changes between states."""
-    changes = {
+    changes: dict[str, list[Any]] = {
         "merged": [],
         "closed": [],
         "new": [],
