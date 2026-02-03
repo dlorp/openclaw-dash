@@ -13,6 +13,12 @@ from openclaw_dash.collectors import (
     resources,
     sessions,
 )
+from openclaw_dash.collectors.cache import (
+    CollectorCache,
+    cached_collector,
+    get_cache,
+    reset_cache,
+)
 
 __all__ = [
     "gateway",
@@ -26,4 +32,9 @@ __all__ = [
     "logs",
     "resources",
     "agents",
+    # Cache utilities
+    "CollectorCache",
+    "cached_collector",
+    "get_cache",
+    "reset_cache",
 ]

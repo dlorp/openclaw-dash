@@ -44,6 +44,11 @@ class TestGatewayCollector:
 
     def test_collect_returns_unhealthy_on_failure(self) -> None:
         """Gateway returns unhealthy when all methods fail."""
+        # Reset cache to avoid stale data from previous tests
+        from openclaw_dash.collectors.cache import reset_cache
+
+        reset_cache()
+
         with patch("openclaw_dash.collectors.gateway.is_demo_mode", return_value=False):
             with patch("openclaw_dash.collectors.gateway.get_openclaw_status", return_value=None):
                 with patch("httpx.get", side_effect=Exception("Connection refused")):
