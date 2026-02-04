@@ -6,18 +6,18 @@ from openclaw_dash.services.gateway_client import (
     GatewayConfig,
 )
 from openclaw_dash.services.model_discovery import (
+    DiscoveryResult,
     ModelDiscoveryService,
     ModelInfo,
     ModelTier,
-    discover_local_models,
 )
 
 __all__ = [
     "DEFAULT_GATEWAY_URL",
+    "DiscoveryResult",
     "GatewayClient",
     "GatewayConfig",
     "ModelDiscoveryService",
     "ModelInfo",
     "ModelTier",
-    "discover_local_models",
 ]
