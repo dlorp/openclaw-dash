@@ -1,15 +1,16 @@
 """Settings screen with tabbed configuration sections.
 
 A modal screen for configuring openclaw-dash settings, organized into
-tabbed sections: General, Tools, Appearance, and Keybinds.
+tabbed sections: General, Tools, Appearance, Keybinds, and Models.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import ClassVar
 
-from textual import on
+from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
@@ -25,6 +26,12 @@ from textual.widgets import (
     Switch,
     TabbedContent,
     TabPane,
+)
+
+from openclaw_dash.services.model_discovery import (
+    DiscoveryResult,
+    ModelDiscoveryService,
+    ModelTier,
 )
 
 # =============================================================================
@@ -101,6 +108,7 @@ class SettingsScreen(ModalScreen[bool]):
         Binding("2", "tab_tools", "Tools", show=False),
         Binding("3", "tab_appearance", "Appearance", show=False),
         Binding("4", "tab_keybinds", "Keybinds", show=False),
+        Binding("5", "tab_models", "Models", show=False),
     ]
 
     CSS = """
@@ -199,6 +207,28 @@ class SettingsScreen(ModalScreen[bool]):
     .keybind-row Input {
         width: 20;
     }
+
+    /* Models tab styles */
+    #model-discovery-stats {
+        height: auto;
+        padding: 1;
+        background: $surface-darken-1;
+        border: solid $primary-darken-3;
+        margin: 1 0;
+    }
+
+    .tier-stat {
+        height: auto;
+        padding: 0 1;
+    }
+
+    .tier-stat Label {
+        width: auto;
+    }
+
+    #btn-scan-models {
+        margin: 1 0;
+    }
     """
 
     def __init__(self, **kwargs) -> None:
@@ -206,6 +236,7 @@ class SettingsScreen(ModalScreen[bool]):
         super().__init__(**kwargs)
         self._dirty = False  # Track if settings have been modified
         self._errors: dict[str, str] = {}  # Field validation errors
+        self._discovered_models: DiscoveryResult | None = None
 
     def compose(self) -> ComposeResult:
         with Vertical(id="settings-container"):
@@ -389,6 +420,81 @@ class SettingsScreen(ModalScreen[bool]):
                                     yield Label("Focus security")
                                     yield Input(value="s", id="keybind-security")
 
+                    # =========================================================
+                    # Models Tab
+                    # =========================================================
+                    with TabPane("Models", id="models"):
+                        with VerticalScroll(classes="tab-content"):
+                            yield Static("Model Sources", classes="section-header")
+
+                            with Horizontal(classes="setting-row"):
+                                yield Label("Enable HuggingFace cache scanning")
+                                yield Switch(value=True, id="setting-hf-cache-scan")
+
+                            with Horizontal(classes="setting-row"):
+                                yield Label("Enable Ollama scanning")
+                                yield Switch(value=True, id="setting-ollama-scan")
+
+                            with Horizontal(classes="setting-row"):
+                                yield Label("Custom model paths")
+                                yield Input(
+                                    value="",
+                                    id="setting-custom-model-paths",
+                                    placeholder="comma-separated paths",
+                                )
+
+                            yield Static("Default Models", classes="section-header")
+
+                            with Horizontal(classes="setting-row"):
+                                yield Label("⚡ Default FAST tier model")
+                                yield Select(
+                                    [("(none)", "")],
+                                    value="",
+                                    id="setting-default-fast-model",
+                                    allow_blank=True,
+                                )
+
+                            with Horizontal(classes="setting-row"):
+                                yield Label("⚖️ Default BALANCED tier model")
+                                yield Select(
+                                    [("(none)", "")],
+                                    value="",
+                                    id="setting-default-balanced-model",
+                                    allow_blank=True,
+                                )
+
+                            with Horizontal(classes="setting-row"):
+                                yield Label("🧠 Default POWERFUL tier model")
+                                yield Select(
+                                    [("(none)", "")],
+                                    value="",
+                                    id="setting-default-powerful-model",
+                                    allow_blank=True,
+                                )
+
+                            yield Static("Discovery", classes="section-header")
+
+                            yield Button(
+                                "🔍 Scan for Models",
+                                variant="primary",
+                                id="btn-scan-models",
+                            )
+
+                            with Vertical(id="model-discovery-stats"):
+                                yield Static(
+                                    "No scan performed yet. Click 'Scan for Models' to discover local LLMs.",
+                                    id="discovery-status",
+                                )
+                                with Horizontal(classes="tier-stat"):
+                                    yield Label("⚡ FAST:", id="tier-fast-label")
+                                    yield Label("—", id="tier-fast-count")
+                                with Horizontal(classes="tier-stat"):
+                                    yield Label("⚖️ BALANCED:", id="tier-balanced-label")
+                                    yield Label("—", id="tier-balanced-count")
+                                with Horizontal(classes="tier-stat"):
+                                    yield Label("🧠 POWERFUL:", id="tier-powerful-label")
+                                    yield Label("—", id="tier-powerful-count")
+
             # Footer with action buttons
             with Horizontal(id="settings-footer"):
                 with Horizontal(id="button-row"):
@@ -504,6 +610,101 @@ class SettingsScreen(ModalScreen[bool]):
         """Handle reset button press."""
         self.action_reset()
 
+    @on(Button.Pressed, "#btn-scan-models")
+    def on_scan_models_pressed(self) -> None:
+        """Handle scan models button press."""
+        self._scan_for_models()
+
+    @work(exclusive=True)
+    async def _scan_for_models(self) -> None:
+        """Scan for local models in background."""
+        # Update UI to show scanning
+        status_label = self.query_one("#discovery-status", Static)
+        status_label.update("🔄 Scanning for models...")
+
+        scan_button = self.query_one("#btn-scan-models", Button)
+        scan_button.disabled = True
+
+        try:
+            # Get custom paths from settings
+            custom_paths_input = self.query_one("#setting-custom-model-paths", Input)
+            custom_paths_str = custom_paths_input.value.strip()
+            custom_paths = []
+            if custom_paths_str:
+                custom_paths = [Path(p.strip()) for p in custom_paths_str.split(",") if p.strip()]
+
+            # Check scan settings
+            hf_enabled = self.query_one("#setting-hf-cache-scan", Switch).value
+            ollama_enabled = self.query_one("#setting-ollama-scan", Switch).value
+
+            # Create service and scan
+            service = ModelDiscoveryService(custom_paths=custom_paths)
+            result = service.discover()
+
+            # Filter results based on settings
+            if not hf_enabled:
+                result.models = [m for m in result.models if m.source != "huggingface"]
+            if not ollama_enabled:
+                result.models = [m for m in result.models if m.source != "ollama"]
+
+            self._discovered_models = result
+
+            # Update UI with results
+            self._update_model_discovery_ui(result)
+
+        except Exception as e:
+            status_label.update(f"❌ Scan failed: {e}")
+        finally:
+            scan_button.disabled = False
+
+    def _update_model_discovery_ui(self, result: DiscoveryResult) -> None:
+        """Update UI with model discovery results."""
+        # Update status
+        status_label = self.query_one("#discovery-status", Static)
+        total = len(result.models)
+        paths_scanned = len(result.scan_paths)
+        status_label.update(f"✅ Found {total} model(s) across {paths_scanned} path(s)")
+
+        # Update tier counts
+        by_tier = result.by_tier
+        fast_count = len(by_tier[ModelTier.FAST])
+        balanced_count = len(by_tier[ModelTier.BALANCED])
+        powerful_count = len(by_tier[ModelTier.POWERFUL])
+
+        self.query_one("#tier-fast-count", Label).update(str(fast_count))
+        self.query_one("#tier-balanced-count", Label).update(str(balanced_count))
+        self.query_one("#tier-powerful-count", Label).update(str(powerful_count))
+
+        # Update model selectors with discovered models
+        self._populate_model_selects(result)
+
+    def _populate_model_selects(self, result: DiscoveryResult) -> None:
+        """Populate model select dropdowns with discovered models."""
+        by_tier = result.by_tier
+
+        # Build options for each tier
+        def make_options(models):
+            options = [("(none)", "")]
+            for model in models:
+                display = f"{model.tier_emoji} {model.display_name} ({model.quantization})"
+                options.append((display, str(model.path)))
+            return options
+
+        # Update FAST selector
+        fast_select = self.query_one("#setting-default-fast-model", Select)
+        fast_options = make_options(by_tier[ModelTier.FAST])
+        fast_select.set_options(fast_options)
+
+        # Update BALANCED selector
+        balanced_select = self.query_one("#setting-default-balanced-model", Select)
+        balanced_options = make_options(by_tier[ModelTier.BALANCED])
+        balanced_select.set_options(balanced_options)
+
+        # Update POWERFUL selector
+        powerful_select = self.query_one("#setting-default-powerful-model", Select)
+        powerful_options = make_options(by_tier[ModelTier.POWERFUL])
+        powerful_select.set_options(powerful_options)
+
     def action_save(self) -> None:
         """Validate and save settings."""
         if not self._validate_all():
@@ -536,6 +737,7 @@ class SettingsScreen(ModalScreen[bool]):
             "setting-gateway-host": "localhost",
             "setting-gateway-port": "18789",
             "setting-tool-timeout": "30",
+            "setting-custom-model-paths": "",
         }
 
         for input_id, default_value in defaults.items():
@@ -559,6 +761,8 @@ class SettingsScreen(ModalScreen[bool]):
             "setting-compact-mode": False,
             "setting-high-contrast": False,
             "setting-reduce-animations": False,
+            "setting-hf-cache-scan": True,
+            "setting-ollama-scan": True,
         }
 
         for switch_id, default_value in switch_defaults.items():
@@ -574,6 +778,18 @@ class SettingsScreen(ModalScreen[bool]):
             theme_select.value = "dark"
         except Exception:
             pass
+
+        # Reset model selects
+        for select_id in [
+            "setting-default-fast-model",
+            "setting-default-balanced-model",
+            "setting-default-powerful-model",
+        ]:
+            try:
+                model_select = self.query_one(f"#{select_id}", Select)
+                model_select.value = ""
+            except Exception:
+                pass
 
         # Reset keybinds
         keybind_defaults = {
@@ -614,3 +830,7 @@ class SettingsScreen(ModalScreen[bool]):
     def action_tab_keybinds(self) -> None:
         """Switch to Keybinds tab."""
         self.query_one(TabbedContent).active = "keybinds"
+
+    def action_tab_models(self) -> None:
+        """Switch to Models tab."""
+        self.query_one(TabbedContent).active = "models"
