@@ -26,6 +26,13 @@ from openclaw_dash.widgets.cron import (
     CronPanel,
     CronSummaryPanel,
 )
+from openclaw_dash.widgets.gateway_status import (
+    ConnectionStatus,
+    GatewayStatusSummary,
+    GatewayStatusWidget,
+    get_connection_color,
+    get_connection_icon,
+)
 from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.input_pane import CommandSent, InputPane
 from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
@@ -80,6 +87,16 @@ from openclaw_dash.widgets.sessions import (
 from openclaw_dash.widgets.sessions import (
     get_status_icon as get_session_status_icon,
 )
+from openclaw_dash.widgets.sessions_table import (
+    HIGH_TOKEN_THRESHOLD,
+    SessionSelected,
+    SessionsTablePanel,
+    SessionsTableSummary,
+    classify_kind,
+    format_tokens,
+    get_context_color,
+    parse_channel_from_key,
+)
 from openclaw_dash.widgets.states import (
     StateDisplay,
     WidgetState,
@@ -116,6 +133,12 @@ __all__ = [
     "get_activity_type",
     "get_activity_icon",
     "get_activity_color",
+    # Gateway Status
+    "GatewayStatusWidget",
+    "GatewayStatusSummary",
+    "ConnectionStatus",
+    "get_connection_icon",
+    "get_connection_color",
     # ASCII Art
     "SINGLE",
     "DOUBLE",
@@ -170,6 +193,15 @@ __all__ = [
     "SessionStatus",
     "get_session_status_color",
     "get_session_status_icon",
+    # Sessions Table (DataTable-based)
+    "SessionsTablePanel",
+    "SessionsTableSummary",
+    "SessionSelected",
+    "HIGH_TOKEN_THRESHOLD",
+    "parse_channel_from_key",
+    "classify_kind",
+    "format_tokens",
+    "get_context_color",
     # Cron panel
     "CronPanel",
     "CronSummaryPanel",

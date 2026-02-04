@@ -213,9 +213,9 @@ class TestSettingsScreen:
             tier=ModelTier.POWERFUL,
         )
 
-        assert fast_model.tier_emoji == "⚡"
-        assert balanced_model.tier_emoji == "⚖️"
-        assert powerful_model.tier_emoji == "🧠"
+        assert fast_model.tier_emoji == "▸"
+        assert balanced_model.tier_emoji == "◉"
+        assert powerful_model.tier_emoji == "★"
 
 
 class TestModelTier:

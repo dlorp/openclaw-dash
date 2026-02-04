@@ -178,13 +178,8 @@ class ModelInfo:
 
     @property
     def tier_emoji(self) -> str:
-        """Emoji representing the tier."""
-        return {
-            "fast": "⚡",
-            "balanced": "⚖️",
-            "powerful": "🧠",
-            "unknown": "❓",
-        }[self.tier.value]
+        """Glyph representing the tier."""
+        return {"fast": "▸", "balanced": "◉", "powerful": "★", "unknown": "◌"}[self.tier.value]
 
 
 @dataclass

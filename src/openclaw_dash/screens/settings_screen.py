@@ -446,7 +446,7 @@ class SettingsScreen(ModalScreen[bool]):
                             yield Static("Default Models", classes="section-header")
 
                             with Horizontal(classes="setting-row"):
-                                yield Label("⚡ Default FAST tier model")
+                                yield Label("▸ Default FAST tier model")
                                 yield Select(
                                     [("(none)", "")],
                                     value="",
@@ -455,7 +455,7 @@ class SettingsScreen(ModalScreen[bool]):
                                 )
 
                             with Horizontal(classes="setting-row"):
-                                yield Label("⚖️ Default BALANCED tier model")
+                                yield Label("◉ Default BALANCED tier model")
                                 yield Select(
                                     [("(none)", "")],
                                     value="",
@@ -464,7 +464,7 @@ class SettingsScreen(ModalScreen[bool]):
                                 )
 
                             with Horizontal(classes="setting-row"):
-                                yield Label("🧠 Default POWERFUL tier model")
+                                yield Label("★ Default POWERFUL tier model")
                                 yield Select(
                                     [("(none)", "")],
                                     value="",
@@ -475,7 +475,7 @@ class SettingsScreen(ModalScreen[bool]):
                             yield Static("Discovery", classes="section-header")
 
                             yield Button(
-                                "🔍 Scan for Models",
+                                "› Scan for Models",
                                 variant="primary",
                                 id="btn-scan-models",
                             )
@@ -486,13 +486,13 @@ class SettingsScreen(ModalScreen[bool]):
                                     id="discovery-status",
                                 )
                                 with Horizontal(classes="tier-stat"):
-                                    yield Label("⚡ FAST:", id="tier-fast-label")
+                                    yield Label("▸ FAST:", id="tier-fast-label")
                                     yield Label("—", id="tier-fast-count")
                                 with Horizontal(classes="tier-stat"):
-                                    yield Label("⚖️ BALANCED:", id="tier-balanced-label")
+                                    yield Label("◉ BALANCED:", id="tier-balanced-label")
                                     yield Label("—", id="tier-balanced-count")
                                 with Horizontal(classes="tier-stat"):
-                                    yield Label("🧠 POWERFUL:", id="tier-powerful-label")
+                                    yield Label("★ POWERFUL:", id="tier-powerful-label")
                                     yield Label("—", id="tier-powerful-count")
 
             # Footer with action buttons

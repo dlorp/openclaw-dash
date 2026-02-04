@@ -140,10 +140,10 @@ class TestModelInfo:
         assert model.display_size == "?"
 
     def test_tier_emoji(self):
-        assert ModelInfo(name="a", provider="a", tier=ModelTier.FAST).tier_emoji == "⚡"
-        assert ModelInfo(name="a", provider="a", tier=ModelTier.BALANCED).tier_emoji == "⚖️"
-        assert ModelInfo(name="a", provider="a", tier=ModelTier.POWERFUL).tier_emoji == "🧠"
-        assert ModelInfo(name="a", provider="a", tier=ModelTier.UNKNOWN).tier_emoji == "❓"
+        assert ModelInfo(name="a", provider="a", tier=ModelTier.FAST).tier_emoji == "▸"
+        assert ModelInfo(name="a", provider="a", tier=ModelTier.BALANCED).tier_emoji == "◉"
+        assert ModelInfo(name="a", provider="a", tier=ModelTier.POWERFUL).tier_emoji == "★"
+        assert ModelInfo(name="a", provider="a", tier=ModelTier.UNKNOWN).tier_emoji == "◌"
 
     def test_display_name_with_variant(self):
         model = ModelInfo(
