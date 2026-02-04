@@ -87,16 +87,6 @@ from openclaw_dash.widgets.sessions import (
 from openclaw_dash.widgets.sessions import (
     get_status_icon as get_session_status_icon,
 )
-from openclaw_dash.widgets.sessions_table import (
-    HIGH_TOKEN_THRESHOLD,
-    SessionSelected,
-    SessionsTablePanel,
-    SessionsTableSummary,
-    classify_kind,
-    format_tokens,
-    get_context_color,
-    parse_channel_from_key,
-)
 from openclaw_dash.widgets.sessions_panel import (
     CRITICAL_TOKEN_THRESHOLD,
     WARN_TOKEN_THRESHOLD,
@@ -113,6 +103,16 @@ from openclaw_dash.widgets.sessions_panel import (
 )
 from openclaw_dash.widgets.sessions_panel import (
     parse_channel_from_key as parse_channel_panel,
+)
+from openclaw_dash.widgets.sessions_table import (
+    HIGH_TOKEN_THRESHOLD,
+    SessionSelected,
+    SessionsTablePanel,
+    SessionsTableSummary,
+    classify_kind,
+    format_tokens,
+    get_context_color,
+    parse_channel_from_key,
 )
 from openclaw_dash.widgets.states import (
     StateDisplay,
@@ -227,9 +227,11 @@ __all__ = [
     "SessionsPanelSummary",
     "SessionRowSelected",
     "format_tokens",
+    "format_tokens_panel",
     "get_token_color",
     "get_token_glyph",
     "parse_channel_from_key",
+    "parse_channel_panel",
     "WARN_TOKEN_THRESHOLD",
     "CRITICAL_TOKEN_THRESHOLD",
     # Widget states
