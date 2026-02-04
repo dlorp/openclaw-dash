@@ -33,6 +33,25 @@ from openclaw_dash.widgets.metric_boxes import (
     MetricBox,
     MetricBoxesBar,
 )
+from openclaw_dash.widgets.model_manager import (
+    ModelBackend,
+    ModelInfo,
+    ModelManagerData,
+    ModelManagerPanel,
+    ModelManagerSummaryPanel,
+    ModelStatus,
+    ModelTier,
+    TierSummaryPanel,
+    get_backend_icon,
+    get_tier_color,
+    get_tier_icon,
+)
+from openclaw_dash.widgets.model_manager import (
+    get_status_color as get_model_status_color,
+)
+from openclaw_dash.widgets.model_manager import (
+    get_status_icon as get_model_status_icon,
+)
 from openclaw_dash.widgets.notifications import (
     NotificationLevel,
     notify,
@@ -166,4 +185,18 @@ __all__ = [
     "check_and_render_state",
     "get_state_indicator",
     "format_collector_status_line",
+    # Model manager
+    "ModelManagerPanel",
+    "ModelManagerSummaryPanel",
+    "TierSummaryPanel",
+    "ModelInfo",
+    "ModelManagerData",
+    "ModelStatus",
+    "ModelTier",
+    "ModelBackend",
+    "get_model_status_icon",
+    "get_model_status_color",
+    "get_tier_icon",
+    "get_tier_color",
+    "get_backend_icon",
 ]
