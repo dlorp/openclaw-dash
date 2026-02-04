@@ -147,7 +147,7 @@ Bundled automation tools:
 ## Configuration
 
 The dashboard auto-discovers:
-- OpenClaw gateway at `localhost:3000`
+- OpenClaw gateway at `localhost:18789`
 - Repositories in `~/repos/`
 - Workspace at `~/.openclaw/workspace/`
 
