@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-06-30
+
+### Added
+
+- **pr-describe**: Add Why and How sections to PR descriptions for better context (#79)
+- **pr-describe**: Implement structured commit format extraction for cleaner output (#77)
+- **pr-describe**: Add `--squash` format for compact commit messages
+- **pr-tracker**: Add `--ci` flag to show actual CI/GitHub Actions status (#80)
+- **status**: New combined status command (`openclaw-dash status`) for quick overview (#83)
+- **Structured output**: JSON output support for programmatic consumption (#78)
+- **version-bump**: Add `--path` flag for monorepo support (#65)
+- **smart-todo-scanner**: Add `--skip-docstrings` flag to exclude docstring TODOs (#86)
+- **audit**: Add audit.py tool for security scanning
+
+### Fixed
+
+- **Timezone**: Use dynamic timezone detection instead of hardcoded AKST
+- **pr-describe**: Improve multi-action title phrasing for clarity (#81)
+- **smart-todo-scanner**: Prevent hanging on large directories (#75)
+- **audit**: Update imports to use config module (#74)
+- **CLI**: Add 10-second timeout for gateway-dependent commands (#71)
+- **auto deps**: Prevent hang by closing stdin on subprocesses (#70)
+- **auto**: Fix datetime comparison in branch cleanup (#68)
+- **repo-scanner**: Improve status logic and exclude vendored code (#67)
+- **Error messaging**: Update to reflect local gateway architecture (#72)
+
+### Changed
+
+- **Performance**: Optimize smart-todo-scanner from O(n²) to O(n) complexity (#69)
+
+### Documentation
+
+- Add missing badges to README (license, python, CI, platform) (#73)
+- Add version badge to README (#66)
+
 ## [0.1.0] - 2026-02-03
 
 ### Added
@@ -61,4 +96,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added collector caching, timing metrics, and error tracking (#55)
 - Enhanced code quality with docstrings and type hints throughout (#54)
 
+[0.3.0]: https://github.com/dlorp/openclaw-dash/releases/tag/v0.3.0
+[0.2.0]: https://github.com/dlorp/openclaw-dash/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dlorp/openclaw-dash/releases/tag/v0.1.0

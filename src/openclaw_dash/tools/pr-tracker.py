@@ -369,7 +369,7 @@ Examples:
 
     # Format output
     lines = ["## PR Status"]
-    lines.append(f"**Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M AKST')}")
+    lines.append(f"**Updated:** {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M %Z')}")
     lines.append("")
 
     # Report changes if in check mode
