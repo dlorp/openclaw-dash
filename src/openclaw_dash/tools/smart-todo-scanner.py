@@ -324,14 +324,15 @@ def main() -> int:
         epilog="Examples:\n"
         "  %(prog)s                    # Scan current directory\n"
         "  %(prog)s ./src              # Scan src directory\n"
-        "  %(prog)s myfile.py          # Scan single file\n",
+        "  %(prog)s myfile.py          # Scan single file\n"
+        "  %(prog)s dir1 dir2 dir3     # Scan multiple directories\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "path",
-        nargs="?",
-        default=".",
-        help="Path to scan (file or directory). Defaults to current directory.",
+        "paths",
+        nargs="*",
+        default=["."],
+        help="Paths to scan (files or directories). Defaults to current directory.",
     )
     parser.add_argument(
         "--extensions",
@@ -352,17 +353,21 @@ def main() -> int:
     )
 
     args = parser.parse_args()
-    path = Path(args.path)
 
-    # Validate path exists
-    if not path.exists():
-        print(f"Error: Path '{path}' does not exist.", file=sys.stderr)
-        return 1
+    # Collect TODOs from all paths
+    todos: list[TodoItem] = []
+    for path_str in args.paths:
+        path = Path(path_str)
 
-    if path.is_file():
-        todos = scan_file(path)
-    else:
-        todos = scan_directory(path, args.extensions)
+        # Validate path exists
+        if not path.exists():
+            print(f"Warning: Path '{path}' does not exist, skipping.", file=sys.stderr)
+            continue
+
+        if path.is_file():
+            todos.extend(scan_file(path))
+        else:
+            todos.extend(scan_directory(path, args.extensions))
 
     # Calculate totals BEFORE filtering (for summary breakdown)
     total_count = len(todos)
