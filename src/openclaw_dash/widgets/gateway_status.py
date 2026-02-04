@@ -342,9 +342,11 @@ class GatewayStatusSummary(Static):
             id: Widget ID.
             classes: CSS classes.
         """
+        # Initialize instance attrs before super().__init__ to avoid
+        # AttributeError from reactive watchers during initialization
+        self._refresh_timer: Timer | None = None
         super().__init__(name=name, id=id, classes=classes)
         self.refresh_interval = refresh_interval
-        self._refresh_timer: Timer | None = None
 
     def compose(self) -> ComposeResult:
         """Compose the widget's child widgets.
