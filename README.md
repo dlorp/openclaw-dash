@@ -8,7 +8,6 @@
 
 TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/openclaw) ecosystem at a glance.
 
-**Aesthetic:** Underground garage × demoscene — phosphor amber on dark CRT, retro-futurist UI.
 
 ![Dashboard Screenshot](docs/images/dashboard.svg)
 <!-- Real screenshots coming soon — expect warm amber (#FB8B24) glow on dark backgrounds -->
