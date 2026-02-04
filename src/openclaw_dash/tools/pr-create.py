@@ -5,10 +5,12 @@ pr-create.py — Create a PR with auto-generated title and description.
 Uses pr-describe.py to generate PR content, then calls gh pr create.
 
 Examples:
-    pr-create.py                    # Create PR for current branch
-    pr-create.py --base develop     # Target different base branch
-    pr-create.py --draft            # Create as draft PR
-    pr-create.py --dry-run          # Show what would be created
+    pr-create.py                              # Create PR for current branch
+    pr-create.py --base develop               # Target different base branch
+    pr-create.py --draft                      # Create as draft PR
+    pr-create.py --dry-run                    # Show what would be created
+    pr-create.py --sync --branch fix/my-feat  # Sync main, create branch, then work
+    pr-create.py --sync --branch fix/foo --base develop  # Sync from develop
 """
 
 from __future__ import annotations
@@ -47,6 +49,92 @@ def get_default_branch(repo_path: Path) -> str:
         return "master"
 
     return "main"
+
+
+def branch_exists(repo_path: Path, branch: str) -> bool:
+    """Check if a local branch already exists."""
+    code, _, _ = run(["git", "show-ref", "--verify", f"refs/heads/{branch}"], cwd=repo_path)
+    return code == 0
+
+
+def has_uncommitted_changes(repo_path: Path) -> bool:
+    """Check if there are uncommitted changes (staged or unstaged)."""
+    code, stdout, _ = run(["git", "status", "--porcelain"], cwd=repo_path)
+    return code == 0 and bool(stdout.strip())
+
+
+def sync_branch(repo_path: Path, base_branch: str, new_branch: str) -> bool:
+    """
+    Sync with base branch and create a new feature branch.
+
+    Steps:
+    1. Stash any uncommitted changes
+    2. Checkout base branch
+    3. Pull latest from origin
+    4. Create and checkout new branch
+    5. Pop stash if there was one
+
+    Returns True on success, exits on failure.
+    """
+    had_stash = False
+
+    # Step 1: Stash uncommitted changes if any
+    if has_uncommitted_changes(repo_path):
+        print("Stashing uncommitted changes...", file=sys.stderr)
+        code, _, stderr = run(["git", "stash", "push", "-m", "pr-create-sync"], cwd=repo_path)
+        if code != 0:
+            print(f"Error: Failed to stash changes: {stderr}", file=sys.stderr)
+            sys.exit(1)
+        had_stash = True
+
+    # Step 2: Checkout base branch
+    print(f"Checking out {base_branch}...", file=sys.stderr)
+    code, _, stderr = run(["git", "checkout", base_branch], cwd=repo_path)
+    if code != 0:
+        print(f"Error: Failed to checkout {base_branch}: {stderr}", file=sys.stderr)
+        if had_stash:
+            print(
+                "Note: Your changes are still stashed. Run 'git stash pop' to recover.",
+                file=sys.stderr,
+            )
+        sys.exit(1)
+
+    # Step 3: Pull latest from origin
+    print(f"Pulling latest from origin/{base_branch}...", file=sys.stderr)
+    code, _, stderr = run(["git", "pull", "origin", base_branch], cwd=repo_path)
+    if code != 0:
+        print(f"Error: Failed to pull from origin: {stderr}", file=sys.stderr)
+        print("Hint: Check your network connection or remote configuration.", file=sys.stderr)
+        if had_stash:
+            print(
+                "Note: Your changes are still stashed. Run 'git stash pop' to recover.",
+                file=sys.stderr,
+            )
+        sys.exit(1)
+
+    # Step 4: Create and checkout new branch
+    print(f"Creating branch {new_branch}...", file=sys.stderr)
+    code, _, stderr = run(["git", "checkout", "-b", new_branch], cwd=repo_path)
+    if code != 0:
+        print(f"Error: Failed to create branch {new_branch}: {stderr}", file=sys.stderr)
+        if had_stash:
+            print(
+                "Note: Your changes are still stashed. Run 'git stash pop' to recover.",
+                file=sys.stderr,
+            )
+        sys.exit(1)
+
+    # Step 5: Pop stash if we had one
+    if had_stash:
+        print("Restoring stashed changes...", file=sys.stderr)
+        code, _, stderr = run(["git", "stash", "pop"], cwd=repo_path)
+        if code != 0:
+            print(f"Warning: Failed to pop stash: {stderr}", file=sys.stderr)
+            print("Your changes are still in stash. Run 'git stash pop' manually.", file=sys.stderr)
+            # Don't exit - branch was created successfully
+
+    print(f"✓ Ready to work on {new_branch}", file=sys.stderr)
+    return True
 
 
 def check_gh_cli() -> bool:
@@ -129,16 +217,28 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s                    Create PR for current branch
-  %(prog)s --base develop     Target different base branch
-  %(prog)s --draft            Create as draft PR
-  %(prog)s --dry-run          Show what would be created
+  %(prog)s                              Create PR for current branch
+  %(prog)s --base develop               Target different base branch
+  %(prog)s --draft                      Create as draft PR
+  %(prog)s --dry-run                    Show what would be created
+  %(prog)s --sync --branch fix/my-feat  Sync main, create branch, then work
+  %(prog)s --sync --branch fix/foo --base develop  Sync from develop
 """,
     )
     parser.add_argument(
         "--base",
         metavar="BRANCH",
         help="base branch to target (default: main or master)",
+    )
+    parser.add_argument(
+        "--branch",
+        metavar="NAME",
+        help="new branch name (required with --sync)",
+    )
+    parser.add_argument(
+        "--sync",
+        action="store_true",
+        help="sync base branch and create new feature branch before working",
     )
     parser.add_argument(
         "--draft",
@@ -153,6 +253,12 @@ Examples:
 
     args = parser.parse_args()
 
+    # Validate --sync requires --branch
+    if args.sync and not args.branch:
+        print("Error: --sync requires --branch NAME", file=sys.stderr)
+        print("Usage: pr-create.py --sync --branch <branch-name>", file=sys.stderr)
+        sys.exit(1)
+
     repo_path = Path.cwd()
 
     # Check we're in a git repo
@@ -160,6 +266,22 @@ Examples:
     if code != 0:
         print("Error: Not a git repository", file=sys.stderr)
         sys.exit(1)
+
+    # Handle --sync mode: sync base branch and create new feature branch
+    if args.sync:
+        base_branch = args.base if args.base else get_default_branch(repo_path)
+
+        # Check if branch already exists
+        if branch_exists(repo_path, args.branch):
+            print(f"Error: Branch '{args.branch}' already exists", file=sys.stderr)
+            print(
+                "Hint: Use a different branch name or delete the existing branch", file=sys.stderr
+            )
+            sys.exit(1)
+
+        sync_branch(repo_path, base_branch, args.branch)
+        # After sync, exit - user now works on the branch
+        return
 
     # Check gh CLI
     if not args.dry_run and not check_gh_cli():
