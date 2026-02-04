@@ -21,6 +21,31 @@ from typing import Any
 
 from config import get_repos, require_org
 
+# Tool configuration schema for discovery
+CONFIG_SCHEMA = {
+    "fetch_ci": {
+        "type": "bool",
+        "default": False,
+        "help": "Include CI status (statusCheckRollup) in PR queries",
+    },
+    "output_format": {
+        "type": "choice",
+        "options": ["text", "json", "markdown"],
+        "default": "text",
+        "help": "Output format for PR listings",
+    },
+    "pr_limit": {
+        "type": "int",
+        "default": 20,
+        "help": "Maximum number of PRs to fetch per repo",
+    },
+    "show_closed": {
+        "type": "bool",
+        "default": True,
+        "help": "Show recently closed/merged PRs in diff",
+    },
+}
+
 STATE_FILE = Path(__file__).parent / ".pr_state.json"
 
 
