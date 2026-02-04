@@ -1,5 +1,7 @@
 """CLI entry point."""
 
+# TODO: Query OpenClaw gateway API instead of standalone discovery
+
 import argparse
 import json
 import multiprocessing
