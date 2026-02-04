@@ -4,6 +4,8 @@ Scans common locations (HuggingFace cache, Ollama, custom paths) for GGUF models
 parses filenames to extract metadata, and assigns performance tiers.
 """
 
+# TODO: Integrate with OpenClaw gateway API (localhost:18789) as primary source
+
 from __future__ import annotations
 
 import re
