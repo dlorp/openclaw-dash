@@ -84,86 +84,6 @@ class SettingsReset:
 
 
 # =============================================================================
-# Form Field Widget
-# =============================================================================
-
-
-class FormField(Vertical):
-    """A labeled form field with optional help text and error display."""
-
-    DEFAULT_CSS = """
-    FormField {
-        height: auto;
-        margin-bottom: 1;
-    }
-
-    FormField > Label {
-        margin-bottom: 0;
-    }
-
-    FormField > .help-text {
-        color: $text-muted;
-        text-style: italic;
-    }
-
-    FormField > .error-text {
-        color: $error;
-        text-style: bold;
-    }
-
-    FormField Input {
-        width: 100%;
-    }
-
-    FormField Select {
-        width: 100%;
-    }
-    """
-
-    def __init__(
-        self,
-        label: str,
-        field_id: str,
-        help_text: str = "",
-        **kwargs,
-    ) -> None:
-        """Initialize form field.
-
-        Args:
-            label: The label text for the field.
-            field_id: ID for the field (used for the input/switch/select widget).
-            help_text: Optional help text shown below the field.
-            **kwargs: Additional arguments passed to Vertical.
-        """
-        super().__init__(**kwargs)
-        self._label = label
-        self._field_id = field_id
-        self._help_text = help_text
-
-    def compose(self) -> ComposeResult:
-        yield Label(self._label)
-        # Children will be mounted by subclasses
-        if self._help_text:
-            yield Static(self._help_text, classes="help-text")
-
-    def show_error(self, message: str) -> None:
-        """Display an error message."""
-        # Remove existing error if any
-        self.hide_error()
-        error = Static(f"⚠️ {message}", classes="error-text")
-        error.id = f"{self._field_id}-error"
-        self.mount(error)
-
-    def hide_error(self) -> None:
-        """Hide the error message if displayed."""
-        try:
-            error = self.query_one(f"#{self._field_id}-error")
-            error.remove()
-        except Exception:
-            pass
-
-
-# =============================================================================
 # Settings Screen
 # =============================================================================
 
@@ -177,6 +97,10 @@ class SettingsScreen(ModalScreen[bool]):
     BINDINGS: ClassVar[list[Binding | tuple[str, str, str]]] = [
         Binding("escape", "cancel", "Cancel", priority=True),
         Binding("ctrl+s", "save", "Save", priority=True),
+        Binding("1", "tab_general", "General", show=False),
+        Binding("2", "tab_tools", "Tools", show=False),
+        Binding("3", "tab_appearance", "Appearance", show=False),
+        Binding("4", "tab_keybinds", "Keybinds", show=False),
     ]
 
     CSS = """
@@ -194,12 +118,12 @@ class SettingsScreen(ModalScreen[bool]):
 
     #settings-header {
         dock: top;
-        height: 3;
-        background: $primary;
-        color: $background;
+        height: auto;
+        background: $surface;
+        color: $primary;
         content-align: center middle;
         text-style: bold;
-        padding: 1;
+        padding: 0;
     }
 
     #settings-content {
@@ -285,7 +209,12 @@ class SettingsScreen(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="settings-container"):
-            yield Static("⚙️  Settings", id="settings-header")
+            yield Static(
+                "╔════════════════════════════════════════════════════════════════════════════╗\n"
+                "║                              ⚙️  Settings                                  ║\n"
+                "╚════════════════════════════════════════════════════════════════════════════╝",
+                id="settings-header",
+            )
 
             with VerticalScroll(id="settings-content"):
                 with TabbedContent(initial="general"):
@@ -380,7 +309,7 @@ class SettingsScreen(ModalScreen[bool]):
                             with Horizontal(classes="setting-row"):
                                 yield Label("Color theme")
                                 yield Select(
-                                    [(name, name) for name in ["dark", "light", "hacker"]],
+                                    [(name, name) for name in ["dark", "light", "phosphor"]],
                                     value="dark",
                                     id="setting-theme",
                                 )
@@ -544,7 +473,6 @@ class SettingsScreen(ModalScreen[bool]):
         if event.input.id:
             result = event.input.validate(event.value)
             if result and not result.is_valid and result.failure_descriptions:
-                # Find parent FormField if any, otherwise show in notification
                 self.app.notify(
                     result.failure_descriptions[0],
                     severity="warning",
@@ -670,3 +598,19 @@ class SettingsScreen(ModalScreen[bool]):
 
         self._dirty = True
         self.app.notify("Settings reset to defaults", timeout=2.0)
+
+    def action_tab_general(self) -> None:
+        """Switch to General tab."""
+        self.query_one(TabbedContent).active = "general"
+
+    def action_tab_tools(self) -> None:
+        """Switch to Tools tab."""
+        self.query_one(TabbedContent).active = "tools"
+
+    def action_tab_appearance(self) -> None:
+        """Switch to Appearance tab."""
+        self.query_one(TabbedContent).active = "appearance"
+
+    def action_tab_keybinds(self) -> None:
+        """Switch to Keybinds tab."""
+        self.query_one(TabbedContent).active = "keybinds"
