@@ -450,7 +450,7 @@ def scan_repo(
 def format_report(results: list[dict], fetch_ci: bool, skip_docstrings: bool) -> str:
     """Format the combined status report."""
     lines = ["## Status Report"]
-    lines.append(f"**Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M AKST')}")
+    lines.append(f"**Updated:** {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M %Z')}")
     lines.append("")
 
     # Collect all PRs
