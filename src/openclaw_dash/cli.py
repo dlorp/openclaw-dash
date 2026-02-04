@@ -647,9 +647,9 @@ def print_collectors_text(health: dict[str, Any], stats: dict[str, Any]) -> None
 
 
 def cmd_models(args: argparse.Namespace) -> int:
-    """List discovered local LLM models.
+    """List models available via OpenClaw gateway.
 
-    Discovers models from Ollama, LM Studio, vLLM, and other local providers.
+    Discovers models through gateway-based model discovery.
     Supports filtering by running status, tier, and provider.
 
     Args:
@@ -734,10 +734,12 @@ def print_models_text(
         f"[bold]Providers:[/] {', '.join(sorted(providers)) if providers else 'none'}"
         f"{filter_text}"
     )
-    console.print(Panel(summary_text, title="🤖 Local Models", box=box.ROUNDED))
+    console.print(Panel(summary_text, title="🤖 Available Models", box=box.ROUNDED))
 
     if not models:
-        console.print("\n[dim]No models found. Ensure Ollama, LM Studio, or vLLM is running.[/]")
+        console.print(
+            "\n[dim]No models found. Check gateway connection with: openclaw gateway status[/]"
+        )
         return
 
     # Models table
@@ -892,7 +894,7 @@ def main() -> int:
     # Models subcommand
     models_parser = subparsers.add_parser(
         "models",
-        help="List discovered local LLM models (Ollama, LM Studio, vLLM)",
+        help="List models available via OpenClaw gateway",
     )
     models_parser.add_argument(
         "--json",
