@@ -72,7 +72,8 @@ def _try_http_health() -> dict[str, Any] | None:
 def _collect_gateway_impl() -> dict[str, Any]:
     """Collect gateway status with robust error handling.
 
-    Attempts CLI status first, then HTTP health check as fallback.
+    Attempts HTTP health check first (fast), then CLI status as fallback.
+    HTTP typically responds in <100ms vs CLI taking 5-10s.
     Tracks connection state for better error reporting.
 
     Returns:
@@ -82,10 +83,10 @@ def _collect_gateway_impl() -> dict[str, Any]:
 
     start_time = time.time()
 
-    # Try CLI first, then HTTP fallback
+    # Try HTTP first (fast), then CLI fallback (slow but more detailed)
     data = collect_with_fallback(
-        primary=lambda: _try_cli_status(),
-        fallback=lambda: _try_http_health(),
+        primary=lambda: _try_http_health(),
+        fallback=lambda: _try_cli_status(),
     )
 
     duration_ms = (time.time() - start_time) * 1000
