@@ -281,8 +281,18 @@ class TestCLIExport:
         from openclaw_dash.cli import main
 
         output_file = tmp_path / "test-export.json"
-        with patch(
-            "sys.argv", ["openclaw-dash", "export", "--format", "json", "-o", str(output_file)]
+        mock_content = json.dumps({"gateway": {}, "timestamp": "2026-01-01"})
+
+        def mock_export(*args, **kwargs):
+            # Write mock content and return expected tuple
+            output_file.write_text(mock_content)
+            return (str(output_file), mock_content)
+
+        with (
+            patch(
+                "sys.argv", ["openclaw-dash", "export", "--format", "json", "-o", str(output_file)]
+            ),
+            patch("openclaw_dash.cli.with_gateway_timeout", side_effect=mock_export),
         ):
             result = main()
             assert result == 0
@@ -295,8 +305,18 @@ class TestCLIExport:
         from openclaw_dash.cli import main
 
         output_file = tmp_path / "test-export.md"
-        with patch(
-            "sys.argv", ["openclaw-dash", "export", "--format", "md", "-o", str(output_file)]
+        mock_content = "# OpenClaw Dashboard Export\n\nTest content"
+
+        def mock_export(*args, **kwargs):
+            # Write mock content and return expected tuple
+            output_file.write_text(mock_content)
+            return (str(output_file), mock_content)
+
+        with (
+            patch(
+                "sys.argv", ["openclaw-dash", "export", "--format", "md", "-o", str(output_file)]
+            ),
+            patch("openclaw_dash.cli.with_gateway_timeout", side_effect=mock_export),
         ):
             result = main()
             assert result == 0
