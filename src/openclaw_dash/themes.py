@@ -35,6 +35,22 @@ ROYAL_BLUE_LIGHT = BrandColors.ROYAL_BLUE_LIGHT
 # Theme Definitions
 # =============================================================================
 
+# Phosphor green - classic terminal aesthetic
+PHOSPHOR_THEME = Theme(
+    name="phosphor",
+    primary="#00FF00",  # Classic green
+    secondary="#00CC00",  # Darker green
+    accent="#00FF66",  # Bright green accent
+    foreground="#00FF00",
+    background="#0A0A0A",
+    surface="#0F1A0F",
+    panel="#0D1F0D",
+    success="#00FF00",
+    warning="#CCFF00",
+    error="#FF3300",
+    dark=True,
+)
+
 # Dark theme - default, easy on the eyes
 DARK_THEME = Theme(
     name="dark",
@@ -67,24 +83,8 @@ LIGHT_THEME = Theme(
     dark=False,
 )
 
-# Hacker green - for that matrix vibe
-HACKER_THEME = Theme(
-    name="hacker",
-    primary="#00FF00",  # Classic green
-    secondary="#00CC00",  # Darker green
-    accent="#00FF66",  # Bright green accent
-    foreground="#00FF00",
-    background="#0A0A0A",
-    surface="#0F1A0F",
-    panel="#0D1F0D",
-    success="#00FF00",
-    warning="#CCFF00",
-    error="#FF3300",
-    dark=True,
-)
-
 # List of available themes in cycle order
-THEMES = [DARK_THEME, LIGHT_THEME, HACKER_THEME]
+THEMES = [PHOSPHOR_THEME, DARK_THEME, LIGHT_THEME]
 THEME_NAMES = [t.name for t in THEMES]
 
 
