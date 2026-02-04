@@ -8,6 +8,11 @@ parses filenames to extract metadata, and assigns performance tiers.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING as _TYPE_CHECKING
+
+if _TYPE_CHECKING:
+    from openclaw_dash.services.gateway_client import GatewayClient
+
 import re
 import shutil
 import subprocess
@@ -171,6 +176,25 @@ class ModelDiscoveryService:
         self.custom_paths = custom_paths or []
         self.fast_threshold = fast_threshold
         self.powerful_threshold = powerful_threshold
+
+    @classmethod
+    def from_gateway(cls, client: GatewayClient) -> DiscoveryResult:
+        """Create DiscoveryResult from OpenClaw gateway.
+
+        Queries the OpenClaw gateway API to get available models
+        configured in the gateway, rather than scanning local filesystem.
+
+        Args:
+            client: GatewayClient instance connected to gateway.
+
+        Returns:
+            DiscoveryResult populated from gateway config.
+        """
+        # TODO: Implement gateway integration
+        # - Call client.get_available_models()
+        # - Call client.get_config() to get model details
+        # - Build ModelInfo objects from gateway response
+        raise NotImplementedError("Gateway integration pending")
 
     def discover(self) -> DiscoveryResult:
         """Discover all local models.

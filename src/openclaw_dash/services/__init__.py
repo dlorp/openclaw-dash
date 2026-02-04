@@ -1,5 +1,10 @@
 """Services for openclaw-dash."""
 
+from openclaw_dash.services.gateway_client import (
+    DEFAULT_GATEWAY_URL,
+    GatewayClient,
+    GatewayConfig,
+)
 from openclaw_dash.services.model_discovery import (
     ModelDiscoveryService,
     ModelInfo,
@@ -8,6 +13,9 @@ from openclaw_dash.services.model_discovery import (
 )
 
 __all__ = [
+    "DEFAULT_GATEWAY_URL",
+    "GatewayClient",
+    "GatewayConfig",
     "ModelDiscoveryService",
     "ModelInfo",
     "ModelTier",
