@@ -4,9 +4,9 @@ from openclaw_dash.themes import (
     DARK_ORANGE,
     DARK_THEME,
     GRANITE_GRAY,
-    HACKER_THEME,
     LIGHT_THEME,
     MEDIUM_TURQUOISE,
+    PHOSPHOR_THEME,
     ROYAL_BLUE_LIGHT,
     THEME_NAMES,
     THEMES,
@@ -26,7 +26,7 @@ class TestThemeDefinitions:
 
     def test_theme_names_match(self) -> None:
         """Theme names list should match themes."""
-        assert THEME_NAMES == ["dark", "light", "hacker"]
+        assert THEME_NAMES == ["phosphor", "dark", "light"]
 
     def test_dark_theme_is_dark(self) -> None:
         """Dark theme should have dark=True."""
@@ -36,9 +36,9 @@ class TestThemeDefinitions:
         """Light theme should have dark=False."""
         assert LIGHT_THEME.dark is False
 
-    def test_hacker_theme_is_dark(self) -> None:
-        """Hacker theme should have dark=True."""
-        assert HACKER_THEME.dark is True
+    def test_phosphor_theme_is_dark(self) -> None:
+        """Phosphor theme should have dark=True."""
+        assert PHOSPHOR_THEME.dark is True
 
     def test_all_themes_have_names(self) -> None:
         """All themes should have valid names."""
@@ -60,10 +60,10 @@ class TestGetTheme:
         theme = get_theme("light")
         assert theme.name == "light"
 
-    def test_get_hacker_theme(self) -> None:
-        """Should return hacker theme by name."""
-        theme = get_theme("hacker")
-        assert theme.name == "hacker"
+    def test_get_phosphor_theme(self) -> None:
+        """Should return phosphor theme by name."""
+        theme = get_theme("phosphor")
+        assert theme.name == "phosphor"
 
     def test_unknown_theme_returns_dark(self) -> None:
         """Should return dark theme for unknown names."""
@@ -74,28 +74,28 @@ class TestGetTheme:
 class TestNextTheme:
     """Tests for next_theme function."""
 
+    def test_phosphor_to_dark(self) -> None:
+        """Phosphor should cycle to dark."""
+        assert next_theme("phosphor") == "dark"
+
     def test_dark_to_light(self) -> None:
         """Dark should cycle to light."""
         assert next_theme("dark") == "light"
 
-    def test_light_to_hacker(self) -> None:
-        """Light should cycle to hacker."""
-        assert next_theme("light") == "hacker"
-
-    def test_hacker_to_dark(self) -> None:
-        """Hacker should cycle back to dark."""
-        assert next_theme("hacker") == "dark"
+    def test_light_to_phosphor(self) -> None:
+        """Light should cycle to phosphor."""
+        assert next_theme("light") == "phosphor"
 
     def test_unknown_returns_first(self) -> None:
         """Unknown theme should return first theme."""
-        assert next_theme("nonexistent") == "dark"
+        assert next_theme("nonexistent") == "phosphor"
 
     def test_full_cycle(self) -> None:
         """Should complete full cycle back to start."""
-        theme = "dark"
+        theme = "phosphor"
         for _ in range(3):
             theme = next_theme(theme)
-        assert theme == "dark"
+        assert theme == "phosphor"
 
 
 class TestBrandColors:

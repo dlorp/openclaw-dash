@@ -62,7 +62,7 @@ class TestThemeCommands:
         # Verify themes are defined for command generation
         assert "dark" in THEME_NAMES
         assert "light" in THEME_NAMES
-        assert "hacker" in THEME_NAMES
+        assert "phosphor" in THEME_NAMES
 
 
 class TestPanelCommands:
