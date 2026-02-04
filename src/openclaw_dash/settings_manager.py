@@ -11,6 +11,7 @@ Manages user configuration stored in ~/.config/openclaw-dash/config.toml with:
 
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 from collections.abc import Callable
@@ -19,6 +20,8 @@ from pathlib import Path
 from typing import Any
 
 import tomli_w
+
+logger = logging.getLogger(__name__)
 
 try:
     import tomllib
@@ -257,7 +260,7 @@ class SettingsManager:
                 try:
                     callback(key, old_value, value)
                 except Exception:
-                    pass  # Don't let callback errors break settings
+                    logger.debug("Callback error for key %r", key, exc_info=True)
 
     def delete(self, key: str) -> bool:
         """Delete a setting. Returns True if the key existed."""
@@ -286,6 +289,9 @@ class SettingsManager:
 
             # Atomic rename
             tmp_path.replace(self._path)
+
+            # Set secure permissions (user read/write only)
+            os.chmod(self._path, 0o600)
         except OSError:
             # Clean up temp file on failure
             if "tmp_path" in locals():
@@ -332,13 +338,13 @@ class SettingsManager:
                             try:
                                 callback(sub_prefix, old_val, new_val)
                             except Exception:
-                                pass
+                                logger.debug("Callback error for key %r", sub_prefix, exc_info=True)
         elif old != new:
             for callback in self._callbacks:
                 try:
                     callback(prefix, old, new)
                 except Exception:
-                    pass
+                    logger.debug("Callback error for key %r", prefix, exc_info=True)
 
     def validate(self) -> list[str]:
         """Validate current settings against registered schemas.
