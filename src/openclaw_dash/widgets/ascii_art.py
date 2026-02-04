@@ -297,15 +297,15 @@ def status_indicator(
     """
     symbol = STATUS_SYMBOLS.get(status, STATUS_SYMBOLS["bullet"])
 
-    # Color mapping for Textual rich markup
+    # Color mapping using brand colors for Textual rich markup
     colors = {
-        "ok": "green",
-        "error": "red",
-        "warning": "yellow",
-        "info": "blue",
-        "running": "green",
+        "ok": BRAND_COLORS["medium_turquoise"],  # Brand turquoise for success
+        "error": "#FF5252",  # Keep standard red for errors
+        "warning": BRAND_COLORS["dark_orange"],  # Brand amber for warnings
+        "info": BRAND_COLORS["royal_blue"],  # Brand blue for info
+        "running": BRAND_COLORS["dark_orange"],  # Brand amber for active states
         "stopped": "dim",
-        "pending": "yellow",
+        "pending": BRAND_COLORS["titanium_yellow"],  # Brand yellow for pending
     }
 
     if color and status in colors:

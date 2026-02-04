@@ -50,19 +50,22 @@ def get_status_icon(status: str) -> str:
 def get_status_color(status: str) -> str:
     """Get color for session status.
 
+    Uses brand colors for consistent phosphor amber aesthetic.
+
     Args:
         status: The session status string.
 
     Returns:
-        A color name string for Rich/Textual markup.
+        A hex color string for Rich/Textual markup.
     """
+    # Brand colors for status indicators
     colors = {
-        "active": "green",
-        "idle": "yellow",
-        "spawning": "cyan",
-        "unknown": "white",
+        "active": "#FB8B24",  # Dark Orange (amber) for active states
+        "idle": "#F4E409",  # Titanium Yellow for idle
+        "spawning": "#50D8D7",  # Medium Turquoise for spawning
+        "unknown": "#636764",  # Granite Gray for unknown
     }
-    return colors.get(status, "white")
+    return colors.get(status, "#636764")
 
 
 def _calculate_time_active(updated_at_ms: float | None) -> str:
@@ -268,13 +271,14 @@ class SessionsSummaryPanel(Static):
         else:
             avg_ctx = 0
 
-        # Color based on context usage
+        # Color based on context usage (using brand colors)
         if avg_ctx > 80:
-            ctx_color = "red"
+            ctx_color = "#FF5252"  # Error red
         elif avg_ctx > 60:
-            ctx_color = "yellow"
+            ctx_color = "#F4E409"  # Titanium Yellow (warning)
         else:
-            ctx_color = "green"
+            ctx_color = "#50D8D7"  # Medium Turquoise (ok)
 
         bar = mini_bar(avg_ctx / 100, width=6)
-        content.update(f"[green]●[/] {active}/{total} [{ctx_color}]{avg_ctx:.0f}%[/] {bar}")
+        # Use brand amber for active indicator
+        content.update(f"[#FB8B24]●[/] {active}/{total} [{ctx_color}]{avg_ctx:.0f}%[/] {bar}")

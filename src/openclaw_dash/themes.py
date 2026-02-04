@@ -35,19 +35,20 @@ ROYAL_BLUE_LIGHT = BrandColors.ROYAL_BLUE_LIGHT
 # Theme Definitions
 # =============================================================================
 
-# Phosphor green - classic terminal aesthetic
+# Phosphor amber - underground garage × demoscene aesthetic
+# This is the signature OpenClaw theme with amber as the star
 PHOSPHOR_THEME = Theme(
     name="phosphor",
-    primary="#00FF00",  # Classic green
-    secondary="#00CC00",  # Darker green
-    accent="#00FF66",  # Bright green accent
-    foreground="#00FF00",
-    background="#0A0A0A",
-    surface="#0F1A0F",
-    panel="#0D1F0D",
-    success="#00FF00",
-    warning="#CCFF00",
-    error="#FF3300",
+    primary="#FB8B24",  # Dark Orange - THE AMBER
+    secondary="#F4E409",  # Titanium Yellow - secondary glow
+    accent="#50D8D7",  # Medium Turquoise - contrast accent
+    foreground="#FB8B24",  # Amber text on dark
+    background="#0D0D0D",  # Near-black, like a CRT
+    surface="#1A1200",  # Very dark amber tint
+    panel="#1F1505",  # Warm dark panel
+    success="#50D8D7",  # Turquoise for success (contrast)
+    warning="#F4E409",  # Yellow for warnings
+    error="#FF5252",  # Keep red for errors
     dark=True,
 )
 
@@ -84,7 +85,7 @@ LIGHT_THEME = Theme(
 )
 
 # List of available themes in cycle order
-THEMES = [PHOSPHOR_THEME, DARK_THEME, LIGHT_THEME]
+THEMES = [DARK_THEME, PHOSPHOR_THEME, LIGHT_THEME]
 THEME_NAMES = [t.name for t in THEMES]
 
 

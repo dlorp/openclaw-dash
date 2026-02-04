@@ -151,17 +151,17 @@ class TestStatusIndicator:
     def test_ok_status(self):
         result = status_indicator("ok")
         assert STATUS_SYMBOLS["ok"] in result
-        assert "green" in result
+        assert "#50D8D7" in result  # Medium Turquoise brand color
 
     def test_error_status(self):
         result = status_indicator("error")
         assert STATUS_SYMBOLS["error"] in result
-        assert "red" in result
+        assert "#FF5252" in result  # Error red
 
     def test_warning_status(self):
         result = status_indicator("warning")
         assert STATUS_SYMBOLS["warning"] in result
-        assert "yellow" in result
+        assert "#FB8B24" in result  # Dark Orange brand color
 
     def test_with_label(self):
         result = status_indicator("ok", label="Success")

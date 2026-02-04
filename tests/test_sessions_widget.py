@@ -53,23 +53,23 @@ class TestStatusHelpers:
 
     def test_get_status_color_active(self):
         """Test color for active status."""
-        assert get_status_color("active") == "green"
+        assert get_status_color("active") == "#FB8B24"  # Dark Orange (amber)
 
     def test_get_status_color_idle(self):
         """Test color for idle status."""
-        assert get_status_color("idle") == "yellow"
+        assert get_status_color("idle") == "#F4E409"  # Titanium Yellow
 
     def test_get_status_color_spawning(self):
         """Test color for spawning status."""
-        assert get_status_color("spawning") == "cyan"
+        assert get_status_color("spawning") == "#50D8D7"  # Medium Turquoise
 
     def test_get_status_color_unknown(self):
         """Test color for unknown status."""
-        assert get_status_color("unknown") == "white"
+        assert get_status_color("unknown") == "#636764"  # Granite Gray
 
     def test_get_status_color_invalid(self):
         """Test color for invalid status returns default."""
-        assert get_status_color("invalid") == "white"
+        assert get_status_color("invalid") == "#636764"  # Granite Gray default
 
 
 class TestCalculateTimeActive:
