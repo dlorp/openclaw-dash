@@ -1,7 +1,5 @@
 """Tests for the settings screen with Models tab."""
 
-from pathlib import Path
-
 import pytest
 
 from openclaw_dash.screens.settings_screen import (
@@ -95,49 +93,41 @@ class TestSettingsScreen:
         models = [
             ModelInfo(
                 name="Qwen2.5 Coder 7B",
+                provider="ollama",
                 family="qwen",
-                path=Path("/models/qwen2.5-coder-7b-q4_k_m.gguf"),
                 size_billions=7.0,
                 quantization="q4_k_m",
                 tier=ModelTier.FAST,
                 is_instruct=True,
                 is_coder=True,
                 is_reasoning=False,
-                source="huggingface",
-                file_size_gb=4.2,
             ),
             ModelInfo(
                 name="Llama3 14B",
+                provider="ollama",
                 family="llama",
-                path=Path("/models/llama3-14b-q4_k_m.gguf"),
                 size_billions=14.0,
                 quantization="q4_k_m",
                 tier=ModelTier.BALANCED,
                 is_instruct=True,
                 is_coder=False,
                 is_reasoning=False,
-                source="huggingface",
-                file_size_gb=8.1,
             ),
             ModelInfo(
                 name="DeepSeek R1 70B",
+                provider="ollama",
                 family="deepseek",
-                path=Path("/models/deepseek-r1-70b-q4_k_m.gguf"),
                 size_billions=70.0,
                 quantization="q4_k_m",
                 tier=ModelTier.POWERFUL,
                 is_instruct=True,
                 is_coder=False,
                 is_reasoning=True,
-                source="custom",
-                file_size_gb=40.5,
             ),
         ]
         result = DiscoveryResult(
             models=models,
-            scan_paths=[Path.home() / ".cache" / "huggingface" / "hub"],
-            ollama_running=False,
-            llamacpp_running=False,
+            gateway_connected=False,
         )
         return result
 
@@ -165,49 +155,44 @@ class TestSettingsScreen:
         assert len(by_tier[ModelTier.BALANCED]) == 1
         assert len(by_tier[ModelTier.POWERFUL]) == 1
 
-    def test_discovery_result_total_size(self, mock_discovery_result):
-        """Test DiscoveryResult.total_size_gb property."""
-        total = mock_discovery_result.total_size_gb
-        assert total == pytest.approx(4.2 + 8.1 + 40.5, rel=0.01)
-
     def test_model_info_display_name(self):
         """Test ModelInfo.display_name property."""
         model = ModelInfo(
             name="Test Model",
+            provider="ollama",
             family="qwen",
-            path=Path("/test.gguf"),
             size_billions=14.0,
             quantization="q4_k_m",
             tier=ModelTier.BALANCED,
             version="2.5",
             variant="coder",
         )
-        assert "Qwen2.5" in model.display_name
-        assert "CODER" in model.display_name
-        assert "14B" in model.display_name
+        # display_name uses family + variant when both present
+        assert "Qwen" in model.display_name
+        assert "Coder" in model.display_name
 
     def test_model_info_tier_emoji(self):
         """Test ModelInfo.tier_emoji property."""
         fast_model = ModelInfo(
             name="Fast",
+            provider="ollama",
             family="test",
-            path=Path("/test.gguf"),
             size_billions=7.0,
             quantization="q4_k_m",
             tier=ModelTier.FAST,
         )
         balanced_model = ModelInfo(
             name="Balanced",
+            provider="ollama",
             family="test",
-            path=Path("/test.gguf"),
             size_billions=14.0,
             quantization="q4_k_m",
             tier=ModelTier.BALANCED,
         )
         powerful_model = ModelInfo(
             name="Powerful",
+            provider="ollama",
             family="test",
-            path=Path("/test.gguf"),
             size_billions=70.0,
             quantization="q4_k_m",
             tier=ModelTier.POWERFUL,
