@@ -1,5 +1,7 @@
 """CLI entry point."""
 
+# TODO: Query OpenClaw gateway API instead of standalone discovery
+
 import argparse
 import json
 import multiprocessing
@@ -644,6 +646,137 @@ def print_collectors_text(health: dict[str, Any], stats: dict[str, Any]) -> None
         console.print(table)
 
 
+def cmd_models(args: argparse.Namespace) -> int:
+    """List discovered local LLM models.
+
+    Discovers models from Ollama, LM Studio, vLLM, and other local providers.
+    Supports filtering by running status, tier, and provider.
+
+    Args:
+        args: Parsed arguments with models_json, running, tier, provider options.
+
+    Returns:
+        Exit code (0 for success).
+    """
+    from openclaw_dash.services import discover_local_models
+
+    # Get filter options
+    running_only = getattr(args, "running", False)
+    tier = getattr(args, "tier", None)
+    provider = getattr(args, "provider", None)
+
+    # Discover models
+    models = discover_local_models(
+        running_only=running_only,
+        tier=tier,
+        provider=provider,
+    )
+
+    # JSON output
+    if getattr(args, "models_json", False):
+        output = {
+            "models": [m.to_dict() for m in models],
+            "total": len(models),
+            "running": sum(1 for m in models if m.running),
+            "filters": {
+                "running_only": running_only,
+                "tier": tier,
+                "provider": provider,
+            },
+        }
+        print(json.dumps(output, indent=2, default=str))
+        return 0
+
+    # Text output
+    print_models_text(models, running_only=running_only, tier=tier, provider=provider)
+    return 0
+
+
+def print_models_text(
+    models: list[Any],
+    running_only: bool = False,
+    tier: str | None = None,
+    provider: str | None = None,
+) -> None:
+    """Print models in human-readable format.
+
+    Args:
+        models: List of ModelInfo objects.
+        running_only: Whether filtering for running models only.
+        tier: Tier filter applied, if any.
+        provider: Provider filter applied, if any.
+    """
+    from rich import box
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+
+    console = Console()
+
+    # Summary panel
+    total = len(models)
+    running = sum(1 for m in models if m.running)
+    providers = set(m.provider for m in models)
+
+    filters_applied = []
+    if running_only:
+        filters_applied.append("running only")
+    if tier:
+        filters_applied.append(f"tier={tier}")
+    if provider:
+        filters_applied.append(f"provider={provider}")
+
+    filter_text = f" (filters: {', '.join(filters_applied)})" if filters_applied else ""
+
+    summary_text = (
+        f"[bold cyan]Total models:[/] {total}\n"
+        f"[bold green]Running:[/] {running}\n"
+        f"[bold]Providers:[/] {', '.join(sorted(providers)) if providers else 'none'}"
+        f"{filter_text}"
+    )
+    console.print(Panel(summary_text, title="🤖 Local Models", box=box.ROUNDED))
+
+    if not models:
+        console.print("\n[dim]No models found. Ensure Ollama, LM Studio, or vLLM is running.[/]")
+        return
+
+    # Models table
+    table = Table(title="Discovered Models", box=box.SIMPLE)
+    table.add_column("Model", style="cyan")
+    table.add_column("Provider")
+    table.add_column("Tier")
+    table.add_column("Size", justify="right")
+    table.add_column("Family")
+    table.add_column("Status")
+
+    tier_colors = {
+        "fast": "green",
+        "balanced": "yellow",
+        "powerful": "magenta",
+        "unknown": "dim",
+    }
+
+    for m in sorted(models, key=lambda x: (not x.running, x.provider, x.name)):
+        tier_color = tier_colors.get(m.tier.value, "dim")
+        status = "[green]●[/] running" if m.running else "[dim]○[/] stopped"
+
+        table.add_row(
+            m.name,
+            m.provider,
+            f"[{tier_color}]{m.tier.value}[/]",
+            m.display_size,
+            m.family or "-",
+            status,
+        )
+
+    console.print(table)
+
+    # Tier legend
+    console.print(
+        "\n[dim]Tiers: [green]fast[/]=<7B, [yellow]balanced[/]=7-30B, [magenta]powerful[/]=30B+[/]"
+    )
+
+
 def main() -> int:
     """Main entry point for openclaw-dash CLI.
 
@@ -756,6 +889,33 @@ def main() -> int:
         "--warm", action="store_true", help="Warm the cache by running all collectors"
     )
 
+    # Models subcommand
+    models_parser = subparsers.add_parser(
+        "models",
+        help="List discovered local LLM models (Ollama, LM Studio, vLLM)",
+    )
+    models_parser.add_argument(
+        "--json",
+        dest="models_json",
+        action="store_true",
+        help="Output as JSON for scripting",
+    )
+    models_parser.add_argument(
+        "--running",
+        action="store_true",
+        help="Show only currently running models",
+    )
+    models_parser.add_argument(
+        "--tier",
+        choices=["fast", "balanced", "powerful"],
+        help="Filter by model tier (fast=<7B, balanced=7-30B, powerful=30B+)",
+    )
+    models_parser.add_argument(
+        "--provider",
+        choices=["ollama", "lm-studio", "vllm"],
+        help="Filter by model provider",
+    )
+
     args = parser.parse_args()
 
     # Handle auto command
@@ -765,6 +925,10 @@ def main() -> int:
     # Handle collectors command
     if args.command == "collectors":
         return cmd_collectors(args)
+
+    # Handle models command
+    if args.command == "models":
+        return cmd_models(args)
 
     # Handle export command
     if args.command == "export":

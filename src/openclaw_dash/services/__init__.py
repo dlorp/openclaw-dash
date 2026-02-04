@@ -6,10 +6,14 @@ from openclaw_dash.services.gateway_client import (
     GatewayConfig,
 )
 from openclaw_dash.services.model_discovery import (
+    CONFIG_SCHEMA as MODEL_CONFIG_SCHEMA,
+)
+from openclaw_dash.services.model_discovery import (
     DiscoveryResult,
     ModelDiscoveryService,
     ModelInfo,
     ModelTier,
+    discover_local_models,
 )
 
 __all__ = [
@@ -17,7 +21,9 @@ __all__ = [
     "DiscoveryResult",
     "GatewayClient",
     "GatewayConfig",
+    "MODEL_CONFIG_SCHEMA",
     "ModelDiscoveryService",
     "ModelInfo",
     "ModelTier",
+    "discover_local_models",
 ]
