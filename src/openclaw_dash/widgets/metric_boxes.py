@@ -120,7 +120,7 @@ class MetricBox(Static):
     def _do_render(self) -> None:
         """Render the metric content."""
         lines = [
-            f"[bold {COLORS['turquoise']}]{self._label}[/]",
+            f"[bold {COLORS['orange']}]{self._label}[/]",
             f"[bold]{self._value}[/]",
         ]
         if self._detail:
