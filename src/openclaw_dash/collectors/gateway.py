@@ -34,7 +34,7 @@ def _try_http_health() -> dict[str, Any] | None:
     try:
         import httpx
 
-        resp = httpx.get("http://localhost:18789/health", timeout=5)
+        resp = httpx.get("http://localhost:18789/health", timeout=3)
         if resp.status_code == 200:
             return {
                 "healthy": True,

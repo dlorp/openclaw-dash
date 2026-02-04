@@ -1,7 +1,7 @@
-"""Model Manager Panel widget for managing local LLMs.
+"""Model Manager Panel widget for managing LLMs.
 
-This module provides widgets for monitoring and managing local language models
-including Ollama, llama.cpp, and MLX backends with tier-based grouping,
+This module provides widgets for monitoring and managing language models
+discovered via the OpenClaw gateway, with tier-based grouping,
 status indicators, and model details.
 """
 
@@ -253,7 +253,7 @@ class ModelManagerPanel(Static):
             return
 
         if not data.models:
-            content.update("[dim]No models discovered[/]\n[dim]Run rescan to find local models[/]")
+            content.update("[dim]No models discovered[/]\n[dim]Check gateway connection[/]")
             return
 
         lines: list[str] = []
