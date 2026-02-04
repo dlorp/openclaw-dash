@@ -1,0 +1,95 @@
+[
+  {
+    "name": "synapse-engine",
+    "path": "/Users/lorp/repos/synapse-engine",
+    "todos": {
+      "counts": {
+        "TODO": 0,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 0,
+      "files_affected": 0,
+      "actionable": 0,
+      "in_docstrings": 0
+    },
+    "test_files": 1788,
+    "open_prs": [],
+    "last_commit": "4679473 test: Add comprehensive test coverage for backend services (15 hours ago)",
+    "scanned_at": "2026-02-04T04:29:56.915722"
+  },
+  {
+    "name": "r3LAY",
+    "path": "/Users/lorp/repos/r3LAY",
+    "todos": {
+      "counts": {
+        "TODO": 0,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 0,
+      "files_affected": 0,
+      "actionable": 0,
+      "in_docstrings": 0
+    },
+    "test_files": 254,
+    "open_prs": [],
+    "last_commit": "52d4b3b test: improve coverage for research, app, and worker modules (15 hours ago)",
+    "scanned_at": "2026-02-04T04:30:00.063659"
+  },
+  {
+    "name": "t3rra1n",
+    "path": "/Users/lorp/repos/t3rra1n",
+    "todos": {
+      "counts": {
+        "TODO": 107,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 107,
+      "files_affected": 5,
+      "actionable": 22,
+      "in_docstrings": 85
+    },
+    "test_files": 298,
+    "open_prs": [],
+    "last_commit": "acbd707 fix: implement dimensional bleeding corruption effect (13 hours ago)",
+    "scanned_at": "2026-02-04T04:30:04.621395"
+  },
+  {
+    "name": "openclaw-dash",
+    "path": "/Users/lorp/repos/openclaw-dash",
+    "todos": {
+      "counts": {
+        "TODO": 119,
+        "FIXME": 16,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 135,
+      "files_affected": 10,
+      "actionable": 14,
+      "in_docstrings": 121
+    },
+    "test_files": 78,
+    "open_prs": [
+      {
+        "number": 104,
+        "title": "feat(widgets): add SessionsPanel with token-based highlighting"
+      },
+      {
+        "number": 103,
+        "title": "feat(widgets): add GatewayStatusWidget with phosphor amber aesthetic"
+      },
+      {
+        "number": 102,
+        "title": "feat(screens): add Models tab to SettingsScreen"
+      }
+    ],
+    "last_commit": "bfea28c style: replace emoji tier indicators with glyphs (5 hours ago)",
+    "scanned_at": "2026-02-04T04:30:07.337630"
+  }
+]
