@@ -564,11 +564,11 @@ class TestGatewayCollectorErrors:
     @patch("openclaw_dash.collectors.gateway._try_http_health")
     @patch("openclaw_dash.collectors.gateway._try_cli_status")
     @patch("openclaw_dash.collectors.gateway.is_demo_mode")
-    def test_cli_unavailable_uses_http_fallback(self, mock_demo, mock_cli, mock_http):
-        """Test HTTP fallback when CLI fails."""
+    def test_http_unavailable_uses_cli_fallback(self, mock_demo, mock_cli, mock_http):
+        """Test CLI fallback when HTTP fails (HTTP is primary, CLI is fallback)."""
         mock_demo.return_value = False
-        mock_cli.return_value = None
-        mock_http.return_value = {"healthy": True, "mode": "test"}
+        mock_http.return_value = None  # HTTP fails
+        mock_cli.return_value = {"healthy": True, "mode": "test"}  # CLI succeeds
 
         from openclaw_dash.collectors import gateway
         from openclaw_dash.collectors.cache import get_cache
@@ -582,8 +582,8 @@ class TestGatewayCollectorErrors:
 
         result = gateway.collect()
         assert result["healthy"] is True
-        mock_cli.assert_called_once()
-        mock_http.assert_called_once()
+        mock_http.assert_called_once()  # HTTP tried first
+        mock_cli.assert_called_once()  # CLI used as fallback
 
     @patch("openclaw_dash.collectors.gateway._try_http_health")
     @patch("openclaw_dash.collectors.gateway._try_cli_status")
