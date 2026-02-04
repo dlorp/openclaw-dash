@@ -31,6 +31,31 @@ from typing import Any
 from config import get_config as get_shared_config
 from config import get_config_path, get_repo_base
 
+# Tool configuration schema for discovery
+CONFIG_SCHEMA = {
+    "skip_docstrings": {
+        "type": "bool",
+        "default": False,
+        "help": "Ignore TODOs found in docstrings (documentation notes)",
+    },
+    "output_format": {
+        "type": "choice",
+        "options": ["text", "json", "markdown"],
+        "default": "text",
+        "help": "Output format for scan results",
+    },
+    "include_test_counts": {
+        "type": "bool",
+        "default": True,
+        "help": "Include test file counts in scan results",
+    },
+    "git_timeout": {
+        "type": "int",
+        "default": 30,
+        "help": "Timeout in seconds for git operations",
+    },
+}
+
 GIT_TIMEOUT = 30
 
 
@@ -289,9 +314,7 @@ def scan_repo(
     }
 
 
-def format_todo_counts(
-    todos: dict, style: str = "verbose", *, show_breakdown: bool = False
-) -> str:
+def format_todo_counts(todos: dict, style: str = "verbose", *, show_breakdown: bool = False) -> str:
     total = todos["total"]
     counts = todos["counts"]
     actionable = todos.get("actionable", total)
@@ -416,9 +439,7 @@ def format_plain(
             status = "ALERT"
 
         lines.append(f"[{status}] {name}")
-        lines.append(
-            f"  TODOs: {format_todo_counts(todos, style, show_breakdown=show_breakdown)}"
-        )
+        lines.append(f"  TODOs: {format_todo_counts(todos, style, show_breakdown=show_breakdown)}")
         lines.append(f"  Tests: {r['test_files']} files")
         lines.append(f"  PRs:   {len(prs)} open")
 

@@ -22,6 +22,32 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+# Tool configuration schema for discovery
+CONFIG_SCHEMA = {
+    "show_docstrings": {
+        "type": "bool",
+        "default": True,
+        "help": "Include TODOs found in docstrings (documentation notes)",
+    },
+    "output_format": {
+        "type": "choice",
+        "options": ["text", "json", "markdown"],
+        "default": "text",
+        "help": "Output format for TODO listings",
+    },
+    "min_priority": {
+        "type": "choice",
+        "options": ["LOW", "MEDIUM", "HIGH"],
+        "default": "LOW",
+        "help": "Minimum priority level to include in results",
+    },
+    "patterns": {
+        "type": "list",
+        "default": ["TODO", "FIXME", "HACK"],
+        "help": "Patterns to search for (case-insensitive)",
+    },
+}
+
 
 @dataclass
 class TodoItem:
