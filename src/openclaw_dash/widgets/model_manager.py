@@ -5,6 +5,8 @@ including Ollama, llama.cpp, and MLX backends with tier-based grouping,
 status indicators, and model details.
 """
 
+# TODO: Wire to OpenClaw gateway API for model switching via config.patch
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
