@@ -91,7 +91,12 @@ def get_status() -> dict[str, Any]:
                 "total": 0,
                 "_hint": hint,
             },
-            "cron": cron.collect(),  # Works without gateway
+            "cron": {
+                "jobs": [],
+                "total": 0,
+                "enabled": 0,
+                "_hint": hint,
+            },
             "repos": repos.collect(),  # Works without gateway (local git)
             "activity": {
                 "recent": [],
@@ -978,29 +983,33 @@ def main() -> int:
             print_metrics_text(metrics)
         return 0
 
-    if args.status or args.json:
-        try:
-            status = with_gateway_timeout(get_status)
-        except GatewayTimeoutError:
-            print(GATEWAY_TIMEOUT_MSG, file=sys.stderr)
-            return 1
-        if args.json:
-            print(json.dumps(status, indent=2, default=str))
-        else:
-            print_status_text(status)
-        return 0
-
-    # Enable demo mode if requested
+    # Enable demo mode if requested (must happen before status checks)
     if args.demo:
         from openclaw_dash.demo import enable_demo_mode
 
         enable_demo_mode()
 
-    # Skip gateway checks if requested
+    # Skip gateway checks if requested (must happen before status checks)
     if args.skip_gateway:
         from openclaw_dash.offline import enable_offline_mode
 
         enable_offline_mode()
+
+    if args.status or args.json:
+        # Skip timeout wrapper if in offline mode (no gateway calls to timeout)
+        if args.skip_gateway:
+            status = get_status()
+        else:
+            try:
+                status = with_gateway_timeout(get_status)
+            except GatewayTimeoutError:
+                print(GATEWAY_TIMEOUT_MSG, file=sys.stderr)
+                return 1
+        if args.json:
+            print(json.dumps(status, indent=2, default=str))
+        else:
+            print_status_text(status)
+        return 0
 
     # Watch mode uses 5s refresh interval
     refresh_interval = 5 if args.watch else None
