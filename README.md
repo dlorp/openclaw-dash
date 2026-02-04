@@ -8,39 +8,42 @@
 
 TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/openclaw) ecosystem at a glance.
 
+**Aesthetic:** Underground garage × demoscene — phosphor amber on dark CRT, retro-futurist UI.
+
 ![Dashboard Screenshot](docs/images/dashboard.svg)
+<!-- Real screenshots coming soon — expect warm amber (#FB8B24) glow on dark backgrounds -->
 
 <details>
 <summary>ASCII Preview</summary>
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  OPENCLAW DASHBOARD                                       14:32 PST     │
+╭─────────────────────────────────────────────────────────────────────────╮
+│  █▀█ █▀█ █▀▀ █▄ █ █▀▀ █   ▄▀█ █ █ █  ░░░░░░░░▓▓▓▓▓▓    14:32 PST    │
+│  █▄█ █▀▀ ██▄ █ ▀█ █▄▄ █▄▄ █▀█ ▀▄▀▄▀  DASHBOARD         ◉ PHOSPHOR    │
 ├─────────────────────────────────────────────────────────────────────────┤
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐            │
-│  │ ✓ GATEWAY  │ │ $0.42/day  │ │ 0.2% err   │ │ 🔥 12 days │            │
-│  └────────────┘ └────────────┘ └────────────┘ └────────────┘            │
+│  ╭────────────╮ ╭────────────╮ ╭────────────╮ ╭────────────╮            │
+│  │ ● GATEWAY  │ │ $0.42/day  │ │ 0.2% ░░░░░ │ │ 🔥 12 days │            │
+│  ╰────────────╯ ╰────────────╯ ╰────────────╯ ╰────────────╯            │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ [a]─ GATEWAY ─────  [b]─ CURRENT TASK ─────────────────────────────── ▼ │
-│ │   ✓ ONLINE       │  Building new feature for project-x               │
-│ │   ctx: 24%       │  > Implementing auth module                       │
-│ │   2h uptime      │  > Writing tests                                  │
+│ [a]─ GATEWAY ──────╮ [b]─ CURRENT TASK ──────────────────────────────╮  │
+│ │   ● ONLINE       │ │  Building new feature for project-x          │  │
+│ │   ctx: ▓▓░░ 24%  │ │  › Implementing auth module                   │  │
+│ │   2h uptime      │ │  › Writing tests                              │  │
+│ ╰──────────────────╯ ╰───────────────────────────────────────────────╯  │
 │                                                                         │
-│ [c]─ REPOS ─────────────────────  [d]─ ACTIVITY ─────────────────────── │
-│ │  my-project      ✨  0 PRs     │  ▸ 14:30 Pushed feature branch       │
-│ │  another-repo    🟢  2 PRs     │  ▸ 14:00 Reviewed PR #42             │
-│ │  side-project    🟡  5 PRs     │  ▸ 13:30 Fixed CI pipeline           │
+│ [c]─ REPOS ─────────────────────╮ [d]─ ACTIVITY ─────────────────────╮  │
+│ │  my-project      ✨  0 PRs    │ │  ▸ 14:30 Pushed feature branch   │  │
+│ │  another-repo    ●   2 PRs    │ │  ▸ 14:00 Reviewed PR #42         │  │
+│ │  side-project    ◐   5 PRs    │ │  ▸ 13:30 Fixed CI pipeline       │  │
+│ ╰───────────────────────────────╯ ╰──────────────────────────────────╯  │
 │                                                                         │
 │ ━━━ SESSIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
-│ │ [Sessions] [Cron] [Channels]                                          │
-│ │  ● main         [████████░░] 45%                                      │
-│ │  ○ sub-agent-1  [█░░░░░░░░░] 12%                                      │
-│ │  ○ sub-agent-2  [░░░░░░░░░░]  8%                                      │
+│  ● main         [▓▓▓▓▓▓▓▓░░] 45%                                        │
+│  ○ sub-agent-1  [▓░░░░░░░░░] 12%                                        │
+│  ○ sub-agent-2  [░░░░░░░░░░]  8%                                        │
 │                                                                         │
-│ [h] Help  [f] Jump  [t] Theme  [Ctrl+P] Command Palette  [q] Quit       │
-└─────────────────────────────────────────────────────────────────────────┘
-
-Jump Mode: Press 'f' then letter to focus panel    Tabs: Switch with Tab key
+│ [h] Help  [f] Jump  [t] Theme  [Ctrl+P] Palette                [q] Quit │
+╰─────────────────────────────────────────────────────────────────────────╯
 ```
 
 </details>
@@ -68,7 +71,7 @@ Jump Mode: Press 'f' then letter to focus panel    Tabs: Switch with Tab key
 - **Jump Mode** — Press `f` to show letter labels, then press a letter to jump to that panel
 - **Vim Navigation** — `j`/`k` to scroll, `G` for end, `Home` for top
 - **Command Palette** — `Ctrl+P` for quick access to all commands
-- **Themes** — Cycle through dark/light/hacker themes with `t`
+- **Themes** — Cycle through dark/light/phosphor themes with `t` (amber glow!)
 - **Responsive Layout** — Adapts to terminal size, hides less-critical panels when narrow
 
 ## Keyboard Shortcuts
@@ -154,7 +157,7 @@ The dashboard auto-discovers:
 User preferences are saved to `~/.config/openclaw-dash/config.toml`:
 
 ```toml
-theme = "dark"              # dark, light, or hacker
+theme = "dark"              # dark, light, or phosphor (amber CRT aesthetic)
 refresh_interval = 30       # seconds between auto-refresh
 show_resources = true       # show system resources panel
 show_notifications = true   # show toast notifications
@@ -169,6 +172,7 @@ Comprehensive guides in the `docs/` folder:
 - **[Configuration](docs/CONFIGURATION.md)** — Config options, themes, and demo mode
 - **[Widgets Reference](docs/WIDGETS.md)** — Every panel explained with examples
 - **[Development Guide](docs/DEVELOPMENT.md)** — Add widgets, run tests, contribute
+- **[Design Audit](docs/DESIGN_AUDIT.md)** — Brand colors, aesthetic guidelines, phosphor theme spec
 
 ## Contributing
 
