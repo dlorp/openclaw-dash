@@ -94,24 +94,61 @@ FILE_CATEGORIES = {
 # Action verbs for extracting meaningful title summaries
 # Priority order: more specific first
 ACTION_VERBS = {
-    "remove", "add", "prevent", "filter", "generate", "extract",
-    "validate", "handle", "parse", "format", "replace", "skip", "ignore",
-    "enable", "disable", "support", "implement", "fix", "improve",
-    "refactor", "simplify", "optimize", "cache", "update", "create",
+    "remove",
+    "add",
+    "prevent",
+    "filter",
+    "generate",
+    "extract",
+    "validate",
+    "handle",
+    "parse",
+    "format",
+    "replace",
+    "skip",
+    "ignore",
+    "enable",
+    "disable",
+    "support",
+    "implement",
+    "fix",
+    "improve",
+    "refactor",
+    "simplify",
+    "optimize",
+    "cache",
+    "update",
+    "create",
 }
 
 # Technical terms that should preserve their original case when lowercasing
 # These are programming language keywords, type names, and special values
 TECHNICAL_TERMS = {
     # Python/JavaScript literals
-    "None", "True", "False", "NoneType",
+    "None",
+    "True",
+    "False",
+    "NoneType",
     # General programming
-    "NULL", "NaN", "undefined", "nil",
+    "NULL",
+    "NaN",
+    "undefined",
+    "nil",
     # Type names (when used as type references)
-    "String", "Integer", "Boolean", "Float", "Double",
+    "String",
+    "Integer",
+    "Boolean",
+    "Float",
+    "Double",
     # Common class/type patterns
-    "TypeError", "ValueError", "KeyError", "AttributeError",
-    "RuntimeError", "IndexError", "IOError", "OSError",
+    "TypeError",
+    "ValueError",
+    "KeyError",
+    "AttributeError",
+    "RuntimeError",
+    "IndexError",
+    "IOError",
+    "OSError",
 }
 
 # Pairs of contradictory action verbs (doing both = refactoring, not two separate actions)
@@ -1130,6 +1167,81 @@ def generate_summary(commits: list[CommitInfo], files: list[FileChange], config:
     return "\n".join(lines)
 
 
+def generate_why_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
+    """Generate the Why section - explain motivation for the changes."""
+    if not commits:
+        return "Changes were needed to improve the codebase."
+
+    # Look for explicit reasons in commit bodies
+    for commit in commits:
+        if commit.body:
+            # Look for "because", "since", "due to", "fixes", "resolves"
+            body_lower = commit.body.lower()
+            if any(word in body_lower for word in ["because", "since", "due to", "needed"]):
+                # Extract the relevant sentence
+                for line in commit.body.split("\n"):
+                    if any(
+                        word in line.lower() for word in ["because", "since", "due to", "needed"]
+                    ):
+                        return line.strip()
+
+    # Infer from commit types
+    type_counts: dict[str, int] = defaultdict(int)
+    for commit in commits:
+        if commit.commit_type:
+            type_counts[commit.commit_type] += 1
+
+    if type_counts.get("fix"):
+        return "The previous behavior had bugs or issues that needed correction."
+    if type_counts.get("feat"):
+        return "This capability was missing or needed enhancement."
+    if type_counts.get("refactor"):
+        return "The code needed restructuring for better maintainability."
+    if type_counts.get("docs"):
+        return "Documentation was missing or outdated."
+    if type_counts.get("test"):
+        return "Test coverage needed improvement."
+
+    return "Changes were needed to improve the codebase."
+
+
+def generate_how_section(commits: list[CommitInfo], files: list[FileChange]) -> str:
+    """Generate the How section - describe implementation approach."""
+    if not commits:
+        return "Made targeted changes to address the requirements."
+
+    # Look for implementation details in commit bodies
+    for commit in commits:
+        if commit.body:
+            # Look for "by", "using", "via", "through" implementation hints
+            for line in commit.body.split("\n"):
+                line = line.strip()
+                if line and any(
+                    word in line.lower() for word in ["by ", "using ", "via ", "through "]
+                ):
+                    return line
+
+    # Describe based on files changed
+    categories = defaultdict(list)
+    for f in files:
+        categories[f.category].append(f.path.split("/")[-1])
+
+    parts = []
+    if categories.get("source"):
+        parts.append(f"Modified {len(categories['source'])} source file(s)")
+    if categories.get("tests"):
+        parts.append(f"Updated {len(categories['tests'])} test file(s)")
+    if categories.get("config"):
+        parts.append("Adjusted configuration")
+    if categories.get("docs"):
+        parts.append("Updated documentation")
+
+    if parts:
+        return ". ".join(parts) + "."
+
+    return "Made targeted changes to address the requirements."
+
+
 def generate_testing_suggestions(files: list[FileChange], commits: list[CommitInfo]) -> list[str]:
     """Generate actionable testing suggestions based on changed code paths."""
     suggestions = []
@@ -1317,10 +1429,39 @@ def format_markdown(desc: PRDescription, config: Config) -> str:
     """Format PRDescription as markdown."""
     lines = []
 
-    # Summary
+    # Convert commits back to CommitInfo objects for section generation
+    commits = [CommitInfo(**c) if isinstance(c, dict) else c for c in desc.commits]
+    # Create minimal FileChange objects from changes dict
+    files = []
+    for category, paths in desc.changes.items():
+        if isinstance(paths, list):
+            for path in paths:
+                files.append(
+                    FileChange(
+                        path=path,
+                        category=category,
+                        status="modified",
+                        additions=0,
+                        deletions=0,
+                    )
+                )
+
+    # What section
     lines.append("## What")
     lines.append("")
     lines.append(desc.summary)
+    lines.append("")
+
+    # Why section
+    lines.append("## Why")
+    lines.append("")
+    lines.append(generate_why_section(commits, files))
+    lines.append("")
+
+    # How section
+    lines.append("## How")
+    lines.append("")
+    lines.append(generate_how_section(commits, files))
     lines.append("")
 
     # Changes (skip in minimal mode)
