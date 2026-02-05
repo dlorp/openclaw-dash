@@ -16,10 +16,9 @@ import httpx
 DEFAULT_GATEWAY_URL = "http://localhost:18789"
 
 # Whitelist of allowed configuration keys to prevent CLI flag injection
-ALLOWED_CONFIG_KEYS = frozenset({
-    "model", "context_limit", "timeout", "thinking",
-    "verbose", "elevated", "heartbeat_interval"
-})
+ALLOWED_CONFIG_KEYS = frozenset(
+    {"model", "context_limit", "timeout", "thinking", "verbose", "elevated", "heartbeat_interval"}
+)
 
 
 @dataclass

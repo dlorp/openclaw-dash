@@ -7,23 +7,54 @@ from typing import Any
 
 
 def collect_all_data() -> dict[str, Any]:
-    """Collect all dashboard data for export."""
+    """Collect all dashboard data for export.
+
+    Uses ThreadPoolExecutor to run collectors in parallel for faster load times.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     from openclaw_dash.collectors import activity, alerts, channels, cron, gateway, repos, sessions
     from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
 
+    # Define all collectors (flat structure for parallel execution)
+    collectors = {
+        "gateway": gateway.collect,
+        "sessions": sessions.collect,
+        "cron": cron.collect,
+        "repos": repos.collect,
+        "activity": activity.collect,
+        "channels": channels.collect,
+        "alerts": alerts.collect,
+        "metrics_costs": lambda: CostTracker().collect(),
+        "metrics_performance": lambda: PerformanceMetrics().collect(),
+        "metrics_github": lambda: GitHubMetrics().collect(),
+    }
+
+    # Run all collectors in parallel
+    results: dict[str, Any] = {}
+    with ThreadPoolExecutor(max_workers=len(collectors)) as executor:
+        future_to_name = {executor.submit(fn): name for name, fn in collectors.items()}
+        for future in as_completed(future_to_name):
+            name = future_to_name[future]
+            try:
+                results[name] = future.result()
+            except Exception as e:
+                results[name] = {"error": str(e), "_collector_failed": True}
+
+    # Restructure results to match expected format
     return {
         "timestamp": datetime.now().isoformat(),
-        "gateway": gateway.collect(),
-        "sessions": sessions.collect(),
-        "cron": cron.collect(),
-        "repos": repos.collect(),
-        "activity": activity.collect(),
-        "channels": channels.collect(),
-        "alerts": alerts.collect(),
+        "gateway": results.get("gateway", {}),
+        "sessions": results.get("sessions", {}),
+        "cron": results.get("cron", {}),
+        "repos": results.get("repos", {}),
+        "activity": results.get("activity", {}),
+        "channels": results.get("channels", {}),
+        "alerts": results.get("alerts", {}),
         "metrics": {
-            "costs": CostTracker().collect(),
-            "performance": PerformanceMetrics().collect(),
-            "github": GitHubMetrics().collect(),
+            "costs": results.get("metrics_costs", {}),
+            "performance": results.get("metrics_performance", {}),
+            "github": results.get("metrics_github", {}),
         },
     }
 

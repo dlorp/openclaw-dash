@@ -99,7 +99,11 @@ def get_status() -> dict[str, Any]:
     The gateway runs locally, so all features should work after setup.
     If --skip-gateway is passed, gateway-dependent collectors return
     placeholder data (useful for testing or when gateway is being restarted).
+
+    Uses ThreadPoolExecutor to run collectors in parallel for faster load times.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
     from openclaw_dash.offline import format_gateway_error_short, is_offline_mode
 
@@ -129,13 +133,27 @@ def get_status() -> dict[str, Any]:
             },
         }
 
-    return {
-        "gateway": gateway.collect(),
-        "sessions": sessions.collect(),
-        "cron": cron.collect(),
-        "repos": repos.collect(),
-        "activity": activity.collect(),
+    # Run collectors in parallel for faster load times
+    collectors = {
+        "gateway": gateway.collect,
+        "sessions": sessions.collect,
+        "cron": cron.collect,
+        "repos": repos.collect,
+        "activity": activity.collect,
     }
+
+    results: dict[str, Any] = {}
+    with ThreadPoolExecutor(max_workers=len(collectors)) as executor:
+        future_to_name = {executor.submit(fn): name for name, fn in collectors.items()}
+        for future in as_completed(future_to_name):
+            name = future_to_name[future]
+            try:
+                results[name] = future.result()
+            except Exception as e:
+                # Return error dict on failure to maintain structure
+                results[name] = {"error": str(e), "_collector_failed": True}
+
+    return results
 
 
 def get_metrics() -> dict[str, Any]:
