@@ -15,6 +15,28 @@ class GatewayTimeoutError(Exception):
     pass
 
 
+def quick_gateway_check() -> bool:
+    """Return True if gateway is reachable, False otherwise.
+
+    Uses a short 2s timeout to fail fast when gateway is down.
+    """
+    import httpx
+
+    try:
+        resp = httpx.get("http://localhost:18789/health", timeout=2.0)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+GATEWAY_UNREACHABLE_MSG = """⚠️  OpenClaw gateway not responding at localhost:18789
+
+    Try:
+      • openclaw gateway status    (check if running)
+      • openclaw gateway start     (start the gateway)
+      • openclaw-dash --skip-gateway  (run without gateway)
+"""
+
 GATEWAY_TIMEOUT_MSG = (
     "Command timed out unexpectedly. The gateway should respond instantly. "
     "This may be a bug — please report it at https://github.com/dlorp/openclaw-dash/issues"
@@ -925,6 +947,18 @@ def main() -> int:
 
     args = parser.parse_args()
 
+    # Enable demo mode if requested (must happen before any command handling)
+    if args.demo:
+        from openclaw_dash.demo import enable_demo_mode
+
+        enable_demo_mode()
+
+    # Skip gateway checks if requested (must happen before any command handling)
+    if args.skip_gateway:
+        from openclaw_dash.offline import enable_offline_mode
+
+        enable_offline_mode()
+
     # Handle auto command
     if args.command == "auto":
         return cmd_auto(args)
@@ -998,6 +1032,12 @@ def main() -> int:
         enable_offline_mode()
 
     if args.status or args.json:
+        # Fail fast if gateway is unreachable (unless --skip-gateway or --demo)
+        if not args.skip_gateway and not args.demo:
+            if not quick_gateway_check():
+                print(GATEWAY_UNREACHABLE_MSG, file=sys.stderr)
+                return 1
+
         # Skip timeout wrapper if in offline mode (no gateway calls to timeout)
         if args.skip_gateway:
             status = get_status()
