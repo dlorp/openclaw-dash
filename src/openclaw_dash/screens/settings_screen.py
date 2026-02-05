@@ -33,6 +33,7 @@ from openclaw_dash.services.model_discovery import (
     ModelDiscoveryService,
     ModelTier,
 )
+from openclaw_dash.settings_manager import SettingsManager
 
 # =============================================================================
 # Validators
@@ -231,12 +232,17 @@ class SettingsScreen(ModalScreen[bool]):
     }
     """
 
-    def __init__(self, **kwargs) -> None:
-        """Initialize settings screen."""
+    def __init__(self, settings_manager: SettingsManager | None = None, **kwargs) -> None:
+        """Initialize settings screen.
+
+        Args:
+            settings_manager: Optional settings manager instance. If None, creates a new one.
+        """
         super().__init__(**kwargs)
         self._dirty = False  # Track if settings have been modified
         self._errors: dict[str, str] = {}  # Field validation errors
         self._discovered_models: DiscoveryResult | None = None
+        self._settings = settings_manager or SettingsManager()
 
     def compose(self) -> ComposeResult:
         with Vertical(id="settings-container"):
@@ -509,12 +515,92 @@ class SettingsScreen(ModalScreen[bool]):
         self._load_settings()
 
     def _load_settings(self) -> None:
-        """Load settings from config into form fields.
+        """Load settings from config into form fields."""
+        # Map settings keys to widget IDs and their types
+        input_mappings = {
+            "general.refresh_interval": "setting-refresh-interval",
+            "gateway.host": "setting-gateway-host",
+            "gateway.port": "setting-gateway-port",
+            "tools.default_timeout": "setting-tool-timeout",
+            "models.custom_paths": "setting-custom-model-paths",
+        }
 
-        TODO: Wire this up to SettingsManager when available.
-        """
-        # For now, this is a skeleton - values are set in compose()
-        pass
+        switch_mappings = {
+            "general.show_notifications": "setting-notifications",
+            "gateway.auto_connect": "setting-auto-connect",
+            "tools.confirm_dangerous": "setting-confirm-dangerous",
+            "tools.log_calls": "setting-log-tools",
+            "tools.allow_writes": "setting-allow-writes",
+            "tools.allow_shell": "setting-allow-shell",
+            "tools.allow_network": "setting-allow-network",
+            "appearance.show_clock": "setting-show-clock",
+            "appearance.show_resources": "setting-show-resources",
+            "appearance.compact_mode": "setting-compact-mode",
+            "appearance.high_contrast": "setting-high-contrast",
+            "appearance.reduce_animations": "setting-reduce-animations",
+            "models.hf_cache_scan": "setting-hf-cache-scan",
+            "models.ollama_scan": "setting-ollama-scan",
+        }
+
+        select_mappings = {
+            "appearance.theme": "setting-theme",
+        }
+
+        keybind_mappings = {
+            "keybinds.refresh": "keybind-refresh",
+            "keybinds.theme": "keybind-theme",
+            "keybinds.help": "keybind-help",
+            "keybinds.quit": "keybind-quit",
+            "keybinds.input": "keybind-input",
+            "keybinds.jump": "keybind-jump",
+            "keybinds.gateway": "keybind-gateway",
+            "keybinds.alerts": "keybind-alerts",
+            "keybinds.logs": "keybind-logs",
+            "keybinds.security": "keybind-security",
+        }
+
+        # Load Input values
+        for settings_key, widget_id in input_mappings.items():
+            try:
+                value = self._settings.get(settings_key)
+                if value is not None:
+                    input_widget = self.query_one(f"#{widget_id}", Input)
+                    input_widget.value = str(value)
+            except Exception:
+                pass
+
+        # Load Switch values
+        for settings_key, widget_id in switch_mappings.items():
+            try:
+                value = self._settings.get(settings_key)
+                if value is not None:
+                    switch = self.query_one(f"#{widget_id}", Switch)
+                    switch.value = bool(value)
+            except Exception:
+                pass
+
+        # Load Select values
+        for settings_key, widget_id in select_mappings.items():
+            try:
+                value = self._settings.get(settings_key)
+                if value is not None:
+                    select = self.query_one(f"#{widget_id}", Select)
+                    select.value = str(value)
+            except Exception:
+                pass
+
+        # Load keybinds
+        for settings_key, widget_id in keybind_mappings.items():
+            try:
+                value = self._settings.get(settings_key)
+                if value is not None:
+                    input_widget = self.query_one(f"#{widget_id}", Input)
+                    input_widget.value = str(value)
+            except Exception:
+                pass
+
+        # Reset dirty flag after loading
+        self._dirty = False
 
     def _collect_settings(self) -> dict:
         """Collect all settings from form fields.
@@ -715,12 +801,81 @@ class SettingsScreen(ModalScreen[bool]):
             )
             return
 
-        _settings = self._collect_settings()  # noqa: F841
+        collected = self._collect_settings()
 
-        # TODO: Actually save settings via SettingsManager
-        # Will use _settings when wired up
-        self.app.notify("Settings saved!", timeout=2.0)
-        self.dismiss(True)
+        # Map collected settings keys to SettingsManager paths
+        key_mappings = {
+            # General settings
+            "refresh-interval": "general.refresh_interval",
+            "gateway-host": "gateway.host",
+            "gateway-port": "gateway.port",
+            "notifications": "general.show_notifications",
+            "auto-connect": "gateway.auto_connect",
+            # Tool settings
+            "tool-timeout": "tools.default_timeout",
+            "confirm-dangerous": "tools.confirm_dangerous",
+            "log-tools": "tools.log_calls",
+            "allow-writes": "tools.allow_writes",
+            "allow-shell": "tools.allow_shell",
+            "allow-network": "tools.allow_network",
+            # Appearance settings
+            "theme": "appearance.theme",
+            "show-clock": "appearance.show_clock",
+            "show-resources": "appearance.show_resources",
+            "compact-mode": "appearance.compact_mode",
+            "high-contrast": "appearance.high_contrast",
+            "reduce-animations": "appearance.reduce_animations",
+            # Model settings
+            "hf-cache-scan": "models.hf_cache_scan",
+            "ollama-scan": "models.ollama_scan",
+            "custom-model-paths": "models.custom_paths",
+            "default-fast-model": "models.default_fast",
+            "default-balanced-model": "models.default_balanced",
+            "default-powerful-model": "models.default_powerful",
+            # Keybinds
+            "keybind_refresh": "keybinds.refresh",
+            "keybind_theme": "keybinds.theme",
+            "keybind_help": "keybinds.help",
+            "keybind_quit": "keybinds.quit",
+            "keybind_input": "keybinds.input",
+            "keybind_jump": "keybinds.jump",
+            "keybind_gateway": "keybinds.gateway",
+            "keybind_alerts": "keybinds.alerts",
+            "keybind_logs": "keybinds.logs",
+            "keybind_security": "keybinds.security",
+        }
+
+        # Apply settings to manager
+        for collected_key, value in collected.items():
+            if collected_key in key_mappings:
+                settings_path = key_mappings[collected_key]
+                # Convert numeric strings to int for integer settings
+                if collected_key in ("refresh-interval", "gateway-port", "tool-timeout"):
+                    if value:
+                        try:
+                            value = int(value)
+                        except (ValueError, TypeError) as e:
+                            self.app.notify(
+                                f"Invalid value for {collected_key}: {e}",
+                                severity="error",
+                                timeout=3.0,
+                            )
+                            return
+                    else:
+                        value = None
+                self._settings.set(settings_path, value)
+
+        # Save to file
+        try:
+            self._settings.save()
+            self.app.notify("Settings saved!", timeout=2.0)
+            self.dismiss(True)
+        except OSError as e:
+            self.app.notify(
+                f"Failed to save settings: {e}",
+                severity="error",
+                timeout=4.0,
+            )
 
     def action_cancel(self) -> None:
         """Cancel and close without saving."""

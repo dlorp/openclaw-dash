@@ -3,9 +3,9 @@
 This module provides widgets for monitoring and managing language models
 discovered via the OpenClaw gateway, with tier-based grouping,
 status indicators, and model details.
-"""
 
-# TODO: Wire to OpenClaw gateway API for model switching via config.patch
+Wired to OpenClaw gateway API for model switching via GatewayClient.patch_config().
+"""
 
 from __future__ import annotations
 

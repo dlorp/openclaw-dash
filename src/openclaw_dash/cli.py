@@ -1,6 +1,9 @@
-"""CLI entry point."""
+"""CLI entry point.
 
-# TODO: Query OpenClaw gateway API instead of standalone discovery
+Gateway integration: Uses GatewayClient for API queries. Model discovery
+uses gateway-based discovery via services.model_discovery module.
+See services/gateway_client.py for the HTTP/CLI gateway interface.
+"""
 
 import argparse
 import json
