@@ -1,0 +1,95 @@
+[
+  {
+    "name": "synapse-engine",
+    "path": "/Users/lorp/repos/synapse-engine",
+    "todos": {
+      "counts": {
+        "TODO": 0,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 0,
+      "files_affected": 0,
+      "actionable": 0,
+      "in_docstrings": 0
+    },
+    "test_files": 1788,
+    "open_prs": [],
+    "last_commit": "d0944d9 chore: purge emojis from codebase (9 minutes ago)",
+    "scanned_at": "2026-02-04T16:36:17.215935"
+  },
+  {
+    "name": "r3LAY",
+    "path": "/Users/lorp/repos/r3LAY",
+    "todos": {
+      "counts": {
+        "TODO": 0,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 0,
+      "files_affected": 0,
+      "actionable": 0,
+      "in_docstrings": 0
+    },
+    "test_files": 254,
+    "open_prs": [],
+    "last_commit": "064250c chore: replace emoji in test data (13 minutes ago)",
+    "scanned_at": "2026-02-04T16:36:20.229351"
+  },
+  {
+    "name": "t3rra1n",
+    "path": "/Users/lorp/repos/t3rra1n",
+    "todos": {
+      "counts": {
+        "TODO": 107,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 107,
+      "files_affected": 5,
+      "actionable": 22,
+      "in_docstrings": 85
+    },
+    "test_files": 298,
+    "open_prs": [],
+    "last_commit": "5f07b7e chore: purge emojis from codebase (13 minutes ago)",
+    "scanned_at": "2026-02-04T16:36:24.850906"
+  },
+  {
+    "name": "openclaw-dash",
+    "path": "/Users/lorp/repos/openclaw-dash",
+    "todos": {
+      "counts": {
+        "TODO": 121,
+        "FIXME": 16,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 137,
+      "files_affected": 10,
+      "actionable": 14,
+      "in_docstrings": 123
+    },
+    "test_files": 78,
+    "open_prs": [
+      {
+        "number": 111,
+        "title": "fix: collectors command respects --skip-gateway"
+      },
+      {
+        "number": 110,
+        "title": "fix: metrics fails fast when API keys not configured"
+      },
+      {
+        "number": 109,
+        "title": "fix(cli): fail fast when gateway unreachable"
+      }
+    ],
+    "last_commit": "971e70f chore: purge emojis from codebase (13 minutes ago)",
+    "scanned_at": "2026-02-04T16:36:27.758915"
+  }
+]

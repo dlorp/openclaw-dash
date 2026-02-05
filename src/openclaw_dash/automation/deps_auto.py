@@ -390,7 +390,7 @@ Updates **{package}** from `{current}` to `{latest}`
 {test_output}
 
 ---
-*Created automatically by openclaw-dash deps automation* 
+*Created automatically by openclaw-dash deps automation*
 """
         return body.replace('"', '\\"')
 

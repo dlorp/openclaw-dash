@@ -1,0 +1,82 @@
+[
+  {
+    "name": "synapse-engine",
+    "path": "/Users/lorp/repos/synapse-engine",
+    "todos": {
+      "counts": {
+        "TODO": 0,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 0,
+      "files_affected": 0,
+      "actionable": 0,
+      "in_docstrings": 0
+    },
+    "test_files": 1788,
+    "open_prs": [],
+    "last_commit": "d0944d9 chore: purge emojis from codebase (2 hours ago)",
+    "scanned_at": "2026-02-04T18:37:08.065440"
+  },
+  {
+    "name": "r3LAY",
+    "path": "/Users/lorp/repos/r3LAY",
+    "todos": {
+      "counts": {
+        "TODO": 0,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 0,
+      "files_affected": 0,
+      "actionable": 0,
+      "in_docstrings": 0
+    },
+    "test_files": 254,
+    "open_prs": [],
+    "last_commit": "064250c chore: replace emoji in test data (2 hours ago)",
+    "scanned_at": "2026-02-04T18:37:11.100505"
+  },
+  {
+    "name": "t3rra1n",
+    "path": "/Users/lorp/repos/t3rra1n",
+    "todos": {
+      "counts": {
+        "TODO": 107,
+        "FIXME": 0,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 107,
+      "files_affected": 5,
+      "actionable": 22,
+      "in_docstrings": 85
+    },
+    "test_files": 298,
+    "open_prs": [],
+    "last_commit": "5f07b7e chore: purge emojis from codebase (2 hours ago)",
+    "scanned_at": "2026-02-04T18:37:15.749992"
+  },
+  {
+    "name": "openclaw-dash",
+    "path": "/Users/lorp/repos/openclaw-dash",
+    "todos": {
+      "counts": {
+        "TODO": 121,
+        "FIXME": 16,
+        "HACK": 0,
+        "XXX": 0
+      },
+      "total": 137,
+      "files_affected": 10,
+      "actionable": 14,
+      "in_docstrings": 123
+    },
+    "test_files": 78,
+    "open_prs": [],
+    "last_commit": "528abf5 fix: collectors command respects --skip-gateway (#111) (85 minutes ago)",
+    "scanned_at": "2026-02-04T18:37:18.611617"
+  }
+]
