@@ -8,12 +8,17 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
 
 from openclaw_dash.demo import is_demo_mode, mock_sessions
+
+# Simple cache for sessions to avoid repeated slow CLI calls
+_sessions_cache: dict[str, Any] = {"data": [], "error": None, "timestamp": 0}
+_CACHE_TTL_SECONDS = 10  # Cache sessions for 10 seconds
 
 
 class AgentStatus(Enum):
@@ -207,36 +212,57 @@ def collect() -> dict[str, Any]:
 
 
 def _fetch_sessions() -> tuple[list[dict[str, Any]], str | None]:
-    """Fetch sessions from OpenClaw CLI with error tracking.
+    """Fetch sessions from OpenClaw CLI with error tracking and caching.
 
     Returns:
         Tuple of (sessions_list, error_message_or_none).
     """
+    global _sessions_cache
+
+    # Return cached data if still fresh
+    now = time.time()
+    if now - _sessions_cache["timestamp"] < _CACHE_TTL_SECONDS:
+        return _sessions_cache["data"], _sessions_cache["error"]
+
     try:
         result = subprocess.run(
             ["openclaw", "sessions", "list", "--json"],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=3,  # Reduced from 15s - fail fast
         )
         if result.returncode == 0:
             try:
                 data = json.loads(result.stdout)
-                return data.get("sessions", []), None
+                sessions = data.get("sessions", [])
+                _sessions_cache = {"data": sessions, "error": None, "timestamp": now}
+                return sessions, None
             except json.JSONDecodeError as e:
-                return [], f"Invalid JSON response: {e}"
+                err = f"Invalid JSON response: {e}"
+                _sessions_cache = {"data": [], "error": err, "timestamp": now}
+                return [], err
         else:
             error = result.stderr.strip() if result.stderr else f"Exit code {result.returncode}"
+            _sessions_cache = {"data": [], "error": error, "timestamp": now}
             return [], error
 
     except subprocess.TimeoutExpired:
-        return [], "Command timed out after 15s"
+        err = "Command timed out"
+        # Use stale cache if available on timeout
+        if _sessions_cache["data"]:
+            return _sessions_cache["data"], None
+        _sessions_cache = {"data": [], "error": err, "timestamp": now}
+        return [], err
 
     except FileNotFoundError:
-        return [], "OpenClaw CLI not found"
+        err = "OpenClaw CLI not found"
+        _sessions_cache = {"data": [], "error": err, "timestamp": now}
+        return [], err
 
     except OSError as e:
-        return [], f"OS error: {e}"
+        err = f"OS error: {e}"
+        _sessions_cache = {"data": [], "error": err, "timestamp": now}
+        return [], err
 
 
 def get_status_icon(status: str) -> str:

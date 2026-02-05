@@ -214,8 +214,26 @@ def parse_status_output(output: str) -> OpenClawStatus:
     return status
 
 
-def get_openclaw_status(timeout: int = 15) -> OpenClawStatus | None:
-    """Run openclaw status and parse the output."""
+import time as _time
+
+# Cached status to avoid repeated slow CLI calls
+_cached_status: OpenClawStatus | None = None
+_cached_at: float = 0.0
+_CACHE_TTL: float = 10.0  # Cache for 10 seconds
+
+
+def get_openclaw_status(timeout: int = 5) -> OpenClawStatus | None:
+    """Run openclaw status and parse the output.
+
+    Results are cached for 10 seconds to avoid repeated slow CLI calls.
+    """
+    global _cached_status, _cached_at
+
+    # Return cached if fresh
+    now = _time.monotonic()
+    if _cached_status is not None and (now - _cached_at) < _CACHE_TTL:
+        return _cached_status
+
     try:
         result = subprocess.run(
             ["openclaw", "status"],
@@ -223,13 +241,22 @@ def get_openclaw_status(timeout: int = 15) -> OpenClawStatus | None:
             text=True,
             timeout=timeout,
         )
+        status = None
         if result.stdout:
-            return parse_status_output(result.stdout)
-        if result.stderr:
-            return parse_status_output(result.stderr)
+            status = parse_status_output(result.stdout)
+        elif result.stderr:
+            status = parse_status_output(result.stderr)
+
+        # Cache the result (even if None, to avoid retrying immediately)
+        _cached_status = status
+        _cached_at = now
+        return status
+
     except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        # Cache the failure too
+        _cached_status = None
+        _cached_at = now
         return None
-    return None
 
 
 def status_to_gateway_data(status: OpenClawStatus) -> dict[str, Any]:
