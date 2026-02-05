@@ -1,53 +1,42 @@
 # Integrated Tools
 
+> **See [TOOLS.md](TOOLS.md) for comprehensive documentation** including CLI options, configuration, and API usage.
+
 openclaw-dash bundles several automation tools that work standalone or as part of the dashboard.
 
-## Tool Overview
+## Quick Reference
 
-| Tool | Description |
-|------|-------------|
-| `repo-scanner` | Repository health metrics (TODOs, tests, PRs) |
-| `pr-tracker` | PR status monitoring and merge detection |
-| `smart-todo-scanner` | Context-aware TODO categorization |
-| `dep-shepherd` | Dependency auditing and updates |
-| `pr-describe` | Automated PR description generation |
+| Tool | Description | Quick Start |
+|------|-------------|-------------|
+| `pr-describe` | Auto-generate PR descriptions | `pr-describe --title` |
+| `pr-create` | Create PRs with generated content | `pr-create --dry-run` |
+| `version-bump` | Semantic versioning from commits | `version-bump --dry-run` |
+| `repo-scanner` | Repository health metrics | `repo-scanner --format json` |
+| `smart-todo-scanner` | Context-aware TODO categorization | `smart-todo-scanner --no-docstrings` |
+| `dep-shepherd` | Dependency audit and updates | `dep-shepherd --report` |
+| `audit` | Security scanning | `audit --verbose` |
 
-## repo-scanner
+## Installation
 
-Scans repositories for health metrics:
-- TODO count and categorization
-- Test coverage
-- Open PR count
-- CI status
+All tools are included with openclaw-dash:
 
-## pr-tracker
+```bash
+pip install openclaw-dash
+```
 
-Monitors pull requests across your repositories:
-- Tracks PR state changes
-- Detects merges and closures
-- Alerts on review requests
+For full functionality, also install:
 
-## smart-todo-scanner
+```bash
+pip install pip-audit safety  # Python security scanning
+gh auth login                  # GitHub CLI for PR operations
+```
 
-Goes beyond simple TODO counting:
-- Categorizes by urgency (FIXME, TODO, HACK, XXX)
-- Groups by file and module
-- Tracks TODO age (when possible via git blame)
+## Usage
 
-## dep-shepherd
+Tools can be invoked:
 
-Keeps dependencies healthy:
-- Audits for known vulnerabilities
-- Identifies outdated packages
-- Suggests safe upgrade paths
+1. **Via CLI** — Run directly from terminal
+2. **Via Dashboard** — Integrated into TUI panels
+3. **Via Python API** — Import and use programmatically
 
-## pr-describe
-
-Generates PR descriptions automatically:
-- Analyzes diff content
-- Summarizes changes
-- Follows conventional commit patterns
-
----
-
-These tools can be invoked individually via the CLI or are used internally by the dashboard to populate panels.
+See **[TOOLS.md](TOOLS.md)** for detailed documentation.
