@@ -531,6 +531,20 @@ def cmd_collectors(args: argparse.Namespace) -> int:
     Returns:
         Exit code (0 for success).
     """
+    from openclaw_dash.demo import is_demo_mode
+    from openclaw_dash.offline import is_offline_mode
+
+    # Skip gateway collectors in offline/demo mode
+    if is_offline_mode() or is_demo_mode():
+        print("Skipping gateway collectors (--skip-gateway mode)")
+        placeholder = {
+            "health": {"status": "skipped", "reason": "offline/demo mode"},
+            "collectors": {},
+        }
+        if hasattr(args, "collectors_json") and args.collectors_json:
+            print(json.dumps(placeholder, indent=2, default=str))
+        return 0
+
     from openclaw_dash.collectors import (
         activity,
         cron,
