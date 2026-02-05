@@ -27,7 +27,7 @@ def _collect_sessions_impl() -> dict[str, Any]:
 
     # Try real CLI data
     try:
-        status = get_openclaw_status(timeout=5)
+        status = get_openclaw_status(timeout=3)
         duration_ms = (time.time() - start_time) * 1000
 
         if status is not None:
