@@ -642,6 +642,12 @@ class TestSessionsCollectorErrors:
         mock_status.side_effect = RuntimeError("Unexpected error")
 
         from openclaw_dash.collectors import sessions
+        from openclaw_dash.collectors.cache import get_cache
+
+        # Reset cache to ensure we hit the mock
+        cache = get_cache()
+        cache.invalidate("sessions")
+        cache.reset_circuit("sessions")
 
         result = sessions.collect()
         assert result["sessions"] == []
