@@ -119,14 +119,14 @@ def _check_channel_health(channel_type: str) -> bool:
 def get_channel_icon(channel_type: str) -> str:
     """Get emoji icon for channel type."""
     icons = {
-        "discord": "🎮",
-        "telegram": "✈️",
-        "signal": "🔒",
-        "slack": "💼",
-        "whatsapp": "💬",
-        "imessage": "🍎",
+        "discord": "",
+        "telegram": "",
+        "signal": "",
+        "slack": "",
+        "whatsapp": "",
+        "imessage": "",
     }
-    return icons.get(channel_type, "📱")
+    return icons.get(channel_type, "")
 
 
 def get_status_icon(status: str) -> str:

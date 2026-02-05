@@ -128,9 +128,9 @@ class TestChannelsCollector:
 
     def test_get_channel_icon(self) -> None:
         """Channel icons are returned correctly for known types."""
-        assert channels.get_channel_icon("discord") == "🎮"
-        assert channels.get_channel_icon("telegram") == "✈️"
-        assert channels.get_channel_icon("unknown") == "📱"
+        assert channels.get_channel_icon("discord") == ""
+        assert channels.get_channel_icon("telegram") == ""
+        assert channels.get_channel_icon("unknown") == ""
 
     def test_get_status_icon(self) -> None:
         """Status icons are returned correctly for known statuses."""
@@ -139,10 +139,10 @@ class TestChannelsCollector:
 
     def test_get_channel_icon_all_types(self) -> None:
         """Test all known channel type icons."""
-        assert channels.get_channel_icon("signal") == "🔒"
-        assert channels.get_channel_icon("slack") == "💼"
-        assert channels.get_channel_icon("whatsapp") == "💬"
-        assert channels.get_channel_icon("imessage") == "🍎"
+        assert channels.get_channel_icon("signal") == ""
+        assert channels.get_channel_icon("slack") == ""
+        assert channels.get_channel_icon("whatsapp") == ""
+        assert channels.get_channel_icon("imessage") == ""
 
     def test_get_status_icon_all_types(self) -> None:
         """Test all known status icons."""

@@ -303,7 +303,7 @@ class DepsSummaryPanel(Static):
             self._last_scan_time = now
             self._render_summary(content, result)
         except Exception:
-            content.update("[dim]📦 Deps: scan failed[/]")
+            content.update("[dim] Deps: scan failed[/]")
 
     def _render_summary(self, content: Static, result: DependencyScanResult) -> None:
         """Render compact summary."""
@@ -332,4 +332,4 @@ class DepsSummaryPanel(Static):
         score = min(1.0, (critical * 4 + high * 2 + medium) / 10)
         bar = mini_bar(score, width=5)
 
-        content.update(f"📦 {' '.join(parts)} {bar}")
+        content.update(f" {' '.join(parts)} {bar}")

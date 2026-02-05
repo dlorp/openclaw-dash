@@ -134,7 +134,7 @@ class TestExportMarkdown:
         }
         result = export_markdown(data)
         assert "## Gateway Status" in result
-        assert "✅ ONLINE" in result
+        assert "✓ ONLINE" in result
         assert "5h" in result
 
     def test_shows_offline_when_unhealthy(self):
@@ -154,7 +154,7 @@ class TestExportMarkdown:
             },
         }
         result = export_markdown(data)
-        assert "❌ OFFLINE" in result
+        assert "✗ OFFLINE" in result
 
     def test_includes_sessions_table(self):
         data = {

@@ -118,9 +118,9 @@ def extract_ci_status(status_check_rollup: list[dict] | None) -> str:
 def get_ci_icon(ci_status: str) -> str:
     """Get emoji icon for CI status."""
     return {
-        "success": "✅",
-        "failure": "❌",
-        "pending": "⏳",
+        "success": "✓",
+        "failure": "✗",
+        "pending": "",
         "unknown": "❓",
     }.get(ci_status, "❓")
 
@@ -480,7 +480,7 @@ def format_report(results: list[dict], fetch_ci: bool, skip_docstrings: bool) ->
     repos_needing_attention = []
     for r in results:
         if "error" in r:
-            lines.append(f"- ❌ **{r['name']}**: {r['error']}")
+            lines.append(f"- ✗ **{r['name']}**: {r['error']}")
             continue
 
         name = r["name"]
@@ -495,7 +495,7 @@ def format_report(results: list[dict], fetch_ci: bool, skip_docstrings: bool) ->
         elif actionable > 10 or pr_count > 3:
             status = "🟡"
         else:
-            status = "✅"
+            status = "✓"
 
         if skip_docstrings and todos["docstrings"] > 0:
             todo_str = f"{actionable} actionable TODOs ({todos['docstrings']} docstrings)"
@@ -535,7 +535,7 @@ def format_report(results: list[dict], fetch_ci: bool, skip_docstrings: bool) ->
             f"- {len(repos_needing_attention)} repo{'s' if len(repos_needing_attention) != 1 else ''} need attention: {', '.join(repos_needing_attention)}"
         )
     else:
-        lines.append("- All repos healthy ✅")
+        lines.append("- All repos healthy ✓")
 
     return "\n".join(lines)
 

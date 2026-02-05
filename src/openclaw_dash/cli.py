@@ -150,7 +150,7 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
         f"  Avg daily: ${summary.get('avg_daily_cost', 0):.2f}\n"
         f"  Days tracked: {summary.get('days_tracked', 0)}"
     )
-    console.print(Panel(costs_text, title="💰 Token Costs", box=box.ROUNDED))
+    console.print(Panel(costs_text, title=" Token Costs", box=box.ROUNDED))
 
     # Performance panel
     perf = metrics.get("performance", {}).get("summary", {})
@@ -159,7 +159,7 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
         f"[bold cyan]Errors:[/] {perf.get('total_errors', 0)} ({perf.get('error_rate_pct', 0):.1f}%)\n"
         f"[bold cyan]Avg latency:[/] {perf.get('avg_latency_ms', 0):.0f}ms"
     )
-    console.print(Panel(perf_text, title="⚡ Performance", box=box.ROUNDED))
+    console.print(Panel(perf_text, title=" Performance", box=box.ROUNDED))
 
     # GitHub panel
     gh = metrics.get("github", {})
@@ -167,7 +167,7 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
     pr = gh.get("pr_metrics", {})
 
     streak_days = streak.get("streak_days", 0)
-    streak_icon = "🔥" if streak_days > 0 else "❄️"
+    streak_icon = "" if streak_days > 0 else ""
 
     gh_text = (
         f"[bold cyan]Contribution streak:[/] {streak_days} days {streak_icon}\n"
@@ -175,7 +175,7 @@ def print_metrics_text(metrics: dict[str, Any]) -> None:
         f"  Fastest: {pr.get('fastest_merge_hours') or 0:.1f}h\n"
         f"  Slowest: {pr.get('slowest_merge_hours') or 0:.1f}h"
     )
-    console.print(Panel(gh_text, title="🐙 GitHub", box=box.ROUNDED))
+    console.print(Panel(gh_text, title=" GitHub", box=box.ROUNDED))
 
     # Cost trend table
     trend = costs.get("trend", {})
@@ -276,7 +276,7 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
     console = Console()
 
     if not json_output:
-        console.print("[bold]🔒 Running OpenClaw Security Audit...[/]\n")
+        console.print("[bold] Running OpenClaw Security Audit...[/]\n")
 
     # Run config/secrets audit
     audit = SecurityAudit()
@@ -360,7 +360,7 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
 
     # Apply fixes if requested
     if fix:
-        console.print("\n[bold]🔧 Applying fixes...[/]\n")
+        console.print("\n[bold] Applying fixes...[/]\n")
         fixer = SecurityFixer(dry_run=False)
         fix_result = fixer.fix_all(audit_result=audit_result, dep_result=dep_result)
 
@@ -618,7 +618,7 @@ def print_collectors_text(health: dict[str, Any], stats: dict[str, Any]) -> None
         f"[bold]Slowest:[/] {health.get('slowest_collector', 'N/A')} "
         f"({health.get('slowest_time_ms', 0):.0f}ms)"
     )
-    console.print(Panel(health_text, title="🔍 Collector Health", box=box.ROUNDED))
+    console.print(Panel(health_text, title=" Collector Health", box=box.ROUNDED))
 
     # Detailed stats table
     if stats:
@@ -739,7 +739,7 @@ def print_models_text(
         f"[bold]Providers:[/] {', '.join(sorted(providers)) if providers else 'none'}"
         f"{filter_text}"
     )
-    console.print(Panel(summary_text, title="🤖 Available Models", box=box.ROUNDED))
+    console.print(Panel(summary_text, title=" Available Models", box=box.ROUNDED))
 
     if not models:
         console.print(

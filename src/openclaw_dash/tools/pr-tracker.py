@@ -174,9 +174,9 @@ def extract_ci_status(status_check_rollup: list[dict] | None) -> str:
 def get_ci_icon(ci_status: str) -> str:
     """Get emoji icon for CI status."""
     return {
-        "success": "✅",
-        "failure": "❌",
-        "pending": "⏳",
+        "success": "✓",
+        "failure": "✗",
+        "pending": "",
         "unknown": "❓",
     }.get(ci_status, "❓")
 
@@ -400,13 +400,13 @@ Examples:
     # Report changes if in check mode
     if args.check and old_state.get("last_check"):
         if changes["merged"]:
-            lines.append("### ✅ Merged Since Last Check")
+            lines.append("### ✓ Merged Since Last Check")
             for pr in changes["merged"]:
                 lines.append(f"- **{pr['repo']}#{pr['number']}**: {pr['title']}")
             lines.append("")
 
         if changes["closed"]:
-            lines.append("### ❌ Closed Without Merge")
+            lines.append("### ✗ Closed Without Merge")
             for pr in changes["closed"]:
                 lines.append(f"- **{pr['repo']}#{pr['number']}**: {pr['title']}")
             lines.append("")

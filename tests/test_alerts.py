@@ -79,7 +79,7 @@ class TestHelperFunctions:
         assert get_severity_icon("high") == "🟠"
         assert get_severity_icon("medium") == "🟡"
         assert get_severity_icon("low") == "🔵"
-        assert get_severity_icon("info") == "ℹ️"
+        assert get_severity_icon("info") == ""
         assert get_severity_icon("unknown") == "•"
 
 

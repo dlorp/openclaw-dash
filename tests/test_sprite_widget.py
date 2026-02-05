@@ -167,10 +167,10 @@ class TestStateIcons:
         assert get_state_icon(SpriteState.IDLE) == "😊"
         assert get_state_icon(SpriteState.SLEEP) == "😴"
         assert get_state_icon(SpriteState.THINK) == "🤔"
-        assert get_state_icon(SpriteState.WORK) == "⚡"
+        assert get_state_icon(SpriteState.WORK) == ""
         assert get_state_icon(SpriteState.SPAWN) == "👥"
-        assert get_state_icon(SpriteState.DONE) == "✅"
-        assert get_state_icon(SpriteState.ALERT) == "⚠️"
+        assert get_state_icon(SpriteState.DONE) == "✓"
+        assert get_state_icon(SpriteState.ALERT) == ""
 
 
 class TestStateColors:

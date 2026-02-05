@@ -242,7 +242,7 @@ class SettingsScreen(ModalScreen[bool]):
         with Vertical(id="settings-container"):
             yield Static(
                 "╔════════════════════════════════════════════════════════════════════════════╗\n"
-                "║                              ⚙️  Settings                                  ║\n"
+                "║                                Settings                                  ║\n"
                 "╚════════════════════════════════════════════════════════════════════════════╝",
                 id="settings-header",
             )
@@ -620,7 +620,7 @@ class SettingsScreen(ModalScreen[bool]):
         """Scan for local models in background."""
         # Update UI to show scanning
         status_label = self.query_one("#discovery-status", Static)
-        status_label.update("🔄 Scanning for models...")
+        status_label.update(" Scanning for models...")
 
         scan_button = self.query_one("#btn-scan-models", Button)
         scan_button.disabled = True
@@ -653,7 +653,7 @@ class SettingsScreen(ModalScreen[bool]):
             self._update_model_discovery_ui(result)
 
         except Exception as e:
-            status_label.update(f"❌ Scan failed: {e}")
+            status_label.update(f"✗ Scan failed: {e}")
         finally:
             scan_button.disabled = False
 
@@ -663,7 +663,7 @@ class SettingsScreen(ModalScreen[bool]):
         status_label = self.query_one("#discovery-status", Static)
         total = len(result.models)
         paths_scanned = len(result.scan_paths)
-        status_label.update(f"✅ Found {total} model(s) across {paths_scanned} path(s)")
+        status_label.update(f"✓ Found {total} model(s) across {paths_scanned} path(s)")
 
         # Update tier counts
         by_tier = result.by_tier

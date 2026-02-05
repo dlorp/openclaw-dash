@@ -199,7 +199,7 @@ class CostsPanel(Static):
         # Cost Forecast section with source-aware data
         forecast = calculate_cost_forecast(daily_history)
         forecast_source = "[green]API[/]" if has_api_data else "[yellow]Est[/]"
-        lines.append(f"[bold]💰 Forecast:[/] {forecast_source}")
+        lines.append(f"[bold] Forecast:[/] {forecast_source}")
         lines.append(f"  Proj/Mo: ${forecast['projected_monthly']:.2f} {forecast['trend']}")
         lines.append(f"  Avg/Day: ${forecast['daily_avg']:.2f}")
 
@@ -460,7 +460,7 @@ class MetricsPanel(Static):
             # Calculate forecast
             forecast = calculate_cost_forecast(daily_history)
 
-            cost_line = f"[bold]💰 Costs:[/] ${display_cost:.2f} {source_indicator}"
+            cost_line = f"[bold] Costs:[/] ${display_cost:.2f} {source_indicator}"
             if cost_values:
                 cost_line += f"  {sparkline(cost_values, width=10)}"
             lines.append(cost_line)

@@ -382,7 +382,7 @@ def pretty_print_results(result: AuditResult) -> None:
     total = sum(summary.values())
 
     print("\n" + "=" * 60)
-    print("🔒 Security Audit Results")
+    print(" Security Audit Results")
     print("=" * 60)
     print(f"Scanned: {result.scanned_files} files, {result.scanned_dirs} directories")
     print(f"Duration: {result.duration_ms}ms")
@@ -390,9 +390,9 @@ def pretty_print_results(result: AuditResult) -> None:
     print("-" * 60)
 
     # Summary counts
-    print("\n📊 Summary:")
+    print("\n Summary:")
     if total == 0:
-        print("  ✅ No issues found!")
+        print("  ✓ No issues found!")
     else:
         for sev in ["critical", "high", "medium", "low", "info"]:
             count = summary.get(sev, 0)
@@ -410,7 +410,7 @@ def pretty_print_results(result: AuditResult) -> None:
 
     # Detailed findings
     if result.findings:
-        print("\n📋 Findings:\n")
+        print("\n Findings:\n")
         for i, finding in enumerate(result.findings, 1):
             color = _severity_color(finding.severity)
             reset = _reset_color()
@@ -424,9 +424,9 @@ def pretty_print_results(result: AuditResult) -> None:
                 print(f"   Location: {loc}")
             print(f"   {finding.description}")
             if finding.recommendation:
-                print(f"   💡 {finding.recommendation}")
+                print(f"    {finding.recommendation}")
             if finding.auto_fixable:
-                print("   🔧 Auto-fixable")
+                print("    Auto-fixable")
             print()
 
     print("=" * 60 + "\n")

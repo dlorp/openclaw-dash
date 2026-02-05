@@ -270,7 +270,7 @@ class TestDepsAutomation:
         assert "requests" in output
         assert "2.28.0" in output
         assert "2.31.0" in output
-        assert "🔒" in output  # Security icon
+        assert "" in output  # Security icon
         assert "PRs Created" in output
 
 
@@ -438,7 +438,7 @@ class TestBackupVerifier:
 
         output = format_backup_summary(report)
 
-        assert "✅" in output
+        assert "✓" in output
         assert "healthy" in output
 
     def test_format_backup_summary_critical(self):
@@ -464,7 +464,7 @@ class TestBackupVerifier:
 
         output = format_backup_summary(report)
 
-        assert "🚨" in output
+        assert "" in output
         assert "critical" in output
         assert "Missing" in output
 

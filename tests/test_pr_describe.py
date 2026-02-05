@@ -404,7 +404,7 @@ class TestFormatMarkdown:
             summary="Summary",
             changes={},
             testing=[],
-            notes=["⚠️ **Breaking Changes:**", "  - Removed old API"],
+            notes=[" **Breaking Changes:**", "  - Removed old API"],
             commits=[],
             stats={"files_changed": 0, "additions": 0, "deletions": 0, "commits": 0},
         )
@@ -418,7 +418,7 @@ class TestFormatMarkdown:
             summary="Summary",
             changes={"added": ["file.py"]},
             testing=["Run tests"],
-            notes=["⚠️ **Breaking Changes:**", "  - Removed old API"],
+            notes=[" **Breaking Changes:**", "  - Removed old API"],
             commits=[pr_describe.CommitInfo(hash="abc123", subject="feat: Add feature")],
             stats={"files_changed": 5, "additions": 100, "deletions": 50, "commits": 3},
         )

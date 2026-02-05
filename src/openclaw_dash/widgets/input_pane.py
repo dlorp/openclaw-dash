@@ -171,7 +171,7 @@ class InputPane(Static):
 
     def _send_command(self, command: str) -> None:
         """Send a command to OpenClaw."""
-        self._set_status("sending", "⏳")
+        self._set_status("sending", "")
         self.add_class("sending")
         self.remove_class("error", "success")
 

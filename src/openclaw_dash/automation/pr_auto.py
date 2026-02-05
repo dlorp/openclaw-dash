@@ -377,26 +377,26 @@ def format_merge_results(results: list[dict], repo_name: str) -> str:
     failed = [r for r in results if r["status"] == "failed"]
 
     if merged:
-        lines.append("### ✅ Merged")
+        lines.append("### ✓ Merged")
         for r in merged:
             lines.append(f"- PR #{r['pr']}: {r['title']}")
         lines.append("")
 
     if would_merge:
-        lines.append("### 🔄 Would Merge (dry-run)")
+        lines.append("###  Would Merge (dry-run)")
         for r in would_merge:
             lines.append(f"- PR #{r['pr']}: {r['title']}")
         lines.append("")
 
     if failed:
-        lines.append("### ❌ Failed")
+        lines.append("### ✗ Failed")
         for r in failed:
             lines.append(f"- PR #{r['pr']}: {r['title']}")
             lines.append(f"  - {r['reason']}")
         lines.append("")
 
     if skipped:
-        lines.append("### ⏭️ Skipped")
+        lines.append("###  Skipped")
         for r in skipped:
             lines.append(f"- PR #{r['pr']}: {r['reason']}")
         lines.append("")
@@ -420,19 +420,19 @@ def format_cleanup_results(results: list[dict], repo_name: str) -> str:
     failed = [r for r in results if r["status"] == "failed"]
 
     if deleted:
-        lines.append("### 🗑️ Deleted")
+        lines.append("###  Deleted")
         for r in deleted:
             lines.append(f"- `{r['branch']}` ({r.get('author', 'unknown')})")
         lines.append("")
 
     if would_delete:
-        lines.append("### 🔄 Would Delete (dry-run)")
+        lines.append("###  Would Delete (dry-run)")
         for r in would_delete:
             lines.append(f"- `{r['branch']}` ({r.get('author', 'unknown')})")
         lines.append("")
 
     if failed:
-        lines.append("### ❌ Failed")
+        lines.append("### ✗ Failed")
         for r in failed:
             lines.append(f"- `{r['branch']}`: {r['reason']}")
         lines.append("")

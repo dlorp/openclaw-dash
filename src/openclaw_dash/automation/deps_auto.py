@@ -241,7 +241,7 @@ class DepsAutomation:
                 raise Exception(f"Tests failed: {test_output}")
 
             # Commit and push
-            security_tag = "🔒 " if is_security else ""
+            security_tag = " " if is_security else ""
             commit_msg = f"{security_tag}Update {package} from {current} to {latest}"
 
             run(["git", "add", "-A"], cwd=repo_path)
@@ -384,13 +384,13 @@ Updates **{package}** from `{current}` to `{latest}`
 
 """
         if is_security:
-            body += "⚠️ **Security update** - This package has known vulnerabilities in the current version.\n\n"
+            body += " **Security update** - This package has known vulnerabilities in the current version.\n\n"
 
         body += f"""### Test Results
 {test_output}
 
 ---
-*Created automatically by openclaw-dash deps automation* 🤖
+*Created automatically by openclaw-dash deps automation* 
 """
         return body.replace('"', '\\"')
 
@@ -484,7 +484,7 @@ Updates **{package}** from `{current}` to `{latest}`
 
 def format_deps_results(results: list[UpdateResult]) -> str:
     """Format dependency update results for display."""
-    lines = ["## 📦 Dependency Update Results", ""]
+    lines = ["##  Dependency Update Results", ""]
 
     created = [r for r in results if r.status == "created"]
     dry_run = [r for r in results if r.status == "dry-run"]
@@ -492,30 +492,30 @@ def format_deps_results(results: list[UpdateResult]) -> str:
     skipped = [r for r in results if r.status == "skipped"]
 
     if created:
-        lines.append("### ✅ PRs Created")
+        lines.append("### ✓ PRs Created")
         for r in created:
-            security = "🔒 " if r.is_security else ""
+            security = " " if r.is_security else ""
             lines.append(f"- {security}**{r.repo}**: {r.package} {r.from_version} → {r.to_version}")
             if r.pr_url:
                 lines.append(f"  - <{r.pr_url}>")
         lines.append("")
 
     if dry_run:
-        lines.append("### 🔄 Would Create (dry-run)")
+        lines.append("###  Would Create (dry-run)")
         for r in dry_run:
-            security = "🔒 " if r.is_security else ""
+            security = " " if r.is_security else ""
             lines.append(f"- {security}**{r.repo}**: {r.package} {r.from_version} → {r.to_version}")
         lines.append("")
 
     if failed:
-        lines.append("### ❌ Failed")
+        lines.append("### ✗ Failed")
         for r in failed:
             lines.append(f"- **{r.repo}**: {r.package}")
             lines.append(f"  - {r.message}")
         lines.append("")
 
     if skipped and len(skipped) <= 10:
-        lines.append("### ⏭️ Skipped")
+        lines.append("###  Skipped")
         for r in skipped:
             if r.repo:
                 lines.append(f"- {r.repo}/{r.package}: {r.message}")
@@ -523,7 +523,7 @@ def format_deps_results(results: list[UpdateResult]) -> str:
                 lines.append(f"- {r.message}")
         lines.append("")
     elif skipped:
-        lines.append(f"### ⏭️ Skipped ({len(skipped)} items)")
+        lines.append(f"###  Skipped ({len(skipped)} items)")
         lines.append("")
 
     lines.append(

@@ -498,7 +498,7 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
             return False, f"Tests failed, skipping PR: {test_output}"
 
         # Commit
-        security_tag = "🔒 " if dep.is_security else ""
+        security_tag = " " if dep.is_security else ""
         commit_msg = (
             f"{security_tag}Update {dep.package} from {dep.current_version} to {dep.latest_version}"
         )
@@ -521,10 +521,10 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
                 extra_notes = []
                 if dep.is_security:
                     extra_notes.append(
-                        "⚠️ **Security update** - This package has known vulnerabilities in the current version."
+                        " **Security update** - This package has known vulnerabilities in the current version."
                     )
                 extra_notes.append(f"### Test Results\n{test_output}")
-                extra_notes.append("---\n*Created by dep-shepherd.py* 🐑")
+                extra_notes.append("---\n*Created by dep-shepherd.py* ")
                 pr_body += "\n\n" + "\n\n".join(extra_notes)
             except Exception:
                 # Fall back to simple body
@@ -532,26 +532,26 @@ def create_update_pr(repo: str, dep: OutdatedDep) -> tuple[bool, str]:
 
 Updates **{dep.package}** from `{dep.current_version}` to `{dep.latest_version}`
 
-{"⚠️ **Security update** - This package has known vulnerabilities in the current version." if dep.is_security else ""}
+{" **Security update** - This package has known vulnerabilities in the current version." if dep.is_security else ""}
 
 ### Test Results
 {test_output}
 
 ---
-*Created by dep-shepherd.py* 🐑
+*Created by dep-shepherd.py* 
 """
         else:
             pr_body = f"""## Dependency Update
 
 Updates **{dep.package}** from `{dep.current_version}` to `{dep.latest_version}`
 
-{"⚠️ **Security update** - This package has known vulnerabilities in the current version." if dep.is_security else ""}
+{" **Security update** - This package has known vulnerabilities in the current version." if dep.is_security else ""}
 
 ### Test Results
 {test_output}
 
 ---
-*Created by dep-shepherd.py* 🐑
+*Created by dep-shepherd.py* 
 """
 
         code, stdout, stderr = run(
@@ -635,7 +635,7 @@ def severity_emoji(severity: str) -> str:
 
 def format_report(results: list[RepoAudit]) -> str:
     """Format results as a detailed human-readable report."""
-    lines = ["## 🐑 Dependency Shepherd Report", ""]
+    lines = ["##  Dependency Shepherd Report", ""]
     lines.append(f"**Scanned:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
 
@@ -644,7 +644,7 @@ def format_report(results: list[RepoAudit]) -> str:
 
     for audit in results:
         if audit.errors and not audit.vulnerabilities and not audit.outdated:
-            lines.append(f"### ❌ {audit.name}")
+            lines.append(f"### ✗ {audit.name}")
             for err in audit.errors:
                 lines.append(f"- Error: {err}")
             lines.append("")
@@ -657,7 +657,7 @@ def format_report(results: list[RepoAudit]) -> str:
 
         # Status emoji
         if vuln_count > 0:
-            status = "🚨"
+            status = ""
         elif outdated_count > 10:
             status = "🟡"
         elif outdated_count > 0:
@@ -671,7 +671,7 @@ def format_report(results: list[RepoAudit]) -> str:
 
         # Vulnerabilities
         if audit.vulnerabilities:
-            lines.append("#### 🔒 Security Vulnerabilities")
+            lines.append("####  Security Vulnerabilities")
             for v in sorted(
                 audit.vulnerabilities,
                 key=lambda x: ["critical", "high", "moderate", "low", "unknown"].index(
@@ -698,7 +698,7 @@ def format_report(results: list[RepoAudit]) -> str:
             regular_outdated = [d for d in audit.outdated if not d.get("is_security")]
 
             if security_outdated:
-                lines.append("#### ⚠️ Security-Related Updates")
+                lines.append("####  Security-Related Updates")
                 for d in security_outdated[:10]:
                     lines.append(
                         f"- **{d.get('package')}**: {d.get('current_version')} → {d.get('latest_version')} ({d.get('dep_type')})"
@@ -706,7 +706,7 @@ def format_report(results: list[RepoAudit]) -> str:
                 lines.append("")
 
             if regular_outdated:
-                lines.append(f"#### 📦 Outdated Packages ({len(regular_outdated)} total)")
+                lines.append(f"####  Outdated Packages ({len(regular_outdated)} total)")
                 for d in regular_outdated[:10]:
                     lines.append(
                         f"- {d.get('package')}: {d.get('current_version')} → {d.get('latest_version')} ({d.get('dep_type')})"
@@ -717,7 +717,7 @@ def format_report(results: list[RepoAudit]) -> str:
 
         # Errors
         if audit.errors:
-            lines.append("#### ⚠️ Scan Errors")
+            lines.append("####  Scan Errors")
             for err in audit.errors:
                 lines.append(f"- {err}")
             lines.append("")
@@ -730,7 +730,7 @@ def format_report(results: list[RepoAudit]) -> str:
 
 def format_digest(results: list[RepoAudit]) -> str:
     """Format a weekly digest summary."""
-    lines = ["## 📊 Weekly Dependency Digest", ""]
+    lines = ["##  Weekly Dependency Digest", ""]
     lines.append(f"**Week of:** {datetime.now().strftime('%Y-%m-%d')}")
     lines.append("")
 
@@ -769,7 +769,7 @@ def format_digest(results: list[RepoAudit]) -> str:
 
     # Action items
     if critical_high:
-        lines.append("### 🚨 Immediate Action Required")
+        lines.append("###  Immediate Action Required")
         for repo, v in critical_high:
             lines.append(f"- **{repo}**: {v.get('package')} ({v.get('severity')})")
         lines.append("")
@@ -783,11 +783,11 @@ def format_digest(results: list[RepoAudit]) -> str:
         if audit.errors and vuln_count == 0 and outdated_count == 0:
             emoji = "❓"
         elif vuln_count > 0:
-            emoji = "🚨"
+            emoji = ""
         elif outdated_count > 10:
             emoji = "🟡"
         else:
-            emoji = "✅"
+            emoji = "✓"
 
         lines.append(f"- {emoji} **{audit.name}**: {vuln_count} vulns, {outdated_count} outdated")
 
@@ -837,7 +837,7 @@ def main():
 
     if missing_tools and not output_json:
         print(
-            f"⚠️  Missing tools (some checks will be skipped): {', '.join(missing_tools)}",
+            f"  Missing tools (some checks will be skipped): {', '.join(missing_tools)}",
             file=sys.stderr,
         )
 
@@ -859,16 +859,16 @@ def main():
         if output_json:
             print(json.dumps(pr_results, indent=2))
         else:
-            print("\n## 🔄 Update Results\n")
+            print("\n##  Update Results\n")
             for pr in pr_results:
                 status_emoji = (
-                    "✅"
+                    "✓"
                     if pr["status"] == "created"
-                    else "⏭️"
+                    else ""
                     if pr["status"] == "dry-run"
-                    else "❌"
+                    else "✗"
                 )
-                security_tag = "🔒 " if pr.get("is_security") else ""
+                security_tag = " " if pr.get("is_security") else ""
                 print(
                     f"{status_emoji} {security_tag}**{pr['repo']}** {pr['package']}: {pr['from']} → {pr['to']}"
                 )

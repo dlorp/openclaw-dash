@@ -44,7 +44,7 @@ def export_markdown(data: dict[str, Any]) -> str:
 
     # Gateway Status
     gw = data.get("gateway", {})
-    status = "✅ ONLINE" if gw.get("healthy") else "❌ OFFLINE"
+    status = "✓ ONLINE" if gw.get("healthy") else "✗ OFFLINE"
     lines.extend(
         [
             "## Gateway Status",
@@ -195,7 +195,7 @@ def export_markdown(data: dict[str, Any]) -> str:
         [
             "### GitHub",
             "",
-            f"- **Contribution Streak:** {streak_days} days {'🔥' if streak_days > 0 else '❄️'}",
+            f"- **Contribution Streak:** {streak_days} days {'' if streak_days > 0 else ''}",
             f"- **Avg PR Cycle Time:** {pr.get('avg_cycle_hours', 0):.1f}h",
             "",
         ]
@@ -212,7 +212,7 @@ def export_markdown(data: dict[str, Any]) -> str:
             ]
         )
         for c in channel_list:
-            status_icon = "✅" if c.get("connected") else "❌"
+            status_icon = "✓" if c.get("connected") else "✗"
             lines.append(f"- {status_icon} **{c.get('name', '?')}** ({c.get('type', '?')})")
         lines.append("")
 

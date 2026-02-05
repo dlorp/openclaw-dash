@@ -92,10 +92,10 @@ STATE_ICONS: dict[SpriteState, str] = {
     SpriteState.IDLE: "😊",
     SpriteState.SLEEP: "😴",
     SpriteState.THINK: "🤔",
-    SpriteState.WORK: "⚡",
+    SpriteState.WORK: "",
     SpriteState.SPAWN: "👥",
-    SpriteState.DONE: "✅",
-    SpriteState.ALERT: "⚠️",
+    SpriteState.DONE: "✓",
+    SpriteState.ALERT: "",
 }
 
 # State colors for Textual rich markup

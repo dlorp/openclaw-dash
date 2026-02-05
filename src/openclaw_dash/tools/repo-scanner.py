@@ -353,7 +353,7 @@ def format_markdown(
 
     for r in results:
         if "error" in r:
-            lines.append(f"### ❌ {r.get('name', 'Unknown')}")
+            lines.append(f"### ✗ {r.get('name', 'Unknown')}")
             lines.append(f"Error: {r['error']}")
             lines.append("")
             continue
@@ -370,7 +370,7 @@ def format_markdown(
         # Status based on open PR count
         pr_count = len(prs)
         if pr_count == 0:
-            status = "✅"
+            status = "✓"
         elif pr_count <= 3:
             status = "🟡"
         else:

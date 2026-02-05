@@ -266,7 +266,7 @@ class HelpScreen(ModalScreen[None]):
 
         with Center():
             with Vertical(id="help-container"):
-                yield Static("⌨️  Keyboard Shortcuts", id="help-title")
+                yield Static("  Keyboard Shortcuts", id="help-title")
 
                 with VerticalScroll(id="help-scroll"):
                     for section_name, section_shortcuts in all_shortcuts:

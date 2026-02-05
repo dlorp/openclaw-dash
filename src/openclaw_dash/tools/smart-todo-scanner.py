@@ -416,7 +416,7 @@ def main() -> int:
     else:
         # Human-readable prose output
         filter_note = " (actionable only)" if args.skip_docstrings else ""
-        print(f"## 📝 Smart TODO Scan{filter_note}")
+        print(f"##  Smart TODO Scan{filter_note}")
         print(f"**Path:** {path}")
         # Show breakdown format: "116 TODOs (21 actionable, 95 in docstrings)"
         print(
@@ -425,7 +425,7 @@ def main() -> int:
         )
         print()
 
-        print("### ⚠️ INLINE (code TODOs - high priority)")
+        print("###  INLINE (code TODOs - high priority)")
         if by_category["INLINE"]:
             for t in by_category["INLINE"][:10]:
                 print(f"  {t.file}:{t.line} — {t.text}")
@@ -435,7 +435,7 @@ def main() -> int:
             print("  *None*")
         print()
 
-        print(f"### 💬 COMMENT ({len(by_category['COMMENT'])} items)")
+        print(f"###  COMMENT ({len(by_category['COMMENT'])} items)")
         if by_category["COMMENT"]:
             for t in by_category["COMMENT"][:10]:
                 print(f"  {t.file}:{t.line} — {t.text}")
@@ -446,7 +446,7 @@ def main() -> int:
         print()
 
         if not args.skip_docstrings:
-            print(f"### 📚 DOCSTRING ({len(by_category['DOCSTRING'])} items - documentation notes)")
+            print(f"###  DOCSTRING ({len(by_category['DOCSTRING'])} items - documentation notes)")
             if by_category["DOCSTRING"]:
                 print(f"  {len(by_category['DOCSTRING'])} documentation notes (low priority)")
             else:

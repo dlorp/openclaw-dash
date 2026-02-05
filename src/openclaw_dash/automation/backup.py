@@ -283,28 +283,28 @@ class BackupVerifier:
 def format_backup_report(report: BackupReport) -> str:
     """Format backup report for display."""
     status_emoji = {
-        "healthy": "✅",
-        "warning": "⚠️",
-        "critical": "🚨",
+        "healthy": "✓",
+        "warning": "",
+        "critical": "",
     }
 
     file_emoji = {
-        "ok": "✅",
-        "missing": "❌",
+        "ok": "✓",
+        "missing": "✗",
         "stale": "⏰",
         "empty": "📭",
     }
 
     sync_emoji = {
-        "synced": "✅",
-        "ahead": "⬆️",
-        "behind": "⬇️",
-        "dirty": "📝",
-        "not-a-repo": "❌",
+        "synced": "✓",
+        "ahead": "",
+        "behind": "",
+        "dirty": "",
+        "not-a-repo": "✗",
     }
 
     lines = [
-        "## 💾 Backup Verification Report",
+        "##  Backup Verification Report",
         "",
         f"**Status:** {status_emoji.get(report.overall_status, '❓')} {report.overall_status.upper()}",
         f"**Workspace:** `{report.workspace_path}`",
@@ -314,7 +314,7 @@ def format_backup_report(report: BackupReport) -> str:
 
     # Issues
     if report.issues:
-        lines.append("### ⚠️ Issues Found")
+        lines.append("###  Issues Found")
         for issue in report.issues:
             lines.append(f"- {issue}")
         lines.append("")
@@ -333,7 +333,7 @@ def format_backup_report(report: BackupReport) -> str:
     lines.append("")
 
     # Memory files
-    lines.append("### 🧠 Memory Files")
+    lines.append("###  Memory Files")
     for check in report.memory_checks:
         emoji = file_emoji.get(check.status, "❓")
         name = Path(check.path).name
@@ -347,7 +347,7 @@ def format_backup_report(report: BackupReport) -> str:
 
     # Sync status
     sync = report.sync_check
-    lines.append("### 🔄 Sync Status")
+    lines.append("###  Sync Status")
     lines.append(f"- **Status:** {sync_emoji.get(sync.status, '❓')} {sync.status}")
 
     if sync.is_git_repo:
@@ -365,9 +365,9 @@ def format_backup_report(report: BackupReport) -> str:
 def format_backup_summary(report: BackupReport) -> str:
     """Format a brief backup summary."""
     status_emoji = {
-        "healthy": "✅",
-        "warning": "⚠️",
-        "critical": "🚨",
+        "healthy": "✓",
+        "warning": "",
+        "critical": "",
     }
 
     emoji = status_emoji.get(report.overall_status, "❓")

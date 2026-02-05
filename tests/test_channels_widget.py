@@ -15,32 +15,32 @@ class TestChannelHelpers:
 
     def test_get_channel_icon_discord(self):
         """Test icon for Discord channel."""
-        assert channels.get_channel_icon("discord") == "🎮"
+        assert channels.get_channel_icon("discord") == ""
 
     def test_get_channel_icon_telegram(self):
         """Test icon for Telegram channel."""
-        assert channels.get_channel_icon("telegram") == "✈️"
+        assert channels.get_channel_icon("telegram") == ""
 
     def test_get_channel_icon_signal(self):
         """Test icon for Signal channel."""
-        assert channels.get_channel_icon("signal") == "🔒"
+        assert channels.get_channel_icon("signal") == ""
 
     def test_get_channel_icon_slack(self):
         """Test icon for Slack channel."""
-        assert channels.get_channel_icon("slack") == "💼"
+        assert channels.get_channel_icon("slack") == ""
 
     def test_get_channel_icon_whatsapp(self):
         """Test icon for WhatsApp channel."""
-        assert channels.get_channel_icon("whatsapp") == "💬"
+        assert channels.get_channel_icon("whatsapp") == ""
 
     def test_get_channel_icon_imessage(self):
         """Test icon for iMessage channel."""
-        assert channels.get_channel_icon("imessage") == "🍎"
+        assert channels.get_channel_icon("imessage") == ""
 
     def test_get_channel_icon_unknown(self):
         """Test icon for unknown channel type."""
-        assert channels.get_channel_icon("unknown") == "📱"
-        assert channels.get_channel_icon("something_else") == "📱"
+        assert channels.get_channel_icon("unknown") == ""
+        assert channels.get_channel_icon("something_else") == ""
 
     def test_get_status_icon_connected(self):
         """Test icon for connected status."""

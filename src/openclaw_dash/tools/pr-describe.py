@@ -1393,15 +1393,15 @@ def generate_pr_description(
     # Build notes
     notes = []
     if breaking:
-        notes.append("⚠️ **Breaking Changes:**")
+        notes.append(" **Breaking Changes:**")
         for b in breaking:
             notes.append(f"  - {b}")
     if new_deps:
-        notes.append("📦 **New Dependencies:**")
+        notes.append(" **New Dependencies:**")
         for d in new_deps:
             notes.append(f"  - {d}")
     if config_changes and config.output_style != "minimal":
-        notes.append("⚙️ **Configuration Changes:**")
+        notes.append(" **Configuration Changes:**")
         for c in config_changes:
             notes.append(f"  - {c}")
 
@@ -1643,12 +1643,12 @@ def format_squash(desc: PRDescription, config: Config) -> str:
     lines.append(f"{stats['files_changed']} files, +{stats['additions']}/-{stats['deletions']}")
 
     # Breaking changes (critical - always show)
-    breaking = [n for n in desc.notes if "Breaking" in n or "⚠️" in n]
+    breaking = [n for n in desc.notes if "Breaking" in n or "" in n]
     if breaking:
         lines.append("")
         lines.append(
-            "⚠️ BREAKING: "
-            + breaking[0].replace("⚠️ ", "").replace("**Breaking Changes:**", "").strip()
+            " BREAKING: "
+            + breaking[0].replace(" ", "").replace("**Breaking Changes:**", "").strip()
         )
 
     return "\n".join(lines)
@@ -1839,9 +1839,9 @@ Config file: ~/.config/openclaw-dash/pr-describe.yaml
     # Copy to clipboard if requested
     if args.clipboard:
         if copy_to_clipboard(output):
-            print("✅ Copied to clipboard!", file=sys.stderr)
+            print("✓ Copied to clipboard!", file=sys.stderr)
         else:
-            print("⚠️  Could not copy to clipboard (pbcopy/xclip not found)", file=sys.stderr)
+            print("  Could not copy to clipboard (pbcopy/xclip not found)", file=sys.stderr)
 
     print(output)
 

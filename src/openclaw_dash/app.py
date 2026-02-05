@@ -453,7 +453,7 @@ class DashboardApp(App):
 
         with Container(id="alerts-panel", classes="panel"):
             with Collapsible(
-                title="⚠️ Alerts",
+                title=" Alerts",
                 collapsed=False,
                 collapsed_symbol="▸",
                 expanded_symbol="▾",
@@ -503,7 +503,7 @@ class DashboardApp(App):
 
         with Container(id="agents-panel", classes="panel"):
             with Collapsible(
-                title="🤖 Agents",
+                title=" Agents",
                 collapsed=False,
                 collapsed_symbol="▸",
                 expanded_symbol="▾",
@@ -523,7 +523,7 @@ class DashboardApp(App):
 
         with Container(id="metrics-panel", classes="panel"):
             with Collapsible(
-                title="📊 Metrics",
+                title=" Metrics",
                 collapsed=False,
                 collapsed_symbol="▸",
                 expanded_symbol="▾",
@@ -533,7 +533,7 @@ class DashboardApp(App):
 
         with Container(id="security-panel", classes="panel"):
             with Collapsible(
-                title="🔒 Security",
+                title=" Security",
                 collapsed=False,
                 collapsed_symbol="▸",
                 expanded_symbol="▾",
@@ -553,7 +553,7 @@ class DashboardApp(App):
 
         with Container(id="resources-panel", classes="panel"):
             with Collapsible(
-                title="📊 Resources",
+                title=" Resources",
                 collapsed=False,
                 collapsed_symbol="▸",
                 expanded_symbol="▾",

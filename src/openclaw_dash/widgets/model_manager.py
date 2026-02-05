@@ -370,7 +370,7 @@ class ModelManagerPanel(Static):
         # Capabilities
         caps: list[str] = []
         if model.is_thinking:
-            caps.append("🧠")
+            caps.append("")
         if model.is_coder:
             caps.append("💻")
 

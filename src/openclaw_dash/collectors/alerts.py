@@ -316,6 +316,6 @@ def get_severity_icon(severity: str) -> str:
         "high": "🟠",
         "medium": "🟡",
         "low": "🔵",
-        "info": "ℹ️",
+        "info": "",
     }
     return icons.get(severity.lower(), "•")
