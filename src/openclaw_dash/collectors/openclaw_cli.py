@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -213,8 +214,6 @@ def parse_status_output(output: str) -> OpenClawStatus:
     status.update_available = "update available" in output.lower()
     return status
 
-
-import time as _time
 
 # Cached status to avoid repeated slow CLI calls
 _cached_status: OpenClawStatus | None = None
