@@ -96,7 +96,7 @@ class OpenAIBilling:
                     "Authorization": f"Bearer {self.admin_key}",
                     "Content-Type": "application/json",
                 },
-                timeout=30,
+                timeout=5,
             )
 
             if response.status_code == 401:
@@ -188,7 +188,7 @@ class OpenAIBilling:
                     "Authorization": f"Bearer {self.admin_key}",
                     "Content-Type": "application/json",
                 },
-                timeout=30,
+                timeout=5,
             )
 
             if response.status_code != 200:
