@@ -851,10 +851,18 @@ class SettingsScreen(ModalScreen[bool]):
                 settings_path = key_mappings[collected_key]
                 # Convert numeric strings to int for integer settings
                 if collected_key in ("refresh-interval", "gateway-port", "tool-timeout"):
-                    try:
-                        value = int(value) if value else None
-                    except (ValueError, TypeError):
-                        pass
+                    if value:
+                        try:
+                            value = int(value)
+                        except (ValueError, TypeError) as e:
+                            self.app.notify(
+                                f"Invalid value for {collected_key}: {e}",
+                                severity="error",
+                                timeout=3.0,
+                            )
+                            return
+                    else:
+                        value = None
                 self._settings.set(settings_path, value)
 
         # Save to file

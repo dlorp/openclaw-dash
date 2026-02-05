@@ -15,6 +15,12 @@ import httpx
 
 DEFAULT_GATEWAY_URL = "http://localhost:18789"
 
+# Whitelist of allowed configuration keys to prevent CLI flag injection
+ALLOWED_CONFIG_KEYS = frozenset({
+    "model", "context_limit", "timeout", "thinking",
+    "verbose", "elevated", "heartbeat_interval"
+})
+
 
 @dataclass
 class GatewayConfig:
@@ -229,8 +235,14 @@ class GatewayClient:
             True if all patches applied successfully.
 
         Raises:
+            ValueError: If an invalid config key is provided.
             GatewayError: If unable to apply configuration changes.
         """
+        # Validate all keys before processing any changes
+        for key in patch.keys():
+            if key not in ALLOWED_CONFIG_KEYS:
+                raise ValueError(f"Invalid config key: {key}")
+
         errors = []
         for key, value in patch.items():
             try:
