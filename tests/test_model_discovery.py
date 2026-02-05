@@ -156,7 +156,9 @@ class TestModelInfo:
         assert model.display_name == "Claude Sonnet"
 
     def test_display_name_without_variant(self):
-        model = ModelInfo(name="openai/gpt-4", provider="openai", family="gpt", tier=ModelTier.POWERFUL)
+        model = ModelInfo(
+            name="openai/gpt-4", provider="openai", family="gpt", tier=ModelTier.POWERFUL
+        )
         assert model.display_name == "Gpt"
 
 
@@ -307,6 +309,7 @@ class TestGatewayDiscovery:
     @pytest.fixture
     def mock_client(self):
         from openclaw_dash.services import GatewayClient
+
         return MagicMock(spec=GatewayClient)
 
     def test_discover_with_gateway(self, mock_client):

@@ -373,7 +373,13 @@ class ModelDiscoveryService:
         # Sort by tier (POWERFUL first), then name
         result.models.sort(
             key=lambda m: (
-                0 if m.tier == ModelTier.POWERFUL else 1 if m.tier == ModelTier.BALANCED else 2 if m.tier == ModelTier.FAST else 3,
+                0
+                if m.tier == ModelTier.POWERFUL
+                else 1
+                if m.tier == ModelTier.BALANCED
+                else 2
+                if m.tier == ModelTier.FAST
+                else 3,
                 m.name,
             )
         )
