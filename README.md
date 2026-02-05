@@ -170,8 +170,8 @@ Comprehensive guides in the `docs/` folder:
 - **[Installation Guide](docs/INSTALLATION.md)** — Detailed install guide (pip, source, dev setup)
 - **[Configuration](docs/CONFIGURATION.md)** — Config options, themes, and demo mode
 - **[Widgets Reference](docs/WIDGETS.md)** — Every panel explained with examples
+- **[Tools Reference](docs/TOOLS.md)** — CLI usage, configuration, and API for all bundled tools
 - **[Development Guide](docs/DEVELOPMENT.md)** — Add widgets, run tests, contribute
-- **[Design Audit](docs/DESIGN_AUDIT.md)** — Brand colors, aesthetic guidelines, phosphor theme spec
 
 ## Contributing
 
