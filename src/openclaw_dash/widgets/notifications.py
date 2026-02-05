@@ -32,7 +32,7 @@ TIMEOUTS = {
 # Icons for notifications
 ICONS = {
     NotificationLevel.INFO: "✓",
-    NotificationLevel.WARNING: "",
+    NotificationLevel.WARNING: "⚠",
     NotificationLevel.ERROR: "✗",
 }
 
