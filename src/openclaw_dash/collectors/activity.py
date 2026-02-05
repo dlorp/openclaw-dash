@@ -14,6 +14,37 @@ from openclaw_dash.demo import is_demo_mode, mock_activity
 WORKSPACE = Path.home() / ".openclaw" / "workspace"
 ACTIVITY_LOG = WORKSPACE / "memory" / "activity.json"
 
+# Default structure for activity data
+_DEFAULT_ACTIVITY: dict[str, Any] = {"current_task": None, "recent": []}
+
+
+def _read_activity_data() -> dict[str, Any]:
+    """Read activity data from the log file.
+
+    Returns:
+        Activity data dictionary, or defaults if file doesn't exist or is invalid.
+    """
+    if not ACTIVITY_LOG.exists():
+        return dict(_DEFAULT_ACTIVITY)
+
+    try:
+        return json.loads(ACTIVITY_LOG.read_text())
+    except (OSError, json.JSONDecodeError):
+        return dict(_DEFAULT_ACTIVITY)
+
+
+def _write_activity_data(data: dict[str, Any]) -> None:
+    """Write activity data to the log file.
+
+    Creates parent directories if needed. Updates the 'updated_at' timestamp.
+
+    Args:
+        data: Activity data to write.
+    """
+    ACTIVITY_LOG.parent.mkdir(parents=True, exist_ok=True)
+    data["updated_at"] = datetime.now().isoformat()
+    ACTIVITY_LOG.write_text(json.dumps(data, indent=2))
+
 
 def collect() -> dict[str, Any]:
     """Collect current task and recent activity."""
@@ -29,20 +60,13 @@ def collect() -> dict[str, Any]:
             "collected_at": datetime.now().isoformat(),
         }
 
+    # Load activity data using shared helper
+    data = _read_activity_data()
     result: dict[str, Any] = {
-        "current_task": None,
-        "recent": [],
+        "current_task": data.get("current_task"),
+        "recent": data.get("recent", [])[-10:],
         "collected_at": datetime.now().isoformat(),
     }
-
-    # Try to read activity log if it exists
-    if ACTIVITY_LOG.exists():
-        try:
-            data = json.loads(ACTIVITY_LOG.read_text())
-            result["current_task"] = data.get("current_task")
-            result["recent"] = data.get("recent", [])[-10:]
-        except (OSError, json.JSONDecodeError):
-            pass
 
     # Fallback: check today's memory file for recent activity
     today = datetime.now().strftime("%Y-%m-%d")
@@ -75,14 +99,7 @@ def collect() -> dict[str, Any]:
 
 def set_current_task(task: str) -> None:
     """Set the current task for display in the dashboard."""
-    ACTIVITY_LOG.parent.mkdir(parents=True, exist_ok=True)
-
-    data: dict[str, Any] = {"current_task": None, "recent": []}
-    if ACTIVITY_LOG.exists():
-        try:
-            data = json.loads(ACTIVITY_LOG.read_text())
-        except (OSError, json.JSONDecodeError):
-            pass
+    data = _read_activity_data()
 
     # Add previous task to recent if exists
     recent_items: list[dict[str, Any]] = data.get("recent", [])
@@ -96,21 +113,12 @@ def set_current_task(task: str) -> None:
         data["recent"] = recent_items[-20:]  # Keep last 20
 
     data["current_task"] = task
-    data["updated_at"] = datetime.now().isoformat()
-
-    ACTIVITY_LOG.write_text(json.dumps(data, indent=2))
+    _write_activity_data(data)
 
 
 def log_activity(action: str) -> None:
     """Log an activity event."""
-    ACTIVITY_LOG.parent.mkdir(parents=True, exist_ok=True)
-
-    data: dict[str, Any] = {"current_task": None, "recent": []}
-    if ACTIVITY_LOG.exists():
-        try:
-            data = json.loads(ACTIVITY_LOG.read_text())
-        except (OSError, json.JSONDecodeError):
-            pass
+    data = _read_activity_data()
 
     recent_items: list[dict[str, Any]] = data.get("recent", [])
     recent_items.append(
@@ -120,6 +128,4 @@ def log_activity(action: str) -> None:
         }
     )
     data["recent"] = recent_items[-20:]
-    data["updated_at"] = datetime.now().isoformat()
-
-    ACTIVITY_LOG.write_text(json.dumps(data, indent=2))
+    _write_activity_data(data)
