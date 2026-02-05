@@ -22,9 +22,10 @@ class TestCLI:
             main()
         assert exc.value.code == 0
 
+    @patch("openclaw_dash.cli.quick_gateway_check", return_value=True)
     @patch("openclaw_dash.cli.with_gateway_timeout")
     @patch("sys.argv", ["openclaw-dash", "--status", "--json"])
-    def test_json_output(self, mock_timeout, capsys):
+    def test_json_output(self, mock_timeout, mock_check, capsys):
         mock_timeout.return_value = {
             "gateway": {"status": "connected"},
             "sessions": [],
