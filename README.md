@@ -6,72 +6,78 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/dlorp/openclaw-dash/ci.yml?label=CI)](https://github.com/dlorp/openclaw-dash/actions)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](https://github.com/dlorp/openclaw-dash)
 
-TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/openclaw) ecosystem at a glance.
+TUI dashboard for monitoring and managing your [OpenClaw](https://github.com/openclaw/openclaw) ecosystem.
 
-
+<!-- TODO: Add real screenshot -->
 ![Dashboard Screenshot](docs/images/dashboard.svg)
-<!-- Real screenshots coming soon — expect warm amber (#FB8B24) glow on dark backgrounds -->
 
 <details>
 <summary>ASCII Preview</summary>
 
 ```
-╭─────────────────────────────────────────────────────────────────────────╮
-│  █▀█ █▀█ █▀▀ █▄ █ █▀▀ █   ▄▀█ █ █ █  ░░░░░░░░▓▓▓▓▓▓    14:32 PST    │
-│  █▄█ █▀▀ ██▄ █ ▀█ █▄▄ █▄▄ █▀█ ▀▄▀▄▀  DASHBOARD         ◉ PHOSPHOR    │
-├─────────────────────────────────────────────────────────────────────────┤
-│  ╭────────────╮ ╭────────────╮ ╭────────────╮ ╭────────────╮            │
-│  │ ● GATEWAY  │ │ $0.42/day  │ │ 0.2% ░░░░░ │ │ 🔥 12 days │            │
-│  ╰────────────╯ ╰────────────╯ ╰────────────╯ ╰────────────╯            │
-├─────────────────────────────────────────────────────────────────────────┤
-│ [a]─ GATEWAY ──────╮ [b]─ CURRENT TASK ──────────────────────────────╮  │
-│ │   ● ONLINE       │ │  Building new feature for project-x          │  │
-│ │   ctx: ▓▓░░ 24%  │ │  › Implementing auth module                   │  │
-│ │   2h uptime      │ │  › Writing tests                              │  │
-│ ╰──────────────────╯ ╰───────────────────────────────────────────────╯  │
-│                                                                         │
-│ [c]─ REPOS ─────────────────────╮ [d]─ ACTIVITY ─────────────────────╮  │
-│ │  my-project      ✨  0 PRs    │ │  ▸ 14:30 Pushed feature branch   │  │
-│ │  another-repo    ●   2 PRs    │ │  ▸ 14:00 Reviewed PR #42         │  │
-│ │  side-project    ◐   5 PRs    │ │  ▸ 13:30 Fixed CI pipeline       │  │
-│ ╰───────────────────────────────╯ ╰──────────────────────────────────╯  │
-│                                                                         │
-│ ━━━ SESSIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
-│  ● main         [▓▓▓▓▓▓▓▓░░] 45%                                        │
-│  ○ sub-agent-1  [▓░░░░░░░░░] 12%                                        │
-│  ○ sub-agent-2  [░░░░░░░░░░]  8%                                        │
-│                                                                         │
-│ [h] Help  [f] Jump  [t] Theme  [Ctrl+P] Palette                [q] Quit │
-╰─────────────────────────────────────────────────────────────────────────╯
++-----------------------------------------------------------------------------+
+|  OPENCLAW DASHBOARD                                      14:32 PST          |
+|  Gateway: ONLINE    $0.42/day    0.2% ctx    12 day streak                  |
++-----------------------------------------------------------------------------+
+| GATEWAY              | CURRENT TASK                                        |
+|   * ONLINE           |   Building new feature for project-x                |
+|   ctx: ==--  24%     |   > Implementing auth module                        |
+|   2h uptime          |   > Writing tests                                   |
++----------------------+-----------------------------------------------------+
+| REPOS                          | ACTIVITY                                   |
+|   my-project      *   0 PRs    |   > 14:30 Pushed feature branch            |
+|   another-repo    o   2 PRs    |   > 14:00 Reviewed PR #42                  |
+|   side-project    o   5 PRs    |   > 13:30 Fixed CI pipeline                |
++--------------------------------+--------------------------------------------+
+| SESSIONS                                                                    |
+|   * main         [========--] 45%                                           |
+|   o sub-agent-1  [=-------] 12%                                             |
+|   o sub-agent-2  [--------]  8%                                             |
++-----------------------------------------------------------------------------+
+| [h] Help  [f] Jump  [t] Theme  [s] Settings  [Ctrl+P] Palette       [q] Quit|
++-----------------------------------------------------------------------------+
 ```
 
 </details>
 
 ## Features
 
-### Panels
-- **Gateway Status** — Health, context usage, uptime
-- **Current Task** — Track what your agent is working on
-- **Repository Health** — PRs, CI status, TODO counts
-- **Activity Log** — Recent actions with timestamps
-- **Sessions** — Active sessions and context burn rate
-- **Cron Jobs** — Scheduled tasks and status
-- **Alerts** — Color-coded severity alerts from all sources
-- **Channels** — Connected messaging channels and status
-- **Agents** — Sub-agent coordination view with status, context usage, and task summaries
-- **Security Audit** — Config scanning, dependency vulnerabilities
-- **Metrics** — Cost tracking, performance stats, GitHub streak
-- **System Resources** — CPU, memory, disk, and network I/O (toggleable with `x`)
-- **Logs** — Real-time gateway log viewer
+### Dashboard Panels
+
+| Panel | Description |
+|-------|-------------|
+| **Gateway Status** | Health indicator, context usage, uptime, connection state |
+| **Metric Boxes** | KPI bar: gateway status, daily cost, error rate, streak |
+| **Current Task** | What your agent is actively working on |
+| **Repository Health** | PR counts, CI status, TODO metrics per repo |
+| **Activity Log** | Timestamped action history |
+| **Sessions** | Active sessions with context burn rate visualization |
+| **Agents** | Sub-agent roster with status, context, and task summaries |
+| **Cron Jobs** | Scheduled tasks, next run times, status |
+| **Alerts** | Color-coded severity alerts aggregated from all sources |
+| **Channels** | Connected messaging channels (Discord, Telegram, etc.) |
+| **Security Audit** | Config issues, dependency vulnerabilities, dangerous patterns |
+| **Metrics** | Cost tracking, performance stats, GitHub contribution streak |
+| **System Resources** | CPU, memory, disk, network I/O (toggle with `x`) |
+| **Logs** | Real-time gateway log viewer with filtering |
+| **Model Manager** | View and configure available LLM models by tier |
 
 ### UI Features
-- **Metric Boxes** — Compact KPI bar showing gateway status, cost, error rate, and streak
+
+- **Settings Screen** — Modal configuration UI (`s`) with tabbed sections: General, Tools, Appearance, Keybinds, Models
 - **Collapsible Panels** — Collapse/expand any panel with `Enter`, or all with `Ctrl+[`/`Ctrl+]`
-- **Jump Mode** — Press `f` to show letter labels, then press a letter to jump to that panel
-- **Vim Navigation** — `j`/`k` to scroll, `G` for end, `Home` for top
+- **Jump Mode** — Press `f` to show letter labels, then press a letter to focus that panel
 - **Command Palette** — `Ctrl+P` for quick access to all commands
-- **Themes** — Cycle through dark/light/phosphor themes with `t` (amber glow!)
-- **Responsive Layout** — Adapts to terminal size, hides less-critical panels when narrow
+- **Vim Navigation** — `j`/`k` scroll, `G` end, `Home` top
+- **Themes** — Dark, light, and phosphor (amber CRT aesthetic) — cycle with `t`
+- **Notifications** — Toast notifications for important events
+- **Responsive Layout** — Adapts to terminal size, prioritizes critical panels
+- **Demo Mode** — `--demo` flag for showcasing without a live gateway
+
+### Services
+
+- **Gateway Client** — Async communication with OpenClaw gateway API
+- **Model Discovery** — Discovers available models from gateway, organized by tier (Fast/Balanced/Powerful)
 
 ## Keyboard Shortcuts
 
@@ -80,6 +86,7 @@ TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/opencla
 | `q` | Quit |
 | `r` | Refresh all panels |
 | `t` | Cycle theme |
+| `s` | Open settings |
 | `h` / `?` | Help panel |
 | `Ctrl+P` | Command palette |
 | `j` / `k` | Scroll down/up |
@@ -105,73 +112,177 @@ cd openclaw-dash
 pip install -e .
 ```
 
-## Usage
+## CLI Usage
+
+### Dashboard
 
 ```bash
 openclaw-dash              # Launch TUI dashboard
+openclaw-dash --demo       # Demo mode (no gateway required)
 openclaw-dash --status     # Quick text status
 openclaw-dash --json       # JSON output for scripting
+openclaw-dash --skip-gateway  # Skip gateway connection
 ```
 
-### Commands
+### Security
 
 ```bash
 openclaw-dash security              # Run security audit
-openclaw-dash security --deep       # Full vulnerability scan
-openclaw-dash security --fix        # Auto-fix issues
+openclaw-dash security --deep       # Full vulnerability scan (slower)
+openclaw-dash security --fix        # Auto-fix safe issues
+openclaw-dash security --json       # JSON output
+```
 
-openclaw-dash metrics               # View metrics
+### Automation
+
+```bash
 openclaw-dash auto merge            # Auto-merge approved PRs
+openclaw-dash auto merge --dry-run  # Preview without merging
 openclaw-dash auto cleanup          # Clean stale branches
+openclaw-dash auto deps             # Update dependencies
+openclaw-dash auto deps --security  # Security updates only
+openclaw-dash auto backup           # Backup workspace state
+```
+
+### Diagnostics
+
+```bash
+openclaw-dash collectors            # Test all data collectors
+openclaw-dash models                # List available models
+openclaw-dash models --json         # JSON model inventory
+openclaw-dash metrics               # View metrics dashboard
 ```
 
 ## Integrated Tools
 
-Bundled automation tools:
+Bundled CLI tools for repository management:
 
-| Tool | Description |
-|------|-------------|
-| `repo-scanner` | Repository health metrics (TODOs, tests, PRs) |
-| `pr-tracker` | PR status monitoring and merge detection |
-| `smart-todo-scanner` | Context-aware TODO categorization |
-| `dep-shepherd` | Dependency auditing and updates |
-| `pr-describe` | Automated PR description generation |
-| `pr-create` | Streamlined PR creation with auto-generated content |
-| `audit` | Security scanning (secrets, vulnerabilities, dangerous patterns) |
-| `version-bump` | Semantic version management based on conventional commits |
+| Tool | Command | Description |
+|------|---------|-------------|
+| **repo-scanner** | `python -m openclaw_dash.tools.repo-scanner` | Repository health metrics (TODOs, tests, PRs) |
+| **pr-tracker** | `python -m openclaw_dash.tools.pr-tracker` | PR status monitoring, merge detection |
+| **smart-todo-scanner** | `python -m openclaw_dash.tools.smart-todo-scanner` | Context-aware TODO categorization |
+| **dep-shepherd** | `python -m openclaw_dash.tools.dep-shepherd` | Dependency auditing and updates |
+| **pr-describe** | `python -m openclaw_dash.tools.pr-describe` | Auto-generate PR descriptions |
+| **pr-create** | `python -m openclaw_dash.tools.pr-create` | Streamlined PR creation |
+| **audit** | `python -m openclaw_dash.tools.audit` | Security scanning |
+| **version-bump** | `python -m openclaw_dash.tools.version-bump` | Semantic versioning from commits |
+| **changelog** | `python -m openclaw_dash.tools.changelog` | Generate changelogs |
+
+See [Tools Reference](docs/TOOLS.md) for detailed usage.
+
+## Automation Features
+
+### Auto-Merge (`auto merge`)
+
+Automatically merges PRs that meet criteria:
+- CI passing (configurable)
+- Required approvals met
+- Branch matches safelist patterns (deps/, dependabot/, renovate/)
+- Deletes branch after merge (configurable)
+
+### Stale Branch Cleanup (`auto cleanup`)
+
+Removes old merged branches:
+- Configurable age threshold (default: 30 days)
+- Protects main, master, develop, release/* patterns
+- Dry-run mode for preview
+
+### Dependency Updates (`auto deps`)
+
+Automated dependency management:
+- Scans configured repos for outdated packages
+- Creates PRs for updates
+- Security-only mode available
+- Rate-limited to prevent PR spam
+
+## Configuration
+
+Config file: `~/.config/openclaw-dash/config.toml`
+
+```toml
+# Display
+theme = "phosphor"          # dark, light, or phosphor
+refresh_interval = 30       # seconds between auto-refresh
+show_resources = true       # show system resources panel
+show_notifications = true   # desktop notifications
+
+# Connection
+gateway_host = "localhost"
+gateway_port = 18789
+
+# Paths
+repos_path = "~/repos"
+workspace_path = "~/.openclaw/workspace"
+
+# Panels
+collapsed_panels = []       # panels to start collapsed
+
+# Automation
+[automation]
+safelist = ["deps/", "dependabot/", "renovate/"]
+require_ci = true
+require_approval = true
+min_approvals = 1
+```
+
+## Architecture
+
+```
+openclaw-dash/
+  src/openclaw_dash/
+    app.py              # Main Textual application
+    cli.py              # CLI entry point and commands
+    collectors/         # Data collection from various sources
+      gateway.py        # OpenClaw gateway status
+      sessions.py       # Session information
+      repos.py          # Repository health
+      alerts.py         # Alert aggregation
+      ...
+    widgets/            # TUI panel components
+      gateway_status.py
+      sessions_panel.py
+      alerts.py
+      ...
+    screens/            # Modal screens
+      settings_screen.py
+    services/           # Backend services
+      gateway_client.py # Gateway API communication
+      model_discovery.py
+    security/           # Security scanning
+      audit.py
+      deps.py
+      fixes.py
+    automation/         # Automation features
+      pr_auto.py        # PR merge/cleanup
+      deps_auto.py      # Dependency updates
+      backup.py         # Workspace backup
+    tools/              # Standalone CLI tools
+      repo-scanner.py
+      pr-tracker.py
+      ...
+    metrics/            # Metrics collection
+      costs.py
+      github.py
+      performance.py
+```
 
 ## Requirements
 
 - Python 3.10+
-- [OpenClaw](https://github.com/openclaw/openclaw) gateway running
+- [OpenClaw](https://github.com/openclaw/openclaw) gateway (for live data)
 - `gh` CLI (for GitHub integration)
-
-## Configuration
-
-The dashboard auto-discovers:
-- OpenClaw gateway at `localhost:18789`
-- Repositories in `~/repos/`
-- Workspace at `~/.openclaw/workspace/`
-
-User preferences are saved to `~/.config/openclaw-dash/config.toml`:
-
-```toml
-theme = "dark"              # dark, light, or phosphor (amber CRT aesthetic)
-refresh_interval = 30       # seconds between auto-refresh
-show_resources = true       # show system resources panel
-show_notifications = true   # show toast notifications
-collapsed_panels = []       # panels to start collapsed
-```
 
 ## Documentation
 
-Comprehensive guides in the `docs/` folder:
-
-- **[Installation Guide](docs/INSTALLATION.md)** — Detailed install guide (pip, source, dev setup)
-- **[Configuration](docs/CONFIGURATION.md)** — Config options, themes, and demo mode
-- **[Widgets Reference](docs/WIDGETS.md)** — Every panel explained with examples
-- **[Tools Reference](docs/TOOLS.md)** — CLI usage, configuration, and API for all bundled tools
-- **[Development Guide](docs/DEVELOPMENT.md)** — Add widgets, run tests, contribute
+| Document | Description |
+|----------|-------------|
+| [Installation Guide](docs/INSTALLATION.md) | Detailed setup instructions |
+| [Configuration](docs/CONFIGURATION.md) | All config options explained |
+| [Widgets Reference](docs/WIDGETS.md) | Panel documentation |
+| [Tools Reference](docs/TOOLS.md) | CLI tools usage |
+| [Development Guide](docs/DEVELOPMENT.md) | Contributing, testing, adding widgets |
+| [Architecture](docs/ARCHITECTURE.md) | System design overview |
 
 ## Contributing
 
