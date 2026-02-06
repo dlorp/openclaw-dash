@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+from openclaw_dash import demo
 from openclaw_dash.collectors import alerts
 from openclaw_dash.collectors.alerts import (
     Alert,
@@ -121,6 +122,7 @@ class TestCollect:
 
     @patch("openclaw_dash.collectors.alerts.collect_ci_failures")
     def test_collect_includes_ci_when_enabled(self, mock_ci):
+        demo.disable_demo_mode()  # Disable demo mode to test real code path
         mock_ci.return_value = [
             Alert(severity=Severity.HIGH, title="CI Failed", source="github/test")
         ]
@@ -135,6 +137,7 @@ class TestCollect:
 
     def test_alerts_sorted_by_severity(self):
         """Verify that alerts are sorted by severity (critical first)."""
+        demo.disable_demo_mode()  # Disable demo mode to test real code path
         with (
             patch("openclaw_dash.collectors.alerts.collect_ci_failures") as mock_ci,
             patch("openclaw_dash.collectors.alerts.collect_security_vulnerabilities") as mock_sec,
