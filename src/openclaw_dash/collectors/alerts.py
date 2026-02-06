@@ -16,6 +16,8 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode
+
 
 class Severity(IntEnum):
     """Alert severity levels (lower = more severe)."""
@@ -266,6 +268,28 @@ def collect(
     Returns:
         Dictionary with alerts list and metadata
     """
+    # Return mock data in demo mode
+    if is_demo_mode():
+        return {
+            "alerts": [
+                {
+                    "severity": "medium",
+                    "title": "Context usage high",
+                    "source": "gateway",
+                    "description": "Main session at 75% context",
+                },
+                {
+                    "severity": "low",
+                    "title": "Outdated dependency",
+                    "source": "security",
+                    "description": "requests 2.28.0 -> 2.31.0",
+                },
+            ],
+            "summary": {"critical": 0, "high": 0, "medium": 1, "low": 1, "info": 0},
+            "total": 2,
+            "collected_at": datetime.now().isoformat(),
+        }
+
     all_alerts: list[Alert] = []
 
     if include_ci:
