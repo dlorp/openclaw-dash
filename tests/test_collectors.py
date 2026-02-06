@@ -34,6 +34,11 @@ class TestGatewayCollector:
 
     def test_collect_fallback_to_http_health(self) -> None:
         """Gateway falls back to HTTP health check when CLI unavailable."""
+        # Reset cache to avoid stale data from previous tests
+        from openclaw_dash.collectors.cache import reset_cache
+
+        reset_cache()
+
         with patch("openclaw_dash.collectors.gateway.is_demo_mode", return_value=False):
             with patch("openclaw_dash.collectors.gateway.get_openclaw_status", return_value=None):
                 mock_response = MagicMock()
