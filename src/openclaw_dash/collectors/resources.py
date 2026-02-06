@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode
+
 try:
     import psutil
 
@@ -13,12 +15,76 @@ except ImportError:
     PSUTIL_AVAILABLE = False
 
 
+def _mock_resources() -> dict[str, Any]:
+    """Return mock resource data for demo mode."""
+    return {
+        "available": True,
+        "cpu": {
+            "percent": 23.5,
+            "per_core": [18.2, 25.1, 22.8, 27.9],
+            "cores_logical": 4,
+            "cores_physical": 2,
+            "freq_current": 2400.0,
+            "freq_max": 3200.0,
+        },
+        "memory": {
+            "total": 17179869184,
+            "available": 8589934592,
+            "used": 8589934592,
+            "percent": 50.0,
+            "total_gb": 16.0,
+            "used_gb": 8.0,
+            "available_gb": 8.0,
+            "swap_total": 4294967296,
+            "swap_used": 536870912,
+            "swap_percent": 12.5,
+        },
+        "disks": [
+            {
+                "mount": "/",
+                "device": "/dev/disk1s1",
+                "fstype": "apfs",
+                "total": 499963174912,
+                "used": 299977904947,
+                "free": 199985269965,
+                "percent": 60.0,
+                "total_gb": 465.6,
+                "used_gb": 279.4,
+                "free_gb": 186.2,
+            }
+        ],
+        "network": {
+            "bytes_sent": 1073741824,
+            "bytes_recv": 5368709120,
+            "packets_sent": 1000000,
+            "packets_recv": 5000000,
+            "bytes_sent_mb": 1024.0,
+            "bytes_recv_mb": 5120.0,
+            "interfaces": [
+                {
+                    "name": "en0",
+                    "bytes_sent": 1073741824,
+                    "bytes_recv": 5368709120,
+                    "sent_mb": 1024.0,
+                    "recv_mb": 5120.0,
+                }
+            ],
+        },
+        "load": {"1min": 1.25, "5min": 1.50, "15min": 1.35},
+        "collected_at": datetime.now().isoformat(),
+    }
+
+
 def collect() -> dict[str, Any]:
     """Collect system resource metrics.
 
     Returns:
         Dictionary containing CPU, memory, disk, and network metrics.
     """
+    # Return mock data in demo mode
+    if is_demo_mode():
+        return _mock_resources()
+
     if not PSUTIL_AVAILABLE:
         return {
             "available": False,
@@ -186,6 +252,15 @@ def collect_with_rates() -> dict[str, Any]:
 
     Calculates bytes/second rates by comparing to previous collection.
     """
+    # Return mock data in demo mode (with mock rates)
+    if is_demo_mode():
+        data = _mock_resources()
+        data["network"]["rate_sent_bps"] = 51200.0  # 50 KB/s
+        data["network"]["rate_recv_bps"] = 256000.0  # 250 KB/s
+        data["network"]["rate_sent_kbps"] = 50.0
+        data["network"]["rate_recv_kbps"] = 250.0
+        return data
+
     global _last_network, _last_network_time
 
     import time
