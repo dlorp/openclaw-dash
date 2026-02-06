@@ -8,8 +8,14 @@
 
 TUI dashboard for monitoring and managing your [OpenClaw](https://github.com/openclaw/openclaw) ecosystem.
 
-<!-- TODO: Add real screenshot -->
 ![Dashboard Screenshot](docs/images/dashboard.svg)
+
+<details>
+<summary>Phosphor Theme (amber CRT aesthetic)</summary>
+
+![Phosphor Theme](docs/images/dashboard_phosphor.svg)
+
+</details>
 
 <details>
 <summary>ASCII Preview</summary>
