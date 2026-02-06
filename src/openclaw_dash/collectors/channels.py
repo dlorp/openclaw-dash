@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode, mock_channels
+
 # PyYAML is optional - only needed for reading config files directly
 try:
     import yaml
@@ -35,6 +37,17 @@ def _parse_yaml_config(config_path: Path) -> dict[str, Any] | None:
 
 def collect() -> dict[str, Any]:
     """Collect channel connection status."""
+    # Return mock data in demo mode
+    if is_demo_mode():
+        channels = mock_channels()
+        connected = sum(1 for c in channels if c.get("status") == "connected")
+        return {
+            "channels": channels,
+            "connected": connected,
+            "total": len(channels),
+            "collected_at": datetime.now().isoformat(),
+        }
+
     result: dict[str, Any] = {
         "channels": [],
         "connected": 0,

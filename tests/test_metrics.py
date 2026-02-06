@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from openclaw_dash import demo
 from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
 from openclaw_dash.metrics.costs import MODEL_PRICING
 
@@ -61,6 +62,7 @@ class TestCostTracker:
         assert total > 0  # Should get some value, not crash
 
     def test_history_persistence(self, tmp_path):
+        demo.disable_demo_mode()  # Disable demo mode to test real code path
         tracker = CostTracker(metrics_dir=tmp_path)
 
         # First collection creates daily entry even if no sessions

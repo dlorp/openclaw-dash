@@ -7,6 +7,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode, mock_cost_data
+
 # Token pricing per 1M tokens (as of early 2025)
 MODEL_PRICING = {
     "claude-opus-4-5": {"input": 15.00, "output": 75.00},
@@ -114,6 +116,35 @@ class CostTracker:
 
     def collect(self) -> dict[str, Any]:
         """Collect current cost metrics."""
+        # Return mock data in demo mode
+        if is_demo_mode():
+            mock_data = mock_cost_data()
+            return {
+                "today": {
+                    "date": date.today().isoformat(),
+                    "input_tokens": 50000,
+                    "output_tokens": 12000,
+                    "cost": mock_data["today"]["total"],
+                    "by_model": {
+                        "claude-sonnet-4": {
+                            "input_tokens": 50000,
+                            "output_tokens": 12000,
+                            "cost": mock_data["today"]["total"],
+                        }
+                    },
+                },
+                "summary": {
+                    "total_cost": 12.50,
+                    "days_tracked": mock_data["streak"],
+                    "avg_daily_cost": 1.04,
+                },
+                "trend": {
+                    "dates": [date.today().isoformat()],
+                    "costs": mock_data["trend"]["values"],
+                },
+                "collected_at": datetime.now().isoformat(),
+            }
+
         sessions = self.get_sessions_data()
         history = self._load_history()
         today = date.today().isoformat()

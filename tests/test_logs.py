@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from textual.widgets import Static
 
+from openclaw_dash import demo
 from openclaw_dash.collectors import logs
 from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
 
@@ -107,6 +108,7 @@ class TestLogsCollector:
 
     def test_collect_with_temp_log(self):
         """Should collect entries from a log file."""
+        demo.disable_demo_mode()  # Disable demo mode to test real code path
         log_content = """2026-02-01T08:09:41.294Z [gateway] started
 2026-02-01T08:09:42.000Z [discord] connected
 2026-02-01T08:09:43.000Z [error] something failed
@@ -127,6 +129,7 @@ class TestLogsCollector:
 
     def test_collect_filter_by_level(self):
         """Should filter entries by log level."""
+        demo.disable_demo_mode()  # Disable demo mode to test real code path
         log_content = """2026-02-01T08:09:41.000Z [gateway] info message
 2026-02-01T08:09:42.000Z [gateway] error occurred
 2026-02-01T08:09:43.000Z [gateway] warning here

@@ -7,6 +7,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode
+
 DEFAULT_METRICS_DIR = Path.home() / ".openclaw" / "workspace" / "metrics"
 REPOS_SNAPSHOT_DIR = Path.home() / ".openclaw" / "workspace" / "repos"
 
@@ -235,6 +237,28 @@ class GitHubMetrics:
 
     def collect(self) -> dict[str, Any]:
         """Collect all GitHub metrics."""
+        # Return mock data in demo mode
+        if is_demo_mode():
+            return {
+                "streak": {
+                    "username": "demo-user",
+                    "streak_days": 12,
+                    "last_activity": date.today().isoformat(),
+                },
+                "pr_metrics": {
+                    "recent_prs": 8,
+                    "avg_cycle_hours": 4.5,
+                    "fastest_merge_hours": 0.5,
+                    "slowest_merge_hours": 24.0,
+                },
+                "todo_trends": {"repos": {}},
+                "commit_history": [
+                    {"date": (date.today() - timedelta(days=i)).isoformat(), "commits": 3 + (i % 5)}
+                    for i in range(7)
+                ],
+                "collected_at": datetime.now().isoformat(),
+            }
+
         history = self._load_history()
 
         # Get contribution streak

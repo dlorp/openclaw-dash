@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode
+
 # Log parsing regex
 LOG_PATTERN = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+\[([^\]]+)\]\s+(.*)$")
 
@@ -147,6 +149,43 @@ def collect(
     Returns:
         Dictionary with log entries and metadata
     """
+    # Return mock data in demo mode
+    if is_demo_mode():
+        now = datetime.now()
+        mock_entries = [
+            {
+                "timestamp": (now.replace(second=0)).isoformat() + "Z",
+                "tag": "gateway",
+                "message": "Gateway started successfully",
+                "level": "info",
+            },
+            {
+                "timestamp": (now.replace(second=15)).isoformat() + "Z",
+                "tag": "ws",
+                "message": "WebSocket connection established",
+                "level": "info",
+            },
+            {
+                "timestamp": (now.replace(second=30)).isoformat() + "Z",
+                "tag": "session",
+                "message": "Session main:discord initialized",
+                "level": "debug",
+            },
+            {
+                "timestamp": (now.replace(second=45)).isoformat() + "Z",
+                "tag": "tool",
+                "message": "exec: command completed in 245ms",
+                "level": "debug",
+            },
+        ]
+        return {
+            "entries": mock_entries[:n],
+            "log_file": "/mock/logs/gateway.log",
+            "total": len(mock_entries[:n]),
+            "levels": {"error": 0, "warning": 0, "info": 2, "debug": 2},
+            "collected_at": now.isoformat(),
+        }
+
     path = log_path or find_log_file()
 
     if not path or not path.exists():

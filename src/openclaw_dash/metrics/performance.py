@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from openclaw_dash.demo import is_demo_mode, mock_metrics
+
 DEFAULT_METRICS_DIR = Path.home() / ".openclaw" / "workspace" / "metrics"
 GATEWAY_LOG_DIR = Path.home() / ".openclaw" / "logs"
 TMP_LOG_DIR = Path("/tmp/openclaw")
@@ -135,6 +137,27 @@ class PerformanceMetrics:
 
     def collect(self) -> dict[str, Any]:
         """Collect current performance metrics."""
+        # Return mock data in demo mode
+        if is_demo_mode():
+            mock_data = mock_metrics()
+            return {
+                "summary": {
+                    "total_calls": mock_data["requests_today"],
+                    "total_errors": mock_data["errors_today"],
+                    "error_rate_pct": mock_data["error_rate"] * 100,
+                    "avg_latency_ms": mock_data["avg_latency_ms"],
+                },
+                "slowest": [
+                    {"name": "browser.screenshot", "avg_ms": 1250, "count": 12},
+                    {"name": "exec", "avg_ms": 890, "count": 45},
+                ],
+                "error_prone": [
+                    {"name": "web_fetch", "error_rate": 5.0, "errors": 2},
+                ],
+                "by_action": {},
+                "collected_at": datetime.now().isoformat(),
+            }
+
         history = self._load_history()
         today = datetime.now().date().isoformat()
 
