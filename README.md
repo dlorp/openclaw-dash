@@ -106,16 +106,18 @@ TUI dashboard for monitoring and managing your [OpenClaw](https://github.com/ope
 
 ## Installation
 
-```bash
-pip install openclaw-dash
-```
-
-Or from source:
+**Note**: This package is not yet published to PyPI. Install from source:
 
 ```bash
 git clone https://github.com/dlorp/openclaw-dash.git
 cd openclaw-dash
 pip install -e .
+```
+
+For development with additional tools:
+
+```bash
+pip install -e ".[dev]"
 ```
 
 ## CLI Usage
