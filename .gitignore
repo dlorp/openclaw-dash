@@ -14,3 +14,6 @@ venv/
 .DS_Store
 src/openclaw_dash/tools/.pr_state.json
 axioms/
+AGENTS.md
+.editorconfig
+.gitattributes

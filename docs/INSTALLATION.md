@@ -1,11 +1,15 @@
 # Installation Guide
 
-This guide covers all methods to install openclaw-dash, from quick pip install to full development setup.
+This guide covers all methods to install openclaw-dash from source.
+
+**Note**: This package is not yet published to PyPI. All installation methods require cloning from source.
 
 ## Quick Install (Recommended)
 
 ```bash
-pip install openclaw-dash
+git clone https://github.com/dlorp/openclaw-dash.git
+cd openclaw-dash
+pip install -e .
 ```
 
 That's it! Run with:
@@ -31,33 +35,7 @@ If you need to upgrade Python, use [pyenv](https://github.com/pyenv/pyenv) or yo
 
 ## Installation Methods
 
-### 1. pip (from PyPI)
-
-```bash
-# Standard install
-pip install openclaw-dash
-
-# Upgrade to latest
-pip install --upgrade openclaw-dash
-```
-
-### 2. pipx (Isolated Install)
-
-[pipx](https://pipx.pypa.io/) installs CLI tools in isolated environments—recommended for system-wide tools:
-
-```bash
-# Install pipx if needed
-pip install --user pipx
-pipx ensurepath
-
-# Install openclaw-dash
-pipx install openclaw-dash
-
-# Upgrade later
-pipx upgrade openclaw-dash
-```
-
-### 3. From Source
+### From Source (Standard Install)
 
 ```bash
 # Clone the repo
@@ -71,16 +49,21 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
-### 4. Using uv (Fast Alternative)
+### Using Virtual Environment (Recommended)
 
-[uv](https://github.com/astral-sh/uv) is a fast Python package installer:
+Using a virtual environment keeps dependencies isolated:
 
 ```bash
-# Install uv
-pip install uv
+# Clone the repo
+git clone https://github.com/dlorp/openclaw-dash.git
+cd openclaw-dash
 
-# Install openclaw-dash
-uv pip install openclaw-dash
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install
+pip install -e .
 ```
 
 ## Development Setup
@@ -145,10 +128,11 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ### "No module named 'textual'"
 
-Dependencies didn't install correctly:
+Dependencies didn't install correctly. Reinstall from the project directory:
 
 ```bash
-pip install --force-reinstall openclaw-dash
+cd openclaw-dash
+pip install -e . --force-reinstall
 ```
 
 ### TUI doesn't display correctly
@@ -202,11 +186,8 @@ gh auth login
 ## Uninstalling
 
 ```bash
-# pip
+# Uninstall the package
 pip uninstall openclaw-dash
-
-# pipx
-pipx uninstall openclaw-dash
 
 # Config cleanup (optional)
 rm -rf ~/.config/openclaw-dash
