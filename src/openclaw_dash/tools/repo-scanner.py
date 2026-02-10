@@ -60,7 +60,7 @@ GIT_TIMEOUT = 30
 
 
 # -----------------------------------------------------------------------------
-# Smart TODO categorization (dynamically loaded from smart-todo-scanner)
+# Smart task marker categorization (dynamically loaded from scanner module)
 # -----------------------------------------------------------------------------
 def _load_smart_todo_scanner():
     """Dynamically load smart-todo-scanner module (hyphenated filename)."""
@@ -82,7 +82,7 @@ def _load_smart_todo_scanner():
         return None
 
 
-# Try to load smart-todo-scanner for advanced categorization
+# Try to load task marker scanner module for advanced categorization
 _smart_scanner = _load_smart_todo_scanner()
 
 
@@ -161,7 +161,7 @@ def count_todos(repo_path: Path, *, skip_docstrings: bool = False) -> dict:
                 continue
             items = _smart_scanner.scan_file(filepath)
             for item in items:
-                # Count by keyword based on the TODO match
+                # Count by keyword based on the task marker match
                 text_upper = (item.text or "").upper()
                 matched = False
                 for kw in ["FIXME", "HACK", "XXX", "TODO"]:
@@ -552,7 +552,7 @@ Environment:
         "concise shows only totals",
     )
 
-    # TODO filtering options (mutually exclusive)
+    # Task marker filtering options (mutually exclusive)
     todo_group = parser.add_mutually_exclusive_group()
     todo_group.add_argument(
         "--skip-docstrings",
@@ -592,7 +592,7 @@ Environment:
         print(f"Error: Repo base directory not found: {repo_base}", file=sys.stderr)
         sys.exit(1)
 
-    # Determine TODO filtering mode
+    # Determine task marker filtering mode
     skip_docstrings = not args.all_todos  # Default is to skip docstrings
 
     results = []
