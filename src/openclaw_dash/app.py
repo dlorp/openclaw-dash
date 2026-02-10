@@ -22,6 +22,7 @@ from openclaw_dash.widgets.ascii_art import (
     status_indicator,
 )
 from openclaw_dash.widgets.channels import ChannelsPanel
+from openclaw_dash.widgets.connection_warning import ConnectionWarningBanner
 from openclaw_dash.widgets.help_panel import HelpScreen
 from openclaw_dash.widgets.input_pane import CommandSent, InputPane
 from openclaw_dash.widgets.logs import LogsPanel
@@ -429,6 +430,7 @@ class DashboardApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
+        yield ConnectionWarningBanner(id="connection-warning")
         yield MetricBoxesBar(id="metric-boxes")
 
         with Container(id="gateway-panel", classes="panel"):
@@ -621,6 +623,13 @@ class DashboardApp(App):
 
     def _do_auto_refresh(self) -> None:
         """Auto-refresh without notification (for timer-based refresh)."""
+        # Refresh connection warning banner
+        try:
+            warning_banner = self.query_one(ConnectionWarningBanner)
+            warning_banner.check_and_update()
+        except Exception:
+            pass
+        
         # Refresh metric boxes bar
         try:
             metric_boxes = self.query_one(MetricBoxesBar)
@@ -660,6 +669,13 @@ class DashboardApp(App):
 
     def action_refresh(self) -> None:
         """Refresh all panels and show notification."""
+        # Refresh connection warning banner
+        try:
+            warning_banner = self.query_one(ConnectionWarningBanner)
+            warning_banner.check_and_update()
+        except Exception:
+            pass
+        
         # Refresh metric boxes bar
         try:
             metric_boxes = self.query_one(MetricBoxesBar)
