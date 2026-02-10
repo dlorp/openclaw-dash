@@ -43,6 +43,7 @@ from openclaw_dash.widgets.tabbed_groups import (  # noqa: F401 - exported for e
 COMPACT_WIDTH = 100  # Hide less-critical panels below this
 MINIMUM_WIDTH = 80  # Minimum supported terminal width
 
+
 def build_jump_labels(panel_ids: list[str]) -> dict[str, str]:
     """Build a mapping of single letter keys to panel IDs for jump mode.
 
@@ -54,6 +55,7 @@ def build_jump_labels(panel_ids: list[str]) -> dict[str, str]:
     """
     keys = "asdfghjklqwertyuiopzxcvbnm"  # Home row first for ergonomics
     return {keys[i]: panel_id for i, panel_id in enumerate(panel_ids) if i < len(keys)}
+
 
 class GatewayPanel(Static):
     """Gateway status panel."""
@@ -80,6 +82,7 @@ class GatewayPanel(Static):
                 f"{data.get('error', '')}"
             )
 
+
 class CurrentTaskPanel(Static):
     """Current task display."""
 
@@ -95,6 +98,7 @@ class CurrentTaskPanel(Static):
             )
         else:
             content.update(f"{STATUS_SYMBOLS['circle_empty']} [dim]No active task[/]")
+
 
 class ActivityPanel(Static):
     """Recent activity log."""
@@ -116,6 +120,7 @@ class ActivityPanel(Static):
             else f"{STATUS_SYMBOLS['circle_empty']} [dim]No recent activity[/]"
         )
 
+
 class ReposPanel(Static):
     """Repository status panel."""
 
@@ -135,6 +140,7 @@ class ReposPanel(Static):
                 str(r.get("open_prs", 0)),
                 r.get("last_commit", "?"),
             )
+
 
 class CronPanel(Static):
     """Cron jobs panel."""
@@ -164,6 +170,7 @@ class CronPanel(Static):
             lines.append(f"  {color}{icon} {name}{end_color}")
         content.update("\n".join(lines))
 
+
 class SessionsPanel(Static):
     """Sessions panel."""
 
@@ -190,6 +197,7 @@ class SessionsPanel(Static):
             ctx_bar = mini_bar(ctx / 100, width=5)
             lines.append(f"  {icon} {key} {ctx_bar}")
         content.update("\n".join(lines))
+
 
 class StatusFooter(Static):
     """Footer widget showing focused panel, mode, and version info."""
@@ -241,6 +249,7 @@ class StatusFooter(Static):
             self.update(f"{left_side}  [dim]│[/]  {right_side}")
         else:
             self.update(right_side)
+
 
 class DashboardApp(App):
     """Lorp's system dashboard."""
@@ -620,7 +629,7 @@ class DashboardApp(App):
             warning_banner.check_and_update()
         except Exception:
             pass
-                # Refresh metric boxes bar
+            # Refresh metric boxes bar
         try:
             metric_boxes = self.query_one(MetricBoxesBar)
             metric_boxes.refresh_data()
@@ -665,7 +674,7 @@ class DashboardApp(App):
             warning_banner.check_and_update()
         except Exception:
             pass
-                # Refresh metric boxes bar
+            # Refresh metric boxes bar
         try:
             metric_boxes = self.query_one(MetricBoxesBar)
             metric_boxes.refresh_data()
