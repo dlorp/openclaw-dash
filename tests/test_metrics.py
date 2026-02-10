@@ -1,6 +1,5 @@
 """Tests for metrics collectors."""
 
-import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
