@@ -40,7 +40,7 @@ def collect() -> dict[str, Any]:
     # Run CLI command
     stdout, error, state = run_command(
         ["openclaw", "cron", "list", "--json"],
-        timeout=3.0,
+        timeout=8.0,
     )
 
     duration_ms = (time.time() - start_time) * 1000

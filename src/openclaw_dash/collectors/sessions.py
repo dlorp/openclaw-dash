@@ -62,7 +62,7 @@ def _collect_sessions_impl() -> dict[str, Any]:
     # Try real CLI data with retry logic
     for attempt in range(max_attempts):
         try:
-            status = get_openclaw_status(timeout=3)
+            status = get_openclaw_status(timeout=8)
             break  # Success - exit retry loop
 
         except Exception as e:
