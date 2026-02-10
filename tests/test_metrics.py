@@ -86,12 +86,14 @@ class TestCostTracker:
         assert isinstance(history, list)
 
     @patch("openclaw_dash.collectors.sessions.collect")
-    def test_sessions_data_from_cli(self, mock_collect, tmp_path):
+    def test_sessions_data_from_collector(self, mock_collect, tmp_path):
         mock_collect.return_value = {
             "sessions": [
                 {
                     "key": "test-session",
                     "model": "claude-sonnet-4",
+                    "inputTokens": 1000,
+                    "outputTokens": 500,
                     "totalTokens": 1500,
                 }
             ]
