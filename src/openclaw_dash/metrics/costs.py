@@ -1,4 +1,33 @@
-"""Token and API cost tracking for OpenClaw sessions."""
+"""Token and API cost tracking for OpenClaw sessions.
+
+This module tracks the actual API costs based on real input/output token counts
+from the OpenClaw gateway, rather than estimating token splits.
+
+FUTURE ENHANCEMENT - Local Model Energy Tracking:
+--------------------------------------------------
+For local models (Ollama, local LLMs), costs are currently $0.00. A future enhancement
+could track actual energy consumption:
+
+1. Monitor GPU/CPU power draw during inference (using nvidia-smi, powermetrics, etc.)
+2. Calculate kWh consumed per session
+3. Apply local electricity rates (configurable per-user)
+4. Track carbon footprint based on local grid mix
+5. Compare cost/efficiency of local vs cloud models
+
+This would provide true cost visibility including:
+- Hardware costs (amortized)
+- Energy costs
+- Environmental impact
+- Total cost of ownership comparisons
+
+Implementation notes:
+- Would require platform-specific power monitoring
+- Need background sampling during model inference
+- Store energy metrics alongside token counts
+- Add config for electricity rate ($/kWh) and carbon intensity (gCO2/kWh)
+"""
+
+from __future__ import annotations
 
 from __future__ import annotations
 
@@ -10,18 +39,41 @@ from typing import Any
 
 from openclaw_dash.demo import is_demo_mode, mock_cost_data
 
-# Token pricing per 1M tokens (as of early 2025)
+# Token pricing per 1M tokens (as of Feb 2025)
+# Prices are in USD per 1 million tokens
 MODEL_PRICING = {
+    # Claude 4.x series
     "claude-opus-4-5": {"input": 15.00, "output": 75.00},
+    "claude-sonnet-4-5": {"input": 3.00, "output": 15.00},
     "claude-sonnet-4": {"input": 3.00, "output": 15.00},
-    "claude-3-5-sonnet": {"input": 3.00, "output": 15.00},
+    "claude-haiku-4-5": {"input": 0.25, "output": 1.25},
+    "claude-haiku-4": {"input": 0.25, "output": 1.25},
+    # Claude 3.x series
     "claude-3-opus": {"input": 15.00, "output": 75.00},
+    "claude-3-5-sonnet": {"input": 3.00, "output": 15.00},
     "claude-3-sonnet": {"input": 3.00, "output": 15.00},
     "claude-3-haiku": {"input": 0.25, "output": 1.25},
+    "claude-3-5-haiku": {"input": 0.25, "output": 1.25},
+    # OpenAI GPT-4 series
     "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4-turbo": {"input": 10.00, "output": 30.00},
     "gpt-4": {"input": 30.00, "output": 60.00},
+    # OpenAI GPT-3.5 series
     "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
+    # O-series (reasoning models)
+    "o1": {"input": 15.00, "output": 60.00},
+    "o1-mini": {"input": 3.00, "output": 12.00},
+    "o3-mini": {"input": 1.10, "output": 4.40},
+    # Codex/GitHub Copilot (approximations based on public info)
+    "codex": {"input": 0.00, "output": 0.00},  # Usually bundled/free tier
+    "copilot": {"input": 0.00, "output": 0.00},  # Subscription-based
+    # Gemini series (Google)
+    "gemini-1.5-pro": {"input": 1.25, "output": 5.00},
+    "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
+    "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
+    # Default fallback (use Sonnet pricing as conservative estimate)
+    "default": {"input": 3.00, "output": 15.00},
 }
 
 DEFAULT_METRICS_DIR = Path.home() / ".openclaw" / "workspace" / "metrics"
@@ -82,10 +134,20 @@ class CostTracker:
         """Calculate costs for given token counts.
 
         Returns: (input_cost, output_cost, total_cost) in USD
+
+        Note: For local models (Ollama, etc.), this returns $0.00.
+        Future enhancement: Track energy consumption for local models.
         """
+        # Check if this looks like a local model (no cost)
+        local_indicators = ["ollama", "local", "llama", "mistral"]
+        if any(indicator in model.lower() for indicator in local_indicators):
+            return 0.0, 0.0, 0.0
+
+        # Get pricing for the model (with fallback to default)
         pricing = MODEL_PRICING.get(
-            model, MODEL_PRICING.get("claude-sonnet-4", {"input": 3.0, "output": 15.0})
+            model, MODEL_PRICING.get("default", {"input": 3.0, "output": 15.0})
         )
+
         input_cost = (input_tokens / 1_000_000) * pricing["input"]
         output_cost = (output_tokens / 1_000_000) * pricing["output"]
         return input_cost, output_cost, input_cost + output_cost
@@ -94,7 +156,11 @@ class CostTracker:
         """Fetch current session data from the sessions collector.
 
         Uses the sessions collector which parses openclaw status output.
+<<<<<<< HEAD
         Returns sessions with token usage data.
+=======
+        Returns sessions with token usage data including input/output split.
+>>>>>>> e384240 (feat: Use actual input/output token counts for cost tracking)
         """
         from openclaw_dash.collectors import sessions
 
@@ -154,18 +220,41 @@ class CostTracker:
             model = session.get("model", "unknown")
             total_tokens = session.get("totalTokens", 0) or 0
 
+            # Get actual input/output token counts from gateway
+            current_input = session.get("inputTokens", 0) or 0
+            current_output = session.get("outputTokens", 0) or 0
+
             # Skip if no tokens used
             if total_tokens == 0:
                 continue
 
             # Check if we've already recorded this session state
             session_record = history["sessions"].get(key, {})
+<<<<<<< HEAD
             if session_record.get("total_tokens", 0) >= total_tokens:
                 continue  # No new tokens
 
             # Calculate incremental tokens
             prev_total = session_record.get("total_tokens", 0)
             new_total = max(0, total_tokens - prev_total)
+=======
+            prev_input = session_record.get("input_tokens", 0)
+            prev_output = session_record.get("output_tokens", 0)
+
+            # Calculate incremental tokens since last check
+            new_input = max(0, current_input - prev_input)
+            new_output = max(0, current_output - prev_output)
+
+            # If no actual input/output data available, fall back to estimation
+            # This handles older gateway versions or sessions without detailed tracking
+            if new_input == 0 and new_output == 0 and total_tokens > 0:
+                prev_total = session_record.get("total_tokens", 0)
+                new_total = max(0, total_tokens - prev_total)
+                if new_total > 0:
+                    # Estimate 60% input / 40% output as fallback
+                    new_input = int(new_total * 0.60)
+                    new_output = int(new_total * 0.40)
+>>>>>>> e384240 (feat: Use actual input/output token counts for cost tracking)
 
             if new_total == 0:
                 continue
@@ -190,11 +279,17 @@ class CostTracker:
             today_data["by_model"][model]["output_tokens"] += new_output
             today_data["by_model"][model]["cost"] += total_cost
 
+<<<<<<< HEAD
             # Update session record
             # Note: We only track total_tokens since that's what the CLI exposes
             # Input/output split is estimated during cost calculation
+=======
+            # Update session record with actual token counts
+>>>>>>> e384240 (feat: Use actual input/output token counts for cost tracking)
             history["sessions"][key] = {
                 "total_tokens": total_tokens,
+                "input_tokens": current_input,
+                "output_tokens": current_output,
                 "model": model,
                 "last_updated": datetime.now().isoformat(),
             }
