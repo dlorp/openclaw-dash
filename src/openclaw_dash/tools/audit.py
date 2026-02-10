@@ -117,9 +117,27 @@ def check_npm_audit(path: Path) -> list[dict]:
     return issues
 
 
-def is_test_file(file_path: Path) -> bool:
-    """Check if a file is a test file."""
-    parts = file_path.parts
+def is_test_file(file_path: Path, repo_base: Path) -> bool:
+    """Check if a file is a test file.
+    
+    Args:
+        file_path: Absolute path to the file
+        repo_base: Base path of the repository
+        
+    Returns:
+        True if the file is a test file (based on relative path from repo_base)
+        
+    Security: Uses relative path to prevent /home/tests/production.py
+    from being incorrectly treated as a test file.
+    """
+    # Convert to relative path from repo base to avoid path traversal attacks
+    try:
+        rel_path = file_path.relative_to(repo_base)
+    except ValueError:
+        # If file is not under repo_base, use absolute path as fallback
+        rel_path = file_path
+    
+    parts = rel_path.parts
     name = file_path.name
     
     # Check if in tests directory or file starts with test_
@@ -134,10 +152,10 @@ def is_test_file(file_path: Path) -> bool:
     )
 
 
-def scan_file_for_secrets(file_path: Path) -> list[dict]:
+def scan_file_for_secrets(file_path: Path, repo_base: Path) -> list[dict]:
     """Scan a file for hardcoded secrets."""
     issues = []
-    is_test = is_test_file(file_path)
+    is_test = is_test_file(file_path, repo_base)
 
     try:
         content = file_path.read_text(errors="ignore")
@@ -167,10 +185,10 @@ def scan_file_for_secrets(file_path: Path) -> list[dict]:
     return issues
 
 
-def scan_file_for_dangerous_patterns(file_path: Path) -> list[dict]:
+def scan_file_for_dangerous_patterns(file_path: Path, repo_base: Path) -> list[dict]:
     """Scan a file for dangerous code patterns."""
     issues = []
-    is_test = is_test_file(file_path)
+    is_test = is_test_file(file_path, repo_base)
 
     try:
         content = file_path.read_text(errors="ignore")
@@ -220,11 +238,11 @@ def scan_directory(path: Path, skip_dirs: set = None) -> list[dict]:
             if file_path.suffix not in extensions and file_path.name not in {".env", ".env.local"}:
                 continue
 
-            issues.extend(scan_file_for_secrets(file_path))
+            issues.extend(scan_file_for_secrets(file_path, path))
 
             # Only scan code files for dangerous patterns
             if file_path.suffix in {".py", ".js", ".ts", ".jsx", ".tsx"}:
-                issues.extend(scan_file_for_dangerous_patterns(file_path))
+                issues.extend(scan_file_for_dangerous_patterns(file_path, path))
 
     return issues
 
