@@ -227,9 +227,9 @@ class TestExportMarkdown:
         }
         result = export_markdown(data)
         assert "## Alerts" in result
-        assert "🔴" in result
+        assert "CRITICAL" in result
         assert "Disk full" in result
-        assert "🟡" in result
+        assert "MEDIUM" in result
 
 
 class TestExportToFile:

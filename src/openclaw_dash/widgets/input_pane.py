@@ -217,7 +217,7 @@ class InputPane(Static):
                 self.set_timer(3.0, self._clear_status)
 
         except subprocess.TimeoutExpired:
-            self._set_status("error", "⏱")
+            self._set_status("error", "TIME")
             self.remove_class("sending")
             self.add_class("error")
             self.post_message(CommandSent(command, "Command timed out", False))

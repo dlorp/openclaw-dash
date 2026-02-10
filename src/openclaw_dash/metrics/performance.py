@@ -36,7 +36,7 @@ class PerformanceMetrics:
         self.perf_file = self.metrics_dir / "performance.json"
 
         # Patterns for log parsing
-        self.ws_pattern = re.compile(r"\[ws\] ⇄ res ([✓✗]) (\S+) (\d+)ms")
+        self.ws_pattern = re.compile(r"\[ws\] SYNC res ([✓✗]) (\S+) (\d+)ms")
         self.tool_error_pattern = re.compile(r"tool.*(?:error|failed|exception)", re.IGNORECASE)
 
     def _load_history(self) -> dict[str, Any]:

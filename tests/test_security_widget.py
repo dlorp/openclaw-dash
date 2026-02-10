@@ -35,19 +35,19 @@ class TestSeverityHelpers:
         assert get_severity_color("unknown") == "white"
 
     def test_get_severity_icon_critical(self):
-        assert get_severity_icon("critical") == "🔴"
+        assert get_severity_icon("critical") == "CRITICAL"
 
     def test_get_severity_icon_high(self):
-        assert get_severity_icon("high") == "🟠"
+        assert get_severity_icon("high") == "HIGH"
 
     def test_get_severity_icon_medium(self):
-        assert get_severity_icon("medium") == "🟡"
+        assert get_severity_icon("medium") == "MEDIUM"
 
     def test_get_severity_icon_low(self):
-        assert get_severity_icon("low") == "🔵"
+        assert get_severity_icon("low") == "INFO"
 
     def test_get_severity_icon_info(self):
-        assert get_severity_icon("info") == "⚪"
+        assert get_severity_icon("info") == "UNKNOWN"
 
     def test_get_severity_icon_unknown(self):
         assert get_severity_icon("unknown") == "•"

@@ -163,11 +163,11 @@ class AlertsSummaryPanel(Static):
 
         parts = []
         if critical:
-            parts.append(f"[bold red]🔴 {critical}[/]")
+            parts.append(f"[bold red]CRITICAL {critical}[/]")
         if high:
-            parts.append(f"[red]🟠 {high}[/]")
+            parts.append(f"[red]HIGH {high}[/]")
         if medium:
-            parts.append(f"[yellow]🟡 {medium}[/]")
+            parts.append(f"[yellow]MEDIUM {medium}[/]")
 
         # Show first alert title
         if alert_list:

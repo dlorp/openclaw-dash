@@ -177,8 +177,8 @@ def get_ci_icon(ci_status: str) -> str:
         "success": "✓",
         "failure": "✗",
         "pending": "",
-        "unknown": "❓",
-    }.get(ci_status, "❓")
+        "unknown": "?",
+    }.get(ci_status, "?")
 
 
 def validate_org(org: str) -> bool:

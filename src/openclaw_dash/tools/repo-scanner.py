@@ -372,9 +372,9 @@ def format_markdown(
         if pr_count == 0:
             status = "✓"
         elif pr_count <= 3:
-            status = "🟡"
+            status = "MEDIUM"
         else:
-            status = "🔴"
+            status = "CRITICAL"
 
         lines.append(f"### {status} {name}")
         lines.append(

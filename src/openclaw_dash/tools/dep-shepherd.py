@@ -625,12 +625,12 @@ def create_update_prs(results: list[RepoAudit], dry_run: bool = False) -> list[d
 def severity_emoji(severity: str) -> str:
     """Get emoji for severity level."""
     return {
-        "critical": "🔴",
-        "high": "🟠",
-        "moderate": "🟡",
-        "low": "🟢",
-        "unknown": "⚪",
-    }.get(severity.lower(), "⚪")
+        "critical": "CRITICAL",
+        "high": "HIGH",
+        "moderate": "MEDIUM",
+        "low": "LOW",
+        "unknown": "UNKNOWN",
+    }.get(severity.lower(), "UNKNOWN")
 
 
 def format_report(results: list[RepoAudit]) -> str:
@@ -659,11 +659,11 @@ def format_report(results: list[RepoAudit]) -> str:
         if vuln_count > 0:
             status = ""
         elif outdated_count > 10:
-            status = "🟡"
+            status = "MEDIUM"
         elif outdated_count > 0:
-            status = "🟢"
+            status = "LOW"
         else:
-            status = "✨"
+            status = "EXCELLENT"
 
         lines.append(f"### {status} {audit.name}")
         lines.append(f"**Dep files:** {', '.join(audit.dep_files) or 'None found'}")
@@ -756,13 +756,13 @@ def format_digest(results: list[RepoAudit]) -> str:
 
     # Health score
     if total_vulns == 0 and total_outdated < 10:
-        health = "🟢 Excellent"
+        health = "LOW Excellent"
     elif len(critical_high) == 0 and total_vulns < 5:
-        health = "🟡 Good"
+        health = "MEDIUM Good"
     elif len(critical_high) < 3:
-        health = "🟠 Needs Attention"
+        health = "HIGH Needs Attention"
     else:
-        health = "🔴 Critical"
+        health = "CRITICAL Critical"
 
     lines.append(f"### Overall Health: {health}")
     lines.append("")
@@ -781,11 +781,11 @@ def format_digest(results: list[RepoAudit]) -> str:
         outdated_count = len(audit.outdated)
 
         if audit.errors and vuln_count == 0 and outdated_count == 0:
-            emoji = "❓"
+            emoji = "?"
         elif vuln_count > 0:
             emoji = ""
         elif outdated_count > 10:
-            emoji = "🟡"
+            emoji = "MEDIUM"
         else:
             emoji = "✓"
 

@@ -32,7 +32,7 @@ def quick_gateway_check() -> bool:
         return False
 
 
-GATEWAY_UNREACHABLE_MSG = """⚠️  OpenClaw gateway not responding at localhost:18789
+GATEWAY_UNREACHABLE_MSG = """WARNING  OpenClaw gateway not responding at localhost:18789
 
     Try:
       • openclaw gateway status    (check if running)
@@ -249,8 +249,19 @@ def print_status_text(status: dict[str, Any]) -> None:
     gw_icon = "✓" if gw.get("healthy") else "✗"
     gw_color = "green" if gw.get("healthy") else "red"
 
+    # Check for degraded state indicators
+    state_indicators = []
+    if gw.get("_stale"):
+        state_indicators.append("[yellow]WARNING: STALE[/]")
+    if gw.get("_circuit_open"):
+        state_indicators.append("[red]WARNING: CIRCUIT OPEN[/]")
+    if gw.get("_from_cache"):
+        state_indicators.append("[dim]cached[/]")
+
+    state_suffix = f" {' '.join(state_indicators)}" if state_indicators else ""
+
     gw_content = (
-        f"[{gw_color}]{gw_icon} {'ONLINE' if gw.get('healthy') else 'OFFLINE'}[/]\n"
+        f"[{gw_color}]{gw_icon} {'ONLINE' if gw.get('healthy') else 'OFFLINE'}[/]{state_suffix}\n"
         f"Context: {gw.get('context_pct', '?')}%\n"
         f"Uptime: {gw.get('uptime', 'unknown')}"
     )
@@ -266,6 +277,21 @@ def print_status_text(status: dict[str, Any]) -> None:
             box=box.ROUNDED,
         )
     )
+
+    # Check for degraded collectors across all status data
+    degraded_collectors = []
+    for collector_name, collector_data in status.items():
+        if isinstance(collector_data, dict):
+            if (
+                collector_data.get("_stale")
+                or collector_data.get("_circuit_open")
+                or collector_data.get("_collector_failed")
+            ):
+                degraded_collectors.append(collector_name)
+
+    if degraded_collectors:
+        warning_msg = f"WARNING: Using fallback/cached data for: {', '.join(degraded_collectors)}"
+        console.print(f"\n[yellow]{warning_msg}[/]\n")
 
     # Current task / activity
     act = status.get("activity", {})

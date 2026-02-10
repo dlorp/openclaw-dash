@@ -287,7 +287,7 @@ class GatewayStatusWidget(Static):
 
         # Uptime (from last healthy or service start)
         uptime = _format_uptime(self._last_healthy_at)
-        lines.append(f"  [{AMBER}]⏱[/]  Uptime      [{AMBER_BRIGHT}]{uptime}[/]")
+        lines.append(f"  [{AMBER}]TIME[/]  Uptime      [{AMBER_BRIGHT}]{uptime}[/]")
 
         # Active sessions
         active = sessions_data.get("active", 0)

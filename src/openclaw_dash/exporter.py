@@ -178,7 +178,9 @@ def export_markdown(data: dict[str, Any]) -> str:
         )
         for a in alert_list:
             severity = a.get("severity", "info").upper()
-            icon = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(a.get("severity"), "⚪")
+            icon = {"critical": "CRITICAL", "warning": "MEDIUM", "info": "INFO"}.get(
+                a.get("severity"), "UNKNOWN"
+            )
             lines.append(f"- {icon} **{severity}:** {a.get('message', '?')}")
         lines.append("")
 

@@ -121,8 +121,8 @@ def get_ci_icon(ci_status: str) -> str:
         "success": "✓",
         "failure": "✗",
         "pending": "",
-        "unknown": "❓",
-    }.get(ci_status, "❓")
+        "unknown": "?",
+    }.get(ci_status, "?")
 
 
 def format_age(created_at: str | None) -> str:
@@ -490,10 +490,10 @@ def format_report(results: list[dict], fetch_ci: bool, skip_docstrings: bool) ->
         # Determine status based on TODOs and PRs
         actionable = todos["actionable"]
         if actionable > 20 or pr_count > 5:
-            status = "🔴"
+            status = "CRITICAL"
             repos_needing_attention.append(name)
         elif actionable > 10 or pr_count > 3:
-            status = "🟡"
+            status = "MEDIUM"
         else:
             status = "✓"
 

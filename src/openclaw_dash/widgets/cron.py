@@ -19,17 +19,17 @@ def format_schedule(schedule: dict) -> str:
     kind = schedule.get("kind", "")
     if kind == "cron":
         expr = schedule.get("expr", "?")
-        return f"⏰ {expr}"
+        return f"SCHEDULE {expr}"
     elif kind == "every":
         every_ms = schedule.get("everyMs", 0)
         if every_ms >= 3600000:
-            return f"↻ {every_ms // 3600000}h"
+            return f"REPEAT {every_ms // 3600000}h"
         elif every_ms >= 60000:
-            return f"↻ {every_ms // 60000}m"
+            return f"REPEAT {every_ms // 60000}m"
         elif every_ms >= 1000:
-            return f"↻ {every_ms // 1000}s"
+            return f"REPEAT {every_ms // 1000}s"
         else:
-            return f"↻ {every_ms}ms"
+            return f"REPEAT {every_ms}ms"
     elif kind == "at":
         at_time = schedule.get("at", "?")
         return f"@ {at_time}"

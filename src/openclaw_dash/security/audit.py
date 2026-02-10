@@ -400,11 +400,11 @@ def pretty_print_results(result: AuditResult) -> None:
                 color = _severity_color(sev)
                 reset = _reset_color()
                 icon = {
-                    "critical": "🔴",
-                    "high": "🟠",
-                    "medium": "🟡",
-                    "low": "🔵",
-                    "info": "⚪",
+                    "critical": "CRITICAL",
+                    "high": "HIGH",
+                    "medium": "MEDIUM",
+                    "low": "INFO",
+                    "info": "UNKNOWN",
                 }.get(sev, "•")
                 print(f"  {icon} {color}{sev.upper()}: {count}{reset}")
 

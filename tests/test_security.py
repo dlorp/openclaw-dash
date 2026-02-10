@@ -345,8 +345,10 @@ class TestCLIIntegration:
                     "openclaw_dash.security.audit", fromlist=["SecurityAudit"]
                 ).SecurityAudit,
                 "__init__",
-                lambda self, **kwargs: setattr(self, "openclaw_dir", Path(tmpdir))
-                or setattr(self, "result", AuditResult()),
+                lambda self, **kwargs: (
+                    setattr(self, "openclaw_dir", Path(tmpdir))
+                    or setattr(self, "result", AuditResult())
+                ),
             ):
                 main()
 

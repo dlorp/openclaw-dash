@@ -76,7 +76,7 @@ class AgentsPanel(Static):
             # Build agent line
             lines.append(f"  [{color}]{icon}[/] [bold]{label}[/] {ctx_bar}")
             lines.append(f"    [dim]{task_summary}[/]")
-            lines.append(f"    [dim]⏱ {running_time}[/]")
+            lines.append(f"    [dim]TIME {running_time}[/]")
 
         # Show overflow indicator
         remaining = total - 6

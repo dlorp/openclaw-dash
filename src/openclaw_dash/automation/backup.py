@@ -291,8 +291,8 @@ def format_backup_report(report: BackupReport) -> str:
     file_emoji = {
         "ok": "✓",
         "missing": "✗",
-        "stale": "⏰",
-        "empty": "📭",
+        "stale": "SCHEDULE",
+        "empty": "empty",
     }
 
     sync_emoji = {
@@ -306,7 +306,7 @@ def format_backup_report(report: BackupReport) -> str:
     lines = [
         "##  Backup Verification Report",
         "",
-        f"**Status:** {status_emoji.get(report.overall_status, '❓')} {report.overall_status.upper()}",
+        f"**Status:** {status_emoji.get(report.overall_status, '?')} {report.overall_status.upper()}",
         f"**Workspace:** `{report.workspace_path}`",
         f"**Checked:** {report.timestamp.strftime('%Y-%m-%d %H:%M')}",
         "",
@@ -320,9 +320,9 @@ def format_backup_report(report: BackupReport) -> str:
         lines.append("")
 
     # Required files
-    lines.append("### 📄 Required Files")
+    lines.append("### Files Required Files")
     for check in report.file_checks:
-        emoji = file_emoji.get(check.status, "❓")
+        emoji = file_emoji.get(check.status, "?")
         name = Path(check.path).name
         if check.exists:
             size = f"{check.size_bytes:,} bytes"
@@ -335,7 +335,7 @@ def format_backup_report(report: BackupReport) -> str:
     # Memory files
     lines.append("###  Memory Files")
     for check in report.memory_checks:
-        emoji = file_emoji.get(check.status, "❓")
+        emoji = file_emoji.get(check.status, "?")
         name = Path(check.path).name
         if check.exists:
             size = f"{check.size_bytes:,} bytes"
@@ -348,7 +348,7 @@ def format_backup_report(report: BackupReport) -> str:
     # Sync status
     sync = report.sync_check
     lines.append("###  Sync Status")
-    lines.append(f"- **Status:** {sync_emoji.get(sync.status, '❓')} {sync.status}")
+    lines.append(f"- **Status:** {sync_emoji.get(sync.status, '?')} {sync.status}")
 
     if sync.is_git_repo:
         lines.append(f"- **Branch:** {sync.branch}")
@@ -370,7 +370,7 @@ def format_backup_summary(report: BackupReport) -> str:
         "critical": "",
     }
 
-    emoji = status_emoji.get(report.overall_status, "❓")
+    emoji = status_emoji.get(report.overall_status, "?")
 
     if report.overall_status == "healthy":
         return f"{emoji} Backup status: **healthy** — all files present, workspace synced"
