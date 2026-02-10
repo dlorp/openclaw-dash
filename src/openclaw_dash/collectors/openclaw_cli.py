@@ -260,6 +260,12 @@ def get_openclaw_status(timeout: int = 5) -> OpenClawStatus | None:
 
 def status_to_gateway_data(status: OpenClawStatus) -> dict[str, Any]:
     """Convert parsed status to gateway collector format."""
+    # Calculate average context usage across all sessions
+    context_pct = 0.0
+    if status.sessions:
+        total_context = sum(s.context_pct for s in status.sessions)
+        context_pct = total_context / len(status.sessions)
+
     return {
         "healthy": status.gateway_reachable,
         "mode": status.gateway_mode,
@@ -271,6 +277,7 @@ def status_to_gateway_data(status: OpenClawStatus) -> dict[str, Any]:
         "heartbeat_interval": status.heartbeat_interval,
         "session_count": status.session_count,
         "default_model": status.default_model,
+        "context_pct": context_pct,
         "os_info": status.os_info,
         "update_available": status.update_available,
         "collected_at": datetime.now().isoformat(),
