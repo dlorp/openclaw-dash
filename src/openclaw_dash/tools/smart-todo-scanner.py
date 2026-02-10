@@ -62,8 +62,8 @@ class TodoItem:
         return asdict(self)
 
 
-# Regex to match TODOs only in comments, not string literals
-# Matches: # TODO, // TODO, /* TODO, * TODO (for multi-line comments)
+# Regex to match task markers in comments only, excluding string literals
+# Matches: Python #, JavaScript //, C-style /* and * (for multi-line comment blocks)
 TODO_COMMENT_PATTERN = re.compile(
     r"""
     (?:

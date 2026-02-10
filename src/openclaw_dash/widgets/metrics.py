@@ -393,7 +393,7 @@ class GitHubPanel(Static):
             lines.append(f"  {STATUS_SYMBOLS['arrow_right']} Fastest: {fastest:.1f}h")
             lines.append(f"  {STATUS_SYMBOLS['arrow_right']} Slowest: {slowest:.1f}h")
 
-        # TODO trend summary with sparklines
+        # Task marker trend summary with sparklines
         todos = data.get("todo_trends", {}).get("repos", {})
         if todos:
             lines.append("")

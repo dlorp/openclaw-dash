@@ -269,7 +269,7 @@ class GitHubMetrics:
         cycle_times = [pr.cycle_hours for pr in prs if pr.cycle_hours is not None]
         avg_cycle = round(sum(cycle_times) / len(cycle_times), 2) if cycle_times else 0
 
-        # Get TODO trends
+        # Get task marker trends
         todo_trends = self.get_todo_trends()
 
         # Update history

@@ -145,7 +145,7 @@ def format_age(created_at: str | None) -> str:
 
 
 # ============================================================================
-# Smart TODO Scanning (from smart-todo-scanner.py)
+# Smart Task Marker Scanning (using scanner module)
 # ============================================================================
 
 
