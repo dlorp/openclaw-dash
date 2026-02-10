@@ -831,15 +831,23 @@ def main():
 
     # Check for required tools
     missing_tools = []
+    tool_install_instructions = {
+        "pip-audit": "pip install pip-audit",
+        "safety": "pip install safety",
+        "npm": "Install from https://nodejs.org/ or use your package manager",
+        "gh": "Install GitHub CLI from https://cli.github.com/ or use your package manager",
+    }
+    
     for tool in ["pip-audit", "safety", "npm", "gh"]:
         if not tool_available(tool):
             missing_tools.append(tool)
 
     if missing_tools and not output_json:
-        print(
-            f"  Missing tools (some checks will be skipped): {', '.join(missing_tools)}",
-            file=sys.stderr,
-        )
+        print("  Missing tools - some checks will be skipped:", file=sys.stderr)
+        for tool in missing_tools:
+            instruction = tool_install_instructions.get(tool, "See tool documentation")
+            print(f"    - {tool}: Install with: {instruction}", file=sys.stderr)
+        print("", file=sys.stderr)
 
     # Scan repos
     results = []
