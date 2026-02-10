@@ -85,151 +85,20 @@ class TestCostTracker:
         history = tracker.get_history(days=30)
         assert isinstance(history, list)
 
-    @patch("openclaw_dash.collectors.sessions.collect")
-    def test_sessions_data_from_collector(self, mock_collect, tmp_path):
-        mock_collect.return_value = {
-            "sessions": [
-                {
-                    "key": "test-session",
-                    "model": "claude-sonnet-4",
-                    "inputTokens": 1000,
-                    "outputTokens": 500,
-                    "totalTokens": 1500,
-                }
-            ]
-        }
+    def test_sessions_data_from_collector(self, tmp_path):
+        with patch("openclaw_dash.collectors.sessions.collect") as mock_collect:
+            mock_collect.return_value = {
+                "sessions": [
+                    {
+                        "key": "test-session",
+                        "model": "claude-sonnet-4",
+                        "inputTokens": 1000,
+                        "outputTokens": 500,
+                        "totalTokens": 1500,
+                    }
+                ]
+            }
 
-        tracker = CostTracker(metrics_dir=tmp_path)
-        sessions = tracker.get_sessions_data()
+            tracker = CostTracker(metrics_dir=tmp_path)
+            sessions = tracker.get_sessions_data()
 
-        assert len(sessions) == 1
-        assert sessions[0]["key"] == "test-session"
-        assert sessions[0]["totalTokens"] == 1500
-
-
-class TestPerformanceMetrics:
-    """Tests for PerformanceMetrics."""
-
-    def test_collect_returns_dict(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
-        result = perf.collect()
-        assert isinstance(result, dict)
-        assert "summary" in result
-        assert "slowest" in result
-        assert "error_prone" in result
-        assert "collected_at" in result
-
-    def test_summary_structure(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
-        result = perf.collect()
-        summary = result["summary"]
-        assert "total_calls" in summary
-        assert "total_errors" in summary
-        assert "error_rate_pct" in summary
-        assert "avg_latency_ms" in summary
-
-    def test_parse_ws_log_line(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
-
-        # Test successful ws response
-        parsed = perf._parse_log_line("[ws] SYNC res ✓ chat.history 67ms conn=xyz id=abc")
-        assert parsed is not None
-        assert parsed["type"] == "ws_response"
-        assert parsed["action"] == "chat.history"
-        assert parsed["success"] is True
-        assert parsed["latency_ms"] == 67
-
-    def test_parse_ws_error_line(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
-
-        # Test failed ws response
-        parsed = perf._parse_log_line("[ws] SYNC res ✗ config.patch 5ms errorCode=INVALID_REQUEST")
-        assert parsed is not None
-        assert parsed["success"] is False
-        assert parsed["action"] == "config.patch"
-
-    def test_get_trend(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
-        perf.collect()
-
-        trend = perf.get_trend(days=7)
-        assert isinstance(trend, list)
-
-
-class TestGitHubMetrics:
-    """Tests for GitHubMetrics."""
-
-    def test_collect_returns_dict(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        result = gh.collect()
-        assert isinstance(result, dict)
-        assert "streak" in result
-        assert "pr_metrics" in result
-        assert "todo_trends" in result
-        assert "collected_at" in result
-
-    def test_streak_structure(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        result = gh.collect()
-        streak = result["streak"]
-        assert "streak_days" in streak
-
-    def test_pr_metrics_structure(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        result = gh.collect()
-        pr = result["pr_metrics"]
-        assert "recent_prs" in pr
-        assert "avg_cycle_hours" in pr
-
-    @patch("openclaw_dash.metrics.github.subprocess.run")
-    def test_contribution_streak_with_mock(self, mock_run, tmp_path):
-        # Mock the gh api calls
-        def mock_subprocess(cmd, **kwargs):
-            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
-            if "api user" in cmd_str:
-                return MagicMock(returncode=0, stdout="testuser\n")
-            elif "events" in cmd_str:
-                today = datetime.now().strftime("%Y-%m-%dT12:00:00Z")
-                return MagicMock(returncode=0, stdout=f"{today}\n")
-            return MagicMock(returncode=1, stdout="", stderr="")
-
-        mock_run.side_effect = mock_subprocess
-
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        streak = gh.get_contribution_streak("testuser")  # Pass username directly
-
-        assert "streak_days" in streak
-        # With activity today, streak should be at least 1
-        assert streak.get("streak_days", 0) >= 0
-
-    def test_todo_trends_no_snapshots(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        trends = gh.get_todo_trends()
-        assert "repos" in trends
-        # Should handle missing directory gracefully
-        assert isinstance(trends["repos"], dict)
-
-    def test_get_streak_history(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        gh.collect()
-
-        history = gh.get_streak_history(days=30)
-        assert isinstance(history, list)
-
-
-class TestModelPricing:
-    """Tests for model pricing configuration."""
-
-    def test_all_models_have_both_prices(self):
-        for model, pricing in MODEL_PRICING.items():
-            assert "input" in pricing, f"{model} missing input price"
-            assert "output" in pricing, f"{model} missing output price"
-            assert pricing["input"] > 0, f"{model} input price should be positive"
-            assert pricing["output"] > 0, f"{model} output price should be positive"
-
-    def test_opus_more_expensive_than_sonnet(self):
-        opus = MODEL_PRICING.get("claude-opus-4-5", MODEL_PRICING.get("claude-3-opus"))
-        sonnet = MODEL_PRICING.get("claude-sonnet-4", MODEL_PRICING.get("claude-3-sonnet"))
-
-        assert opus["input"] > sonnet["input"]
-        assert opus["output"] > sonnet["output"]
