@@ -89,13 +89,13 @@ def _get_last_commit(repo_path: Path) -> tuple[str | None, str | None]:
 def _health_emoji(prs_count: int) -> str:
     """Get health emoji based on PR count."""
     if prs_count == 0:
-        return "✨"
+        return "EXCELLENT"
     elif prs_count <= 2:
-        return "🟢"
+        return "LOW"
     elif prs_count <= 5:
-        return "🟡"
+        return "MEDIUM"
     else:
-        return "🔴"
+        return "CRITICAL"
 
 
 def collect(repos: list[str] | None = None) -> dict[str, Any]:

@@ -27,11 +27,11 @@ def get_severity_color(severity: str) -> str:
 def get_severity_icon(severity: str) -> str:
     """Get icon for severity level."""
     return {
-        "critical": "🔴",
-        "high": "🟠",
-        "medium": "🟡",
-        "low": "🔵",
-        "info": "⚪",
+        "critical": "CRITICAL",
+        "high": "HIGH",
+        "medium": "MEDIUM",
+        "low": "INFO",
+        "info": "UNKNOWN",
     }.get(severity, "•")
 
 
@@ -67,15 +67,15 @@ class SecurityPanel(Static):
         # Summary header with severity counts
         summary_parts = []
         if summary.get("critical", 0):
-            summary_parts.append(f"[bold red]🔴 {summary['critical']}[/]")
+            summary_parts.append(f"[bold red]CRITICAL {summary['critical']}[/]")
         if summary.get("high", 0):
-            summary_parts.append(f"[red]🟠 {summary['high']}[/]")
+            summary_parts.append(f"[red]HIGH {summary['high']}[/]")
         if summary.get("medium", 0):
-            summary_parts.append(f"[yellow]🟡 {summary['medium']}[/]")
+            summary_parts.append(f"[yellow]MEDIUM {summary['medium']}[/]")
         if summary.get("low", 0):
-            summary_parts.append(f"[cyan]🔵 {summary['low']}[/]")
+            summary_parts.append(f"[cyan]INFO {summary['low']}[/]")
         if summary.get("info", 0):
-            summary_parts.append(f"[dim]⚪ {summary['info']}[/]")
+            summary_parts.append(f"[dim]UNKNOWN {summary['info']}[/]")
 
         lines.append(" ".join(summary_parts))
         lines.append(separator(30, "dotted"))
@@ -129,11 +129,11 @@ class SecuritySummaryPanel(Static):
         # Build compact summary
         parts = []
         if summary.get("critical", 0):
-            parts.append(f"[bold red]🔴 {summary['critical']}[/]")
+            parts.append(f"[bold red]CRITICAL {summary['critical']}[/]")
         if summary.get("high", 0):
-            parts.append(f"[red]🟠 {summary['high']}[/]")
+            parts.append(f"[red]HIGH {summary['high']}[/]")
         if summary.get("medium", 0):
-            parts.append(f"[yellow]🟡 {summary['medium']}[/]")
+            parts.append(f"[yellow]MEDIUM {summary['medium']}[/]")
 
         content.update(" ".join(parts) if parts else f"[green]{total} low[/]")
 
@@ -211,13 +211,13 @@ class DepsPanel(Static):
         # Summary line
         summary_parts = []
         if critical:
-            summary_parts.append(f"[bold red]🔴 {critical}[/]")
+            summary_parts.append(f"[bold red]CRITICAL {critical}[/]")
         if high:
-            summary_parts.append(f"[red]🟠 {high}[/]")
+            summary_parts.append(f"[red]HIGH {high}[/]")
         if medium:
-            summary_parts.append(f"[yellow]🟡 {medium}[/]")
+            summary_parts.append(f"[yellow]MEDIUM {medium}[/]")
         if low:
-            summary_parts.append(f"[cyan]🔵 {low}[/]")
+            summary_parts.append(f"[cyan]INFO {low}[/]")
 
         lines.append(" ".join(summary_parts))
 
@@ -322,11 +322,11 @@ class DepsSummaryPanel(Static):
 
         parts = []
         if critical:
-            parts.append(f"[bold red]🔴 {critical}[/]")
+            parts.append(f"[bold red]CRITICAL {critical}[/]")
         if high:
-            parts.append(f"[red]🟠 {high}[/]")
+            parts.append(f"[red]HIGH {high}[/]")
         if medium:
-            parts.append(f"[yellow]🟡 {medium}[/]")
+            parts.append(f"[yellow]MEDIUM {medium}[/]")
 
         # Risk score bar
         score = min(1.0, (critical * 4 + high * 2 + medium) / 10)

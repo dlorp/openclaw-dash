@@ -22,27 +22,27 @@ class TestFormatSchedule:
     def test_cron_expression(self):
         """Should format cron expressions."""
         schedule = {"kind": "cron", "expr": "0 4 * * *"}
-        assert format_schedule(schedule) == "⏰ 0 4 * * *"
+        assert format_schedule(schedule) == "SCHEDULE 0 4 * * *"
 
     def test_every_hours(self):
         """Should format hour intervals."""
         schedule = {"kind": "every", "everyMs": 7200000}  # 2 hours
-        assert format_schedule(schedule) == "↻ 2h"
+        assert format_schedule(schedule) == "REPEAT 2h"
 
     def test_every_minutes(self):
         """Should format minute intervals."""
         schedule = {"kind": "every", "everyMs": 1800000}  # 30 minutes
-        assert format_schedule(schedule) == "↻ 30m"
+        assert format_schedule(schedule) == "REPEAT 30m"
 
     def test_every_seconds(self):
         """Should format second intervals."""
         schedule = {"kind": "every", "everyMs": 10000}  # 10 seconds
-        assert format_schedule(schedule) == "↻ 10s"
+        assert format_schedule(schedule) == "REPEAT 10s"
 
     def test_every_milliseconds(self):
         """Should format millisecond intervals."""
         schedule = {"kind": "every", "everyMs": 500}
-        assert format_schedule(schedule) == "↻ 500ms"
+        assert format_schedule(schedule) == "REPEAT 500ms"
 
     def test_at_time(self):
         """Should format at-time schedules."""

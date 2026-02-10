@@ -137,7 +137,7 @@ class TestPerformanceMetrics:
         perf = PerformanceMetrics(metrics_dir=tmp_path)
 
         # Test successful ws response
-        parsed = perf._parse_log_line("[ws] ⇄ res ✓ chat.history 67ms conn=xyz id=abc")
+        parsed = perf._parse_log_line("[ws] SYNC res ✓ chat.history 67ms conn=xyz id=abc")
         assert parsed is not None
         assert parsed["type"] == "ws_response"
         assert parsed["action"] == "chat.history"
@@ -148,7 +148,7 @@ class TestPerformanceMetrics:
         perf = PerformanceMetrics(metrics_dir=tmp_path)
 
         # Test failed ws response
-        parsed = perf._parse_log_line("[ws] ⇄ res ✗ config.patch 5ms errorCode=INVALID_REQUEST")
+        parsed = perf._parse_log_line("[ws] SYNC res ✗ config.patch 5ms errorCode=INVALID_REQUEST")
         assert parsed is not None
         assert parsed["success"] is False
         assert parsed["action"] == "config.patch"

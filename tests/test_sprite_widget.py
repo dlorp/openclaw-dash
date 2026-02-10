@@ -164,11 +164,11 @@ class TestStateIcons:
 
     def test_get_state_icon(self):
         """Test get_state_icon returns correct icons."""
-        assert get_state_icon(SpriteState.IDLE) == "😊"
-        assert get_state_icon(SpriteState.SLEEP) == "😴"
-        assert get_state_icon(SpriteState.THINK) == "🤔"
+        assert get_state_icon(SpriteState.IDLE) == "IDLE"
+        assert get_state_icon(SpriteState.SLEEP) == "SLEEP"
+        assert get_state_icon(SpriteState.THINK) == "THINK"
         assert get_state_icon(SpriteState.WORK) == ""
-        assert get_state_icon(SpriteState.SPAWN) == "👥"
+        assert get_state_icon(SpriteState.SPAWN) == "SPAWN"
         assert get_state_icon(SpriteState.DONE) == "✓"
         assert get_state_icon(SpriteState.ALERT) == ""
 

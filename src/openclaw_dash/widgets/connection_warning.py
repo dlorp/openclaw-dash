@@ -79,23 +79,25 @@ class ConnectionWarningBanner(Static):
 
         # Build warning message based on detected issues
         if circuit_open_collectors:
-            warnings.append(f"⚠️ Circuit breaker open: {', '.join(circuit_open_collectors[:3])}")
+            warnings.append(
+                f"WARNING: Circuit breaker open: {', '.join(circuit_open_collectors[:3])}"
+            )
 
         if error_collectors:
             # Focus on gateway since it's the most critical
             if "gateway" in error_collectors:
-                warnings.append("⚠️ Gateway unreachable - using fallback data")
+                warnings.append("WARNING: Gateway unreachable - using fallback data")
             elif len(error_collectors) <= 2:
-                warnings.append(f"⚠️ Connection failed: {', '.join(error_collectors)}")
+                warnings.append(f"WARNING: Connection failed: {', '.join(error_collectors)}")
             else:
-                warnings.append(f"⚠️ {len(error_collectors)} collectors unavailable")
+                warnings.append(f"WARNING: {len(error_collectors)} collectors unavailable")
 
         if stale_collectors and not warnings:
             # Only show stale warning if no more serious issues
             if len(stale_collectors) <= 2:
-                warnings.append(f"⚠️ Using cached data: {', '.join(stale_collectors)}")
+                warnings.append(f"WARNING: Using cached data: {', '.join(stale_collectors)}")
             else:
-                warnings.append(f"⚠️ Using cached data ({len(stale_collectors)} sources)")
+                warnings.append(f"WARNING: Using cached data ({len(stale_collectors)} sources)")
 
         # Update display
         if warnings:

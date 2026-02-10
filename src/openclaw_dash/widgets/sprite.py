@@ -89,11 +89,11 @@ SPRITES: dict[str, list[str]] = {
 
 # State icons (emoji-style, for alternative compact mode or external use)
 STATE_ICONS: dict[SpriteState, str] = {
-    SpriteState.IDLE: "😊",
-    SpriteState.SLEEP: "😴",
-    SpriteState.THINK: "🤔",
+    SpriteState.IDLE: "IDLE",
+    SpriteState.SLEEP: "SLEEP",
+    SpriteState.THINK: "THINK",
     SpriteState.WORK: "",
-    SpriteState.SPAWN: "👥",
+    SpriteState.SPAWN: "SPAWN",
     SpriteState.DONE: "✓",
     SpriteState.ALERT: "",
 }

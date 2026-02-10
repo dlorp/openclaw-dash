@@ -223,7 +223,7 @@ class SessionsPanel(Static):
             # Build session line
             lines.append(f"  [{color}]{icon}[/] [bold]{name}[/]")
             lines.append(f"    Context: {ctx_bar} {context_pct:.1f}%")
-            lines.append(f"    [dim]{kind} · ⏱ {time_active}[/]")
+            lines.append(f"    [dim]{kind} · TIME {time_active}[/]")
 
         # Show overflow indicator
         remaining = total - 8

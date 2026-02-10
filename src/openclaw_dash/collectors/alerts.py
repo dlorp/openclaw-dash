@@ -336,10 +336,10 @@ def get_severity_color(severity: str) -> str:
 def get_severity_icon(severity: str) -> str:
     """Get icon for a severity level."""
     icons = {
-        "critical": "🔴",
-        "high": "🟠",
-        "medium": "🟡",
-        "low": "🔵",
+        "critical": "CRITICAL",
+        "high": "HIGH",
+        "medium": "MEDIUM",
+        "low": "INFO",
         "info": "",
     }
     return icons.get(severity.lower(), "•")

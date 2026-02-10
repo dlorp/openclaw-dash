@@ -545,7 +545,7 @@ class DashboardApp(App):
 
         with Container(id="logs-panel", classes="panel"):
             with Collapsible(
-                title="📜 Logs",
+                title="Logs Logs",
                 collapsed=False,
                 collapsed_symbol="▸",
                 expanded_symbol="▾",

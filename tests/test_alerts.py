@@ -76,10 +76,10 @@ class TestHelperFunctions:
         assert get_severity_color("unknown") == "white"
 
     def test_get_severity_icon(self):
-        assert get_severity_icon("critical") == "🔴"
-        assert get_severity_icon("high") == "🟠"
-        assert get_severity_icon("medium") == "🟡"
-        assert get_severity_icon("low") == "🔵"
+        assert get_severity_icon("critical") == "CRITICAL"
+        assert get_severity_icon("high") == "HIGH"
+        assert get_severity_icon("medium") == "MEDIUM"
+        assert get_severity_icon("low") == "INFO"
         assert get_severity_icon("info") == ""
         assert get_severity_icon("unknown") == "•"
 

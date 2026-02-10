@@ -372,7 +372,7 @@ class ModelManagerPanel(Static):
         if model.is_thinking:
             caps.append("")
         if model.is_coder:
-            caps.append("💻")
+            caps.append("local")
 
         caps_str = "".join(caps) + " " if caps else ""
 
