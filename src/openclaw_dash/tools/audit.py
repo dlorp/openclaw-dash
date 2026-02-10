@@ -117,9 +117,27 @@ def check_npm_audit(path: Path) -> list[dict]:
     return issues
 
 
+def is_test_file(file_path: Path) -> bool:
+    """Check if a file is a test file."""
+    parts = file_path.parts
+    name = file_path.name
+    
+    # Check if in tests directory or file starts with test_
+    return (
+        "tests" in parts
+        or "test" in parts
+        or name.startswith("test_")
+        or name.startswith("test-")
+        or "_test.py" in name
+        or ".test." in name
+        or ".spec." in name
+    )
+
+
 def scan_file_for_secrets(file_path: Path) -> list[dict]:
     """Scan a file for hardcoded secrets."""
     issues = []
+    is_test = is_test_file(file_path)
 
     try:
         content = file_path.read_text(errors="ignore")
@@ -137,11 +155,12 @@ def scan_file_for_secrets(file_path: Path) -> list[dict]:
                 issues.append(
                     {
                         "type": "secret",
-                        "severity": "critical",
+                        "severity": "info" if is_test else "critical",
                         "file": str(file_path),
                         "line": line_num,
-                        "description": description,
+                        "description": description + (" (test file)" if is_test else ""),
                         "snippet": line.strip()[:80],
+                        "is_test_file": is_test,
                     }
                 )
 
@@ -151,6 +170,7 @@ def scan_file_for_secrets(file_path: Path) -> list[dict]:
 def scan_file_for_dangerous_patterns(file_path: Path) -> list[dict]:
     """Scan a file for dangerous code patterns."""
     issues = []
+    is_test = is_test_file(file_path)
 
     try:
         content = file_path.read_text(errors="ignore")
@@ -163,11 +183,12 @@ def scan_file_for_dangerous_patterns(file_path: Path) -> list[dict]:
                 issues.append(
                     {
                         "type": "dangerous_pattern",
-                        "severity": "medium",
+                        "severity": "low" if is_test else "medium",
                         "file": str(file_path),
                         "line": line_num,
-                        "description": description,
+                        "description": description + (" (test file)" if is_test else ""),
                         "snippet": line.strip()[:80],
+                        "is_test_file": is_test,
                     }
                 )
 
