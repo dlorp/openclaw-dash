@@ -1,7 +1,8 @@
 """Token and API cost tracking for OpenClaw sessions."""
 
+from __future__ import annotations
+
 import json
-import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -90,29 +91,19 @@ class CostTracker:
         return input_cost, output_cost, input_cost + output_cost
 
     def get_sessions_data(self) -> list[dict[str, Any]]:
-        """Fetch current session data from OpenClaw."""
-        try:
-            result = subprocess.run(
-                ["openclaw", "sessions", "list", "--json"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-            )
-            if result.returncode == 0:
-                data = json.loads(result.stdout)
-                return data.get("sessions", [])
-        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
-            pass
+        """Fetch current session data from the sessions collector.
 
-        # Fallback: try reading sessions file directly
-        sessions_file = Path.home() / ".openclaw" / "agents" / "main" / "sessions" / "sessions.json"
-        if sessions_file.exists():
-            try:
-                data = json.loads(sessions_file.read_text())
-                return data.get("sessions", [])
-            except (OSError, json.JSONDecodeError):
-                pass
-        return []
+        Uses the sessions collector which parses openclaw status output.
+        Returns sessions with token usage data.
+        """
+        from openclaw_dash.collectors import sessions
+
+        try:
+            data = sessions.collect()
+            return data.get("sessions", [])
+        except Exception:
+            # If collector fails, return empty list
+            return []
 
     def collect(self) -> dict[str, Any]:
         """Collect current cost metrics."""
@@ -161,8 +152,6 @@ class CostTracker:
                 continue
 
             model = session.get("model", "unknown")
-            input_tokens = session.get("inputTokens", 0) or 0
-            output_tokens = session.get("outputTokens", 0) or 0
             total_tokens = session.get("totalTokens", 0) or 0
 
             # Skip if no tokens used
@@ -175,13 +164,16 @@ class CostTracker:
                 continue  # No new tokens
 
             # Calculate incremental tokens
-            prev_input = session_record.get("input_tokens", 0)
-            prev_output = session_record.get("output_tokens", 0)
-            new_input = max(0, input_tokens - prev_input)
-            new_output = max(0, output_tokens - prev_output)
+            prev_total = session_record.get("total_tokens", 0)
+            new_total = max(0, total_tokens - prev_total)
 
-            if new_input == 0 and new_output == 0:
+            if new_total == 0:
                 continue
+
+            # Estimate input/output split (60% input / 40% output is typical for AI conversations)
+            # This is an approximation since the CLI doesn't expose the actual split
+            new_input = int(new_total * 0.60)
+            new_output = int(new_total * 0.40)
 
             input_cost, output_cost, total_cost = self.calculate_cost(model, new_input, new_output)
 
@@ -199,9 +191,9 @@ class CostTracker:
             today_data["by_model"][model]["cost"] += total_cost
 
             # Update session record
+            # Note: We only track total_tokens since that's what the CLI exposes
+            # Input/output split is estimated during cost calculation
             history["sessions"][key] = {
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
                 "total_tokens": total_tokens,
                 "model": model,
                 "last_updated": datetime.now().isoformat(),
