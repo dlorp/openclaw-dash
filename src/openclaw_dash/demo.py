@@ -28,10 +28,10 @@ def mock_gateway_status() -> dict[str, Any]:
     """Mock gateway status data."""
     return {
         "healthy": True,
-        "uptime": "2h 15m",
+        "uptime": "2d 14h",
         "pid": 12345,
         "version": "0.9.0",
-        "context_pct": 45.2,
+        "context_pct": 45.0,
         "collected_at": datetime.now().isoformat(),
     }
 
@@ -110,17 +110,32 @@ def mock_activity() -> list[dict[str, Any]]:
 def mock_repos() -> list[dict[str, Any]]:
     """Mock repository data."""
     return [
-        {"name": "synapse-engine", "status": "healthy", "prs": 0, "ci": "passing"},
-        {"name": "r3LAY", "status": "healthy", "prs": 1, "ci": "passing"},
-        {"name": "t3rra1n", "status": "healthy", "prs": 2, "ci": "passing"},
-        {"name": "openclaw-dash", "status": "healthy", "prs": 1, "ci": "passing"},
+        {"name": "synapse-engine", "status": "healthy", "prs": 2, "todos": 5, "ci": "passing"},
+        {"name": "r3LAY", "status": "issues", "prs": 3, "todos": 12, "ci": "failing"},
+        {"name": "t3rra1n", "status": "healthy", "prs": 1, "todos": 3, "ci": "passing"},
+        {"name": "openclaw-dash", "status": "issues", "prs": 4, "todos": 8, "ci": "passing"},
+        {"name": "openclaw-core", "status": "healthy", "prs": 0, "todos": 2, "ci": "passing"},
     ]
 
 
 def mock_alerts() -> list[dict[str, Any]]:
     """Mock alerts data."""
+    now = datetime.now()
     return [
-        # Empty - no alerts in demo mode
+        {
+            "id": "ci-fail-1",
+            "severity": "warning",
+            "message": "CI pipeline failing on r3LAY main branch",
+            "timestamp": (now - timedelta(minutes=25)).isoformat(),
+            "source": "github",
+        },
+        {
+            "id": "cost-spike-1",
+            "severity": "info",
+            "message": "Daily cost up 15% from yesterday",
+            "timestamp": (now - timedelta(hours=2)).isoformat(),
+            "source": "cost-monitor",
+        },
     ]
 
 
@@ -135,8 +150,9 @@ def mock_channels() -> list[dict[str, Any]]:
 def mock_cost_data() -> dict[str, Any]:
     """Mock cost tracking data."""
     return {
-        "today": {"total": 0.42, "input": 0.15, "output": 0.27},
-        "trend": {"values": [0.35, 0.41, 0.38, 0.45, 0.42]},
+        "today": {"total": 2.45, "input": 0.85, "output": 1.60},
+        "alltime": {"total": 45.20, "input": 16.50, "output": 28.70},
+        "trend": {"values": [1.85, 2.10, 2.35, 2.60, 2.45]},
         "streak": 12,
     }
 
