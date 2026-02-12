@@ -30,12 +30,19 @@ Implementation notes:
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 from openclaw_dash.demo import is_demo_mode, mock_cost_data
+
+logger = logging.getLogger(__name__)
+
+# Security limits
+MAX_TOKENS = 10_000_000  # 10M tokens - reasonable upper bound for a single session
+MAX_COSTS_FILE_SIZE = 10 * 1024 * 1024  # 10MB limit for costs.json
 
 # Token pricing per 1M tokens (as of Feb 2025)
 # Prices are in USD per 1 million tokens
@@ -77,6 +84,43 @@ MODEL_PRICING = {
 DEFAULT_METRICS_DIR = Path.home() / ".openclaw" / "workspace" / "metrics"
 
 
+def _validate_token_count(value: Any, field_name: str) -> int:
+    """Validate and sanitize a token count value.
+
+    Args:
+        value: The value to validate (should be an int or coercible to int)
+        field_name: Name of the field for logging
+
+    Returns:
+        Validated integer token count, clamped to [0, MAX_TOKENS]
+
+    Raises:
+        TypeError: If value cannot be coerced to int
+    """
+    try:
+        count = int(value)
+    except (TypeError, ValueError) as e:
+        logger.warning(
+            f"Invalid token count for {field_name}: {value!r} (type={type(value).__name__}). "
+            f"Error: {e}. Defaulting to 0."
+        )
+        return 0
+
+    # Clamp to valid range
+    if count < 0:
+        logger.warning(f"Negative token count for {field_name}: {count}. Clamping to 0.")
+        return 0
+
+    if count > MAX_TOKENS:
+        logger.warning(
+            f"Token count for {field_name} exceeds maximum ({count:,} > {MAX_TOKENS:,}). "
+            f"Clamping to {MAX_TOKENS:,}."
+        )
+        return MAX_TOKENS
+
+    return count
+
+
 @dataclass
 class SessionCost:
     """Cost data for a single session."""
@@ -113,13 +157,39 @@ class CostTracker:
         self.costs_file = self.metrics_dir / "costs.json"
 
     def _load_history(self) -> dict[str, Any]:
-        """Load cost history from disk."""
-        if self.costs_file.exists():
-            try:
-                return json.loads(self.costs_file.read_text())
-            except (OSError, json.JSONDecodeError):
-                pass
-        return {"daily": {}, "sessions": {}}
+        """Load cost history from disk with security checks."""
+        if not self.costs_file.exists():
+            return {"daily": {}, "sessions": {}}
+
+        try:
+            # Check file size before loading (DoS protection)
+            file_size = self.costs_file.stat().st_size
+            if file_size > MAX_COSTS_FILE_SIZE:
+                logger.error(
+                    f"costs.json file too large ({file_size:,} bytes > {MAX_COSTS_FILE_SIZE:,} bytes). "
+                    f"Skipping load to prevent DoS. File: {self.costs_file}"
+                )
+                return {"daily": {}, "sessions": {}}
+
+            content = self.costs_file.read_text()
+            return json.loads(content)
+
+        except RecursionError as e:
+            logger.error(
+                f"Recursion limit exceeded while parsing costs.json (possible deeply nested JSON). "
+                f"Error: {e}. File: {self.costs_file}"
+            )
+            return {"daily": {}, "sessions": {}}
+
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"Failed to parse costs.json as valid JSON. Error: {e}. File: {self.costs_file}"
+            )
+            return {"daily": {}, "sessions": {}}
+
+        except OSError as e:
+            logger.error(f"Failed to read costs.json. Error: {e}. File: {self.costs_file}")
+            return {"daily": {}, "sessions": {}}
 
     def _save_history(self, data: dict[str, Any]) -> None:
         """Save cost history to disk."""
@@ -153,20 +223,17 @@ class CostTracker:
     def get_sessions_data(self) -> list[dict[str, Any]]:
         """Fetch current session data from the sessions collector.
 
-                Uses the sessions collector which parses openclaw status output.
-        <<<<<<< HEAD
-                Returns sessions with token usage data.
-        =======
-                Returns sessions with token usage data including input/output split.
-        >>>>>>> e384240 (feat: Use actual input/output token counts for cost tracking)
+        Uses the sessions collector which parses openclaw status output.
+        Returns sessions with token usage data including input/output split.
         """
         from openclaw_dash.collectors import sessions
 
         try:
             data = sessions.collect()
             return data.get("sessions", [])
-        except Exception:
+        except Exception as e:
             # If collector fails, return empty list
+            logger.error(f"Failed to collect session data from sessions collector: {e}")
             return []
 
     def collect(self) -> dict[str, Any]:
@@ -216,11 +283,17 @@ class CostTracker:
                 continue
 
             model = session.get("model", "unknown")
-            total_tokens = session.get("totalTokens", 0) or 0
 
-            # Get actual input/output token counts from gateway
-            current_input = session.get("inputTokens", 0) or 0
-            current_output = session.get("outputTokens", 0) or 0
+            # Validate and sanitize token counts (security: type confusion + overflow protection)
+            total_tokens = _validate_token_count(
+                session.get("totalTokens", 0) or 0, f"{key}.totalTokens"
+            )
+            current_input = _validate_token_count(
+                session.get("inputTokens", 0) or 0, f"{key}.inputTokens"
+            )
+            current_output = _validate_token_count(
+                session.get("outputTokens", 0) or 0, f"{key}.outputTokens"
+            )
 
             # Skip if no tokens used
             if total_tokens == 0:

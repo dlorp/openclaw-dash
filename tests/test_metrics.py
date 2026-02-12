@@ -1,9 +1,10 @@
 """Tests for metrics collectors."""
 
+import json
 from unittest.mock import patch
 
 from openclaw_dash import demo
-from openclaw_dash.metrics import CostTracker
+from openclaw_dash.metrics import MAX_TOKENS, CostTracker, _validate_token_count
 
 
 class TestCostTracker:
@@ -102,3 +103,122 @@ class TestCostTracker:
             assert isinstance(sessions, list)
             assert len(sessions) == 1
             assert sessions[0]["key"] == "test-session"
+
+
+class TestSecurityValidation:
+    """Security-focused tests for token validation and DoS protection."""
+
+    def test_validate_token_count_valid_int(self):
+        """Valid integer should pass through unchanged."""
+        assert _validate_token_count(1000, "test") == 1000
+        assert _validate_token_count(0, "test") == 0
+        assert _validate_token_count(MAX_TOKENS, "test") == MAX_TOKENS
+
+    def test_validate_token_count_string_coercion(self):
+        """Valid numeric strings should be coerced to int."""
+        assert _validate_token_count("1000", "test") == 1000
+        assert _validate_token_count("0", "test") == 0
+
+    def test_validate_token_count_invalid_type(self):
+        """Invalid types should return 0 and log warning."""
+        assert _validate_token_count("not-a-number", "test") == 0
+        assert _validate_token_count(None, "test") == 0
+        assert _validate_token_count([], "test") == 0
+        assert _validate_token_count({}, "test") == 0
+        assert _validate_token_count(3.14159, "test") == 3  # Float should truncate
+
+    def test_validate_token_count_negative(self):
+        """Negative values should be clamped to 0."""
+        assert _validate_token_count(-1, "test") == 0
+        assert _validate_token_count(-1000, "test") == 0
+
+    def test_validate_token_count_overflow(self):
+        """Values exceeding MAX_TOKENS should be clamped."""
+        assert _validate_token_count(MAX_TOKENS + 1, "test") == MAX_TOKENS
+        assert _validate_token_count(999_999_999, "test") == MAX_TOKENS
+
+    def test_collect_with_malformed_token_data(self, tmp_path):
+        """Collector should handle malformed token data gracefully."""
+        with patch("openclaw_dash.collectors.sessions.collect") as mock_collect:
+            mock_collect.return_value = {
+                "sessions": [
+                    {
+                        "key": "session-1",
+                        "model": "claude-sonnet-4",
+                        "inputTokens": "not-a-number",  # Type confusion
+                        "outputTokens": -500,  # Negative value
+                        "totalTokens": 999_999_999,  # Overflow
+                    },
+                    {
+                        "key": "session-2",
+                        "model": "claude-sonnet-4",
+                        "inputTokens": None,  # None type
+                        "outputTokens": [],  # Invalid type
+                        "totalTokens": "1500",  # String but valid
+                    },
+                ]
+            }
+
+            tracker = CostTracker(metrics_dir=tmp_path)
+            result = tracker.collect()
+
+            # Should not crash and should return valid structure
+            assert isinstance(result, dict)
+            assert "today" in result
+            assert isinstance(result["today"]["input_tokens"], int)
+            assert isinstance(result["today"]["output_tokens"], int)
+
+    def test_load_history_file_size_limit(self, tmp_path):
+        """Should reject files exceeding size limit."""
+        tracker = CostTracker(metrics_dir=tmp_path)
+
+        # Create a file larger than MAX_COSTS_FILE_SIZE
+        large_data = {"daily": {}, "sessions": {}, "padding": "x" * (11 * 1024 * 1024)}
+        tracker.costs_file.write_text(json.dumps(large_data))
+
+        history = tracker._load_history()
+
+        # Should return empty default structure
+        assert history == {"daily": {}, "sessions": {}}
+
+    def test_load_history_deeply_nested_json(self, tmp_path):
+        """Should handle deeply nested JSON without crashing."""
+        tracker = CostTracker(metrics_dir=tmp_path)
+
+        # Create a deeply nested structure that could cause RecursionError
+        nested = {}
+        current = nested
+        for i in range(1000):
+            current["level"] = {}
+            current = current["level"]
+
+        tracker.costs_file.write_text(json.dumps(nested))
+
+        # Should not crash and should return default structure
+        history = tracker._load_history()
+        assert isinstance(history, dict)
+
+    def test_load_history_invalid_json(self, tmp_path):
+        """Should handle invalid JSON gracefully."""
+        tracker = CostTracker(metrics_dir=tmp_path)
+
+        # Write invalid JSON
+        tracker.costs_file.write_text("{invalid json content")
+
+        history = tracker._load_history()
+
+        # Should return empty default structure
+        assert history == {"daily": {}, "sessions": {}}
+
+    def test_load_history_file_not_exists(self, tmp_path):
+        """Should handle missing file gracefully."""
+        tracker = CostTracker(metrics_dir=tmp_path)
+
+        # Ensure file doesn't exist
+        if tracker.costs_file.exists():
+            tracker.costs_file.unlink()
+
+        history = tracker._load_history()
+
+        # Should return empty default structure
+        assert history == {"daily": {}, "sessions": {}}
