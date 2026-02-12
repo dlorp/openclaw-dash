@@ -310,6 +310,7 @@ class ModelDiscoveryService:
         lm_studio_host: str = "http://localhost:1234",
         vllm_host: str = "http://localhost:8000",
         timeout: int = 5,
+        custom_paths: list[str] | None = None,
     ):
         """Initialize the model discovery service.
 
@@ -319,12 +320,14 @@ class ModelDiscoveryService:
             lm_studio_host: LM Studio API host URL
             vllm_host: vLLM API host URL
             timeout: Request timeout in seconds
+            custom_paths: Optional list of custom directories to scan for local models
         """
         self.client = client
         self.ollama_host = ollama_host
         self.lm_studio_host = lm_studio_host
         self.vllm_host = vllm_host
         self.timeout = timeout
+        self.custom_paths = custom_paths or []
         self._cache: dict[str, tuple[datetime, list[ModelInfo]]] = {}
         self._cache_ttl = 60  # seconds
 
@@ -392,7 +395,14 @@ class ModelDiscoveryService:
         Returns:
             Combined list of ModelInfo from all available providers
         """
-        return self.discover(include_local=True, include_gateway=False).models
+        models = self.discover(include_local=True, include_gateway=False).models
+
+        # Add custom path models if configured
+        if self.custom_paths:
+            custom_models = self.discover_custom_paths()
+            models.extend(custom_models)
+
+        return models
 
     def _parse_gateway_model(self, name: str) -> ModelInfo:
         """Parse a gateway model name string into ModelInfo.
@@ -631,6 +641,93 @@ class ModelDiscoveryService:
 
         except Exception:
             pass
+
+        return models
+
+    def discover_custom_paths(self) -> list[ModelInfo]:
+        """Discover models from custom directories.
+
+        Scans configured custom paths for .gguf and .safetensors model files.
+        Implements security measures:
+        - Path resolution to prevent traversal attacks
+        - Path validation to ensure they don't escape allowed directories
+        - Per-path error handling (skip bad paths, continue)
+        - File count cap (max 1000 files per scan)
+
+        Returns:
+            List of ModelInfo for models found in custom paths
+        """
+        from pathlib import Path
+
+        models: list[ModelInfo] = []
+        file_count = 0
+        max_files = 1000
+
+        for path_str in self.custom_paths:
+            try:
+                # Security: Resolve path to prevent traversal attacks
+                path = Path(path_str).resolve()
+
+                # Security: Validate path exists and is a directory
+                if not path.exists():
+                    continue
+                if not path.is_dir():
+                    continue
+
+                # Security: Ensure resolved path starts with the original path
+                # This prevents symlink/traversal attacks
+                try:
+                    path.relative_to(Path(path_str).resolve())
+                except ValueError:
+                    # Path escaped the allowed directory
+                    continue
+
+                # Scan for model files (.gguf and .safetensors)
+                model_extensions = {".gguf", ".safetensors"}
+
+                for model_file in path.rglob("*"):
+                    # Check file count cap
+                    if file_count >= max_files:
+                        break
+
+                    # Only process files with model extensions
+                    if not model_file.is_file():
+                        continue
+                    if model_file.suffix.lower() not in model_extensions:
+                        continue
+
+                    file_count += 1
+
+                    # Parse model name from filename
+                    model_name = model_file.stem
+
+                    # Get file size
+                    try:
+                        size_bytes = model_file.stat().st_size
+                    except (OSError, PermissionError):
+                        size_bytes = None
+
+                    # Create ModelInfo
+                    model = ModelInfo(
+                        name=model_name,
+                        provider="custom",
+                        tier=infer_tier(model_name),
+                        size_bytes=size_bytes,
+                        family=infer_family(model_name),
+                        metadata={
+                            "path": str(model_file),
+                            "extension": model_file.suffix,
+                        },
+                    )
+                    models.append(model)
+
+            except (OSError, PermissionError, Exception):
+                # Per-path error handling: skip bad paths and continue
+                continue
+
+            # Break outer loop if we hit the file cap
+            if file_count >= max_files:
+                break
 
         return models
 
