@@ -1,6 +1,5 @@
 """Tests for metrics collectors."""
 
-import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -86,30 +85,24 @@ class TestCostTracker:
         history = tracker.get_history(days=30)
         assert isinstance(history, list)
 
-    @patch("openclaw_dash.metrics.costs.subprocess.run")
-    def test_sessions_data_from_cli(self, mock_run, tmp_path):
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps(
+    @patch("openclaw_dash.collectors.sessions.collect")
+    def test_sessions_data_from_cli(self, mock_collect, tmp_path):
+        mock_collect.return_value = {
+            "sessions": [
                 {
-                    "sessions": [
-                        {
-                            "key": "test-session",
-                            "model": "claude-sonnet-4",
-                            "inputTokens": 1000,
-                            "outputTokens": 500,
-                            "totalTokens": 1500,
-                        }
-                    ]
+                    "key": "test-session",
+                    "model": "claude-sonnet-4",
+                    "totalTokens": 1500,
                 }
-            ),
-        )
+            ]
+        }
 
         tracker = CostTracker(metrics_dir=tmp_path)
         sessions = tracker.get_sessions_data()
 
         assert len(sessions) == 1
         assert sessions[0]["key"] == "test-session"
+        assert sessions[0]["totalTokens"] == 1500
 
 
 class TestPerformanceMetrics:

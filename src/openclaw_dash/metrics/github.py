@@ -1,5 +1,7 @@
 """GitHub metrics - contribution streaks, PR cycle times, TODO trends."""
 
+from __future__ import annotations
+
 import json
 import subprocess
 from dataclasses import dataclass
