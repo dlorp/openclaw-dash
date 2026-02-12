@@ -87,22 +87,62 @@ TUI dashboard for monitoring and managing your [OpenClaw](https://github.com/ope
 
 ## Keyboard Shortcuts
 
+### Global Actions
+
 | Key | Action |
 |-----|--------|
-| `q` | Quit |
+| `q` | Quit application |
 | `r` | Refresh all panels |
-| `t` | Cycle theme |
-| `s` | Open settings |
-| `h` / `?` | Help panel |
-| `Ctrl+P` | Command palette |
-| `j` / `k` | Scroll down/up |
-| `G` / `Home` | Jump to end/top |
-| `Tab` / `Shift+Tab` | Next/previous panel |
-| `f` / `/` | Enter jump mode |
-| `Enter` | Toggle panel collapse |
-| `Ctrl+[` / `Ctrl+]` | Collapse/expand all |
-| `x` | Toggle resources panel |
-| `g` `s` `m` `a` `c` `p` `l` | Focus specific panels |
+| `t` | Cycle theme (dark/light/phosphor) |
+| `h` / `?` | Show help panel |
+| `Ctrl+P` | Open command palette |
+
+### Navigation
+
+| Key | Action |
+|-----|--------|
+| `Tab` / `Shift+Tab` | Navigate to next/previous panel |
+| `f` / `/` | Enter jump mode (show panel labels) |
+| `j` / `k` | Scroll down/up (Vim-style) |
+| `G` | Jump to end of panel |
+| `Home` | Jump to top of panel |
+
+### Panel Focus Shortcuts
+
+| Key | Panel |
+|-----|-------|
+| `g` | Gateway |
+| `s` | Security |
+| `m` | Metrics |
+| `a` | Alerts |
+| `c` | Cron |
+| `p` | Repos |
+| `l` | Logs |
+| `n` | Agents |
+
+### Panel Management
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Toggle focused panel collapse/expand |
+| `Ctrl+[` | Collapse all panels |
+| `Ctrl+]` | Expand all panels |
+| `x` | Toggle resources panel visibility |
+
+### Tab Groups
+
+| Key | Action |
+|-----|--------|
+| `1` | Focus Runtime tab group (Sessions/Agents/Cron/Channels) |
+| `2` | Focus Code tab group (Repos/Activity) |
+| `[` | Previous tab in focused group |
+| `]` | Next tab in focused group |
+
+### Input
+
+| Key | Action |
+|-----|--------|
+| `:` / `i` | Focus command input pane |
 
 ## Installation
 
