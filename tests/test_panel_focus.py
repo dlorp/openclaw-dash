@@ -120,7 +120,7 @@ class TestPanelFocusIntegration:
         assert "previous" in method.__doc__.lower() or "prev" in method.__doc__.lower()
 
     def test_action_focus_panel_implementation(self):
-        """Test action_focus_panel method exists and has security checks."""
+        """Test action_focus_panel method exists and validates panel IDs."""
         import inspect
 
         from openclaw_dash.app import DashboardApp
@@ -135,6 +135,13 @@ class TestPanelFocusIntegration:
         # Verify method signature includes panel_id parameter
         sig = inspect.signature(method)
         assert "panel_id" in sig.parameters
+
+        # Verify source contains security validation
+        import inspect as insp
+
+        source = insp.getsource(method)
+        assert "PANEL_ORDER" in source, "Should validate against PANEL_ORDER"
+        assert "if" in source, "Should have conditional validation"
 
     def test_tab_binding_maps_to_focus_next(self):
         """Test that Tab key is bound to focus_next_panel action."""
@@ -201,3 +208,103 @@ class TestPanelFocusIntegration:
 
         # Verify shortcuts list is not empty
         assert len(STATIC_SHORTCUTS) > 0
+
+
+class TestPanelFocusSecurity:
+    """Security tests for panel focus validation."""
+
+    def test_action_focus_panel_validates_panel_id(self):
+        """Test that action_focus_panel validates panel_id against PANEL_ORDER whitelist."""
+        from unittest.mock import MagicMock
+
+        from openclaw_dash.app import DashboardApp
+
+        # Create a mock app instance
+        app = DashboardApp()
+        app.query_one = MagicMock()
+
+        # Test 1: Valid panel ID should call query_one
+        valid_panel_id = DashboardApp.PANEL_ORDER[0]
+        app.action_focus_panel(valid_panel_id)
+        assert app.query_one.called, "Should call query_one for valid panel ID"
+        app.query_one.reset_mock()
+
+        # Test 2: Invalid panel ID should NOT call query_one
+        app.action_focus_panel("invalid-panel-id")
+        assert not app.query_one.called, "Should not call query_one for invalid panel ID"
+        app.query_one.reset_mock()
+
+        # Test 3: CSS injection attempt should be rejected
+        app.action_focus_panel("#malicious-selector")
+        assert not app.query_one.called, "Should reject CSS injection patterns"
+        app.query_one.reset_mock()
+
+        # Test 4: None should be rejected
+        app.action_focus_panel(None)
+        assert not app.query_one.called, "Should reject None as panel ID"
+        app.query_one.reset_mock()
+
+        # Test 5: Empty string should be rejected
+        app.action_focus_panel("")
+        assert not app.query_one.called, "Should reject empty string as panel ID"
+        app.query_one.reset_mock()
+
+        # Test 6: SQL injection pattern should be rejected
+        app.action_focus_panel("'; DROP TABLE panels; --")
+        assert not app.query_one.called, "Should reject SQL injection patterns"
+        app.query_one.reset_mock()
+
+        # Test 7: Path traversal pattern should be rejected
+        app.action_focus_panel("../../../etc/passwd")
+        assert not app.query_one.called, "Should reject path traversal patterns"
+        app.query_one.reset_mock()
+
+        # Test 8: Special characters should be rejected
+        app.action_focus_panel("panel*[data-foo]")
+        assert not app.query_one.called, "Should reject special CSS selector characters"
+
+    def test_panel_order_is_complete_whitelist(self):
+        """Test that PANEL_ORDER serves as a complete whitelist for panel IDs."""
+        from openclaw_dash.app import DashboardApp
+
+        # PANEL_ORDER should exist and be a list
+        assert hasattr(DashboardApp, "PANEL_ORDER")
+        assert isinstance(DashboardApp.PANEL_ORDER, list)
+
+        # PANEL_ORDER should only contain valid panel ID strings
+        for panel_id in DashboardApp.PANEL_ORDER:
+            assert isinstance(panel_id, str), "All panel IDs should be strings"
+            assert len(panel_id) > 0, "Panel IDs should not be empty"
+            assert panel_id == panel_id.strip(), "Panel IDs should not have leading/trailing spaces"
+
+    def test_action_focus_panel_early_return_on_invalid_id(self):
+        """Test that action_focus_panel returns early for invalid IDs without side effects."""
+        import inspect
+
+        from openclaw_dash.app import DashboardApp
+
+        # Verify the method implementation returns early on invalid panel_id
+        source = inspect.getsource(DashboardApp.action_focus_panel)
+
+        # Should check panel_id against PANEL_ORDER
+        assert "panel_id not in" in source or "panel_id in" in source, (
+            "Should validate panel_id against PANEL_ORDER"
+        )
+
+        # Should have early return
+        assert "return" in source, "Should return early for invalid panel IDs"
+
+        # Validation should happen before query_one is called
+        lines = source.split("\n")
+        validation_line = None
+        query_line = None
+
+        for i, line in enumerate(lines):
+            if "panel_id" in line and ("not in" in line or "PANEL_ORDER" in line):
+                validation_line = i
+            if "query_one" in line and validation_line is None:
+                query_line = i
+
+        assert validation_line is not None, "Should have panel_id validation"
+        if query_line is not None:
+            assert validation_line < query_line, "Validation should occur before query_one call"
