@@ -2,7 +2,8 @@
 """Verify demo mode data."""
 
 import sys
-sys.path.insert(0, 'src')
+
+sys.path.insert(0, "src")
 
 from openclaw_dash import demo
 
@@ -19,14 +20,16 @@ print()
 print("=== REPOSITORIES ===")
 repos = demo.mock_repos()
 for repo in repos:
-    print(f"{repo['name']}: status={repo['status']}, PRs={repo['prs']}, TODOs={repo.get('todos', 0)}, CI={repo['ci']}")
+    print(
+        f"{repo['name']}: status={repo['status']}, PRs={repo['prs']}, TODOs={repo.get('todos', 0)}, CI={repo['ci']}"
+    )
 print()
 
 print("=== SESSIONS ===")
 sessions = demo.mock_sessions()
 print(f"Total sessions: {len(sessions)}")
 for sess in sessions:
-    pct = (sess['totalTokens'] / sess['contextTokens']) * 100
+    pct = (sess["totalTokens"] / sess["contextTokens"]) * 100
     print(f"  {sess['displayName']}: {pct:.1f}% context")
 print()
 

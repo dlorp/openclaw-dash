@@ -29,8 +29,6 @@ Implementation notes:
 
 from __future__ import annotations
 
-from __future__ import annotations
-
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
@@ -155,12 +153,12 @@ class CostTracker:
     def get_sessions_data(self) -> list[dict[str, Any]]:
         """Fetch current session data from the sessions collector.
 
-        Uses the sessions collector which parses openclaw status output.
-<<<<<<< HEAD
-        Returns sessions with token usage data.
-=======
-        Returns sessions with token usage data including input/output split.
->>>>>>> e384240 (feat: Use actual input/output token counts for cost tracking)
+                Uses the sessions collector which parses openclaw status output.
+        <<<<<<< HEAD
+                Returns sessions with token usage data.
+        =======
+                Returns sessions with token usage data including input/output split.
+        >>>>>>> e384240 (feat: Use actual input/output token counts for cost tracking)
         """
         from openclaw_dash.collectors import sessions
 
@@ -230,14 +228,6 @@ class CostTracker:
 
             # Check if we've already recorded this session state
             session_record = history["sessions"].get(key, {})
-<<<<<<< HEAD
-            if session_record.get("total_tokens", 0) >= total_tokens:
-                continue  # No new tokens
-
-            # Calculate incremental tokens
-            prev_total = session_record.get("total_tokens", 0)
-            new_total = max(0, total_tokens - prev_total)
-=======
             prev_input = session_record.get("input_tokens", 0)
             prev_output = session_record.get("output_tokens", 0)
 
@@ -254,15 +244,9 @@ class CostTracker:
                     # Estimate 60% input / 40% output as fallback
                     new_input = int(new_total * 0.60)
                     new_output = int(new_total * 0.40)
->>>>>>> e384240 (feat: Use actual input/output token counts for cost tracking)
 
-            if new_total == 0:
+            if new_input == 0 and new_output == 0:
                 continue
-
-            # Estimate input/output split (60% input / 40% output is typical for AI conversations)
-            # This is an approximation since the CLI doesn't expose the actual split
-            new_input = int(new_total * 0.60)
-            new_output = int(new_total * 0.40)
 
             input_cost, output_cost, total_cost = self.calculate_cost(model, new_input, new_output)
 
@@ -279,13 +263,7 @@ class CostTracker:
             today_data["by_model"][model]["output_tokens"] += new_output
             today_data["by_model"][model]["cost"] += total_cost
 
-<<<<<<< HEAD
-            # Update session record
-            # Note: We only track total_tokens since that's what the CLI exposes
-            # Input/output split is estimated during cost calculation
-=======
             # Update session record with actual token counts
->>>>>>> e384240 (feat: Use actual input/output token counts for cost tracking)
             history["sessions"][key] = {
                 "total_tokens": total_tokens,
                 "input_tokens": current_input,

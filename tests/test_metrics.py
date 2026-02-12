@@ -1,11 +1,9 @@
 """Tests for metrics collectors."""
 
-from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from openclaw_dash import demo
-from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
-from openclaw_dash.metrics.costs import MODEL_PRICING
+from openclaw_dash.metrics import CostTracker
 
 
 class TestCostTracker:
@@ -101,4 +99,6 @@ class TestCostTracker:
 
             tracker = CostTracker(metrics_dir=tmp_path)
             sessions = tracker.get_sessions_data()
-
+            assert isinstance(sessions, list)
+            assert len(sessions) == 1
+            assert sessions[0]["key"] == "test-session"
