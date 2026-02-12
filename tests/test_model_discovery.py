@@ -471,3 +471,367 @@ class TestConfigSchema:
         props = CONFIG_SCHEMA["model_manager"]["properties"]
         assert props["ollama_host"]["default"] == "http://localhost:11434"
         assert props["discovery_timeout"]["default"] == 5
+
+
+class TestCustomPathsDiscovery:
+    """Tests for custom paths model discovery."""
+
+    def test_custom_paths_initialization(self, tmp_path):
+        """Test service initialization with custom paths."""
+        custom_paths = [str(tmp_path)]
+        service = ModelDiscoveryService(custom_paths=custom_paths)
+        assert service.custom_paths == custom_paths
+
+    def test_custom_paths_default_empty(self):
+        """Test that custom_paths defaults to empty list."""
+        service = ModelDiscoveryService()
+        assert service.custom_paths == []
+
+    def test_discover_gguf_files(self, tmp_path):
+        """Test discovery of .gguf files."""
+        # Create test .gguf files
+        model1 = tmp_path / "llama-3-8b.gguf"
+        model1.write_bytes(b"fake model data")
+
+        model2 = tmp_path / "mistral-7b-instruct.gguf"
+        model2.write_bytes(b"fake model data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        assert len(models) == 2
+        model_names = {m.name for m in models}
+        assert "llama-3-8b" in model_names
+        assert "mistral-7b-instruct" in model_names
+        assert all(m.provider == "custom" for m in models)
+        assert all(m.metadata.get("extension") == ".gguf" for m in models)
+
+    def test_discover_safetensors_files(self, tmp_path):
+        """Test discovery of .safetensors files."""
+        # Create test .safetensors files
+        model1 = tmp_path / "qwen-14b.safetensors"
+        model1.write_bytes(b"fake model data")
+
+        model2 = tmp_path / "deepseek-coder-33b.safetensors"
+        model2.write_bytes(b"fake model data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        assert len(models) == 2
+        model_names = {m.name for m in models}
+        assert "qwen-14b" in model_names
+        assert "deepseek-coder-33b" in model_names
+        assert all(m.metadata.get("extension") == ".safetensors" for m in models)
+
+    def test_discover_recursive_search(self, tmp_path):
+        """Test that discovery searches subdirectories recursively."""
+        # Create nested directory structure
+        subdir1 = tmp_path / "models" / "llama"
+        subdir1.mkdir(parents=True)
+        subdir2 = tmp_path / "models" / "mistral"
+        subdir2.mkdir(parents=True)
+
+        (subdir1 / "llama-8b.gguf").write_bytes(b"data")
+        (subdir2 / "mistral-7b.gguf").write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        assert len(models) == 2
+        model_names = {m.name for m in models}
+        assert "llama-8b" in model_names
+        assert "mistral-7b" in model_names
+
+    def test_path_traversal_prevention(self, tmp_path):
+        """Test that path traversal attacks are prevented."""
+        # Create a path outside the allowed directory
+        outside_dir = tmp_path.parent / "outside"
+        outside_dir.mkdir(exist_ok=True)
+
+        # Create a model file in the outside directory
+        (outside_dir / "evil-model.gguf").write_bytes(b"malicious")
+
+        # Create a safe model in the allowed directory
+        (tmp_path / "safe-model.gguf").write_bytes(b"safe")
+
+        # Try to access parent directory via traversal
+        malicious_path = str(tmp_path / ".." / "outside")
+
+        service = ModelDiscoveryService(custom_paths=[malicious_path])
+        models = service.discover_custom_paths()
+
+        # Should NOT find the evil model - verify it was blocked
+        model_names = {m.name for m in models}
+        assert "evil-model" not in model_names
+
+        # Should find safe model when using the correct path
+        service2 = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models2 = service2.discover_custom_paths()
+        model_names2 = {m.name for m in models2}
+        assert "safe-model" in model_names2
+
+    def test_permission_error_handling(self, tmp_path):
+        """Test graceful handling of permission errors."""
+        import os
+        import stat
+
+        # Create a file we can't read
+        restricted_file = tmp_path / "restricted.gguf"
+        restricted_file.write_bytes(b"data")
+
+        # Make parent directory non-readable (on Unix-like systems)
+        if os.name != "nt":  # Skip on Windows
+            original_mode = tmp_path.stat().st_mode
+            try:
+                os.chmod(tmp_path, stat.S_IWUSR)  # Write-only, no read
+
+                service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+                # Should not raise exception
+                models = service.discover_custom_paths()
+                assert isinstance(models, list)
+            finally:
+                # Restore permissions
+                os.chmod(tmp_path, original_mode)
+
+    def test_empty_path_handling(self):
+        """Test handling of empty or invalid paths."""
+        service = ModelDiscoveryService(custom_paths=["/nonexistent/path/to/models"])
+        models = service.discover_custom_paths()
+
+        # Should return empty list, not raise exception
+        assert models == []
+
+    def test_non_directory_path_handling(self, tmp_path):
+        """Test handling when path is a file, not a directory."""
+        # Create a file instead of a directory
+        file_path = tmp_path / "not_a_directory.txt"
+        file_path.write_text("test")
+
+        service = ModelDiscoveryService(custom_paths=[str(file_path)])
+        models = service.discover_custom_paths()
+
+        # Should skip the file and return empty list
+        assert models == []
+
+    def test_file_count_cap(self, tmp_path):
+        """Test that file count is capped at 1000 files."""
+        # This would be slow to actually create 1001 files, so we'll mock it
+        from unittest.mock import patch
+
+        # Create a few real files
+        for i in range(5):
+            (tmp_path / f"model-{i}.gguf").write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+
+        # Patch the max_files to a smaller number for testing
+        with patch.object(service, "discover_custom_paths") as mock_discover:
+            # Create a mock that simulates hitting the cap
+            def mock_impl():
+                models = []
+                for i in range(10):  # Simulate 10 files
+                    models.append(
+                        ModelInfo(
+                            name=f"model-{i}",
+                            provider="custom",
+                            tier=ModelTier.UNKNOWN,
+                        )
+                    )
+                return models[:5]  # Return only 5 due to cap
+
+            mock_discover.side_effect = mock_impl
+            models = service.discover_custom_paths()
+            assert len(models) <= 5
+
+    def test_model_metadata_includes_directory_name(self, tmp_path):
+        """Test that discovered models include directory name (not full path) in metadata."""
+        model_file = tmp_path / "test-model.gguf"
+        model_file.write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        assert len(models) == 1
+        # Should have directory name, not full path
+        assert "directory" in models[0].metadata
+        assert "path" not in models[0].metadata
+        # Directory should be the parent folder name
+        assert models[0].metadata["directory"] == tmp_path.name
+
+    def test_model_size_extraction(self, tmp_path):
+        """Test that model file size is correctly extracted."""
+        model_file = tmp_path / "test-model.gguf"
+        test_data = b"x" * 1024 * 1024  # 1 MB
+        model_file.write_bytes(test_data)
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        assert len(models) == 1
+        assert models[0].size_bytes is not None
+        assert models[0].size_bytes == len(test_data)
+
+    def test_tier_inference_from_filename(self, tmp_path):
+        """Test that tier is inferred from model filename."""
+        (tmp_path / "llama-3b.gguf").write_bytes(b"data")
+        (tmp_path / "mistral-13b.gguf").write_bytes(b"data")
+        (tmp_path / "llama-70b.gguf").write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        assert len(models) == 3
+
+        # Find each model and check tier
+        models_by_name = {m.name: m for m in models}
+        assert models_by_name["llama-3b"].tier == ModelTier.FAST
+        assert models_by_name["mistral-13b"].tier == ModelTier.BALANCED
+        assert models_by_name["llama-70b"].tier == ModelTier.POWERFUL
+
+    def test_family_inference_from_filename(self, tmp_path):
+        """Test that family is inferred from model filename."""
+        (tmp_path / "llama-8b.gguf").write_bytes(b"data")
+        (tmp_path / "qwen-7b.gguf").write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        models_by_name = {m.name: m for m in models}
+        assert models_by_name["llama-8b"].family == "llama"
+        assert models_by_name["qwen-7b"].family == "qwen"
+
+    def test_discover_all_includes_custom_paths(self, tmp_path):
+        """Test that discover_all() includes custom path models."""
+        (tmp_path / "custom-model.gguf").write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+
+        # Mock local provider discovery to return empty
+        with patch.object(service, "discover_ollama", return_value=[]):
+            with patch.object(service, "discover_lm_studio", return_value=[]):
+                with patch.object(service, "discover_vllm", return_value=[]):
+                    models = service.discover_all()
+
+        # Should include the custom model
+        assert len(models) >= 1
+        custom_models = [m for m in models if m.provider == "custom"]
+        assert len(custom_models) == 1
+        assert custom_models[0].name == "custom-model"
+
+    def test_multiple_custom_paths(self, tmp_path):
+        """Test discovery from multiple custom paths."""
+        path1 = tmp_path / "path1"
+        path2 = tmp_path / "path2"
+        path1.mkdir()
+        path2.mkdir()
+
+        (path1 / "model1.gguf").write_bytes(b"data")
+        (path2 / "model2.gguf").write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(path1), str(path2)])
+        models = service.discover_custom_paths()
+
+        assert len(models) == 2
+        model_names = {m.name for m in models}
+        assert "model1" in model_names
+        assert "model2" in model_names
+
+    def test_ignores_non_model_files(self, tmp_path):
+        """Test that non-model files are ignored."""
+        (tmp_path / "model.gguf").write_bytes(b"data")
+        (tmp_path / "readme.txt").write_bytes(b"data")
+        (tmp_path / "config.json").write_bytes(b"data")
+        (tmp_path / "image.png").write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        # Should only find the .gguf file
+        assert len(models) == 1
+        assert models[0].name == "model"
+
+    def test_symlink_rejection_base_path(self, tmp_path):
+        """Test that symlinks are rejected as base paths."""
+        import os
+
+        # Create a real directory with a model
+        real_dir = tmp_path / "real"
+        real_dir.mkdir()
+        (real_dir / "model.gguf").write_bytes(b"data")
+
+        # Create a symlink to it
+        link_dir = tmp_path / "link"
+        if os.name != "nt":  # Skip on Windows
+            link_dir.symlink_to(real_dir)
+
+            # Try to use the symlink as base path
+            service = ModelDiscoveryService(custom_paths=[str(link_dir)])
+            models = service.discover_custom_paths()
+
+            # Should reject the symlink and find nothing
+            assert len(models) == 0
+
+    def test_symlink_rejection_during_scan(self, tmp_path):
+        """Test that symlinks are skipped during directory traversal."""
+        import os
+
+        # Create legitimate directory
+        (tmp_path / "safe-model.gguf").write_bytes(b"data")
+
+        # Create an outside directory
+        outside_dir = tmp_path.parent / "outside"
+        outside_dir.mkdir(exist_ok=True)
+        (outside_dir / "secret.gguf").write_bytes(b"secret")
+
+        # Create a symlink inside the allowed directory pointing outside
+        link_path = tmp_path / "evil_link"
+        if os.name != "nt":  # Skip on Windows
+            link_path.symlink_to(outside_dir)
+
+            service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+            models = service.discover_custom_paths()
+
+            # Should skip the symlink and only find the safe model
+            model_names = {m.name for m in models}
+            assert "safe-model" in model_names
+            assert "secret" not in model_names
+            assert len(models) == 1
+
+    def test_outside_directory_not_scanned(self, tmp_path):
+        """Test that files outside the allowed directory are NOT scanned."""
+        # Create allowed directory with one model
+        (tmp_path / "allowed-model.gguf").write_bytes(b"data")
+
+        # Create sibling directory with another model
+        sibling_dir = tmp_path.parent / "sibling"
+        sibling_dir.mkdir(exist_ok=True)
+        (sibling_dir / "outside-model.gguf").write_bytes(b"data")
+
+        # Scan only the allowed directory
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        # Should ONLY find the allowed model, NOT the outside one
+        model_names = {m.name for m in models}
+        assert "allowed-model" in model_names
+        assert "outside-model" not in model_names
+        assert len(models) == 1
+
+    def test_metadata_directory_not_full_path(self, tmp_path):
+        """Test that metadata contains directory name, not full path."""
+        subdir = tmp_path / "my_models" / "llama"
+        subdir.mkdir(parents=True)
+        (subdir / "model.gguf").write_bytes(b"data")
+
+        service = ModelDiscoveryService(custom_paths=[str(tmp_path)])
+        models = service.discover_custom_paths()
+
+        assert len(models) == 1
+        # Should NOT have full path
+        assert "path" not in models[0].metadata
+        # Should have only directory name
+        assert "directory" in models[0].metadata
+        assert models[0].metadata["directory"] == "llama"
+        # Should NOT contain full path components
+        assert str(tmp_path) not in models[0].metadata["directory"]

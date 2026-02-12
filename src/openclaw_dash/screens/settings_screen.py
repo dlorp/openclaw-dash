@@ -71,6 +71,55 @@ class PortNumber(Validator):
             return self.failure("Must be a valid port number")
 
 
+class CustomPathsValidator(Validator):
+    """Validates custom model paths for security."""
+
+    # Dangerous path patterns that should be rejected
+    DANGEROUS_PATTERNS = [
+        "../",
+        "/..",
+        "~root",
+        "/etc",
+        "/sys",
+        "/proc",
+        "/dev",
+        "/boot",
+        "C:\\Windows",
+        "C:\\Program Files",
+    ]
+
+    def validate(self, value: str) -> ValidationResult:
+        """Validate custom paths input for security.
+
+        Checks:
+        - Path length (<500 chars per path)
+        - No dangerous patterns
+        - Paths are absolute or under home directory
+        """
+        if not value or not value.strip():
+            return self.success()
+
+        # Parse comma-separated paths
+        paths = [p.strip() for p in value.split(",") if p.strip()]
+
+        for path_str in paths:
+            # Check path length
+            if len(path_str) > 500:
+                return self.failure(f"Path too long (max 500 chars): {path_str[:50]}...")
+
+            # Check for dangerous patterns
+            path_lower = path_str.lower()
+            for pattern in self.DANGEROUS_PATTERNS:
+                if pattern in path_lower:
+                    return self.failure(f"Dangerous path pattern detected: {pattern}")
+
+            # Ensure path is absolute or starts with ~
+            if not path_str.startswith("/") and not path_str.startswith("~"):
+                return self.failure(f"Path must be absolute or start with ~: {path_str}")
+
+        return self.success()
+
+
 # =============================================================================
 # Messages
 # =============================================================================
@@ -446,6 +495,7 @@ class SettingsScreen(ModalScreen[bool]):
                                     value="",
                                     id="setting-custom-model-paths",
                                     placeholder="comma-separated paths",
+                                    validators=[CustomPathsValidator()],
                                 )
 
                             yield Static("Default Models", classes="section-header")
@@ -715,9 +765,12 @@ class SettingsScreen(ModalScreen[bool]):
             hf_enabled = self.query_one("#setting-hf-cache-scan", Switch).value
             ollama_enabled = self.query_one("#setting-ollama-scan", Switch).value
 
+            # Get custom paths from input and parse comma-separated string
+            custom_paths_str = self.query_one("#setting-custom-model-paths", Input).value
+            custom_paths = [p.strip() for p in custom_paths_str.split(",") if p.strip()]
+
             # Create service and scan
-            # Note: custom_paths not yet implemented in ModelDiscoveryService
-            service = ModelDiscoveryService()
+            service = ModelDiscoveryService(custom_paths=custom_paths)
             result = service.discover()
 
             # Filter results based on settings
@@ -766,7 +819,7 @@ class SettingsScreen(ModalScreen[bool]):
             options = [("(none)", "")]
             for model in models:
                 display = f"{model.tier_emoji} {model.display_name} ({model.quantization})"
-                options.append((display, str(model.path)))
+                options.append((display, model.name))
             return options
 
         # Update FAST selector
