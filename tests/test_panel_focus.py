@@ -1,7 +1,5 @@
 """Tests for panel focus navigation (Tab/Shift+Tab)."""
 
-import pytest
-
 
 class TestPanelFocusBindings:
     """Test panel focus keybindings are defined."""
@@ -69,9 +67,9 @@ class TestPanelOrder:
         from openclaw_dash.app import DashboardApp
 
         for panel_id in DashboardApp.PANEL_ORDER:
-            assert panel_id.endswith("-panel") or panel_id.endswith("-group"), (
-                f"{panel_id} should end with '-panel' or '-group'"
-            )
+            assert panel_id.endswith("-panel") or panel_id.endswith(
+                "-group"
+            ), f"{panel_id} should end with '-panel' or '-group'"
 
 
 class TestHelpPanelFocusDocs:
@@ -91,8 +89,9 @@ class TestPanelFocusIntegration:
 
     def test_action_focus_next_panel_implementation(self):
         """Test action_focus_next_panel method exists and has proper logic."""
-        from openclaw_dash.app import DashboardApp
         import inspect
+
+        from openclaw_dash.app import DashboardApp
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_next_panel")
@@ -107,8 +106,9 @@ class TestPanelFocusIntegration:
 
     def test_action_focus_prev_panel_implementation(self):
         """Test action_focus_prev_panel method exists and has proper logic."""
-        from openclaw_dash.app import DashboardApp
         import inspect
+
+        from openclaw_dash.app import DashboardApp
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_prev_panel")
@@ -123,8 +123,9 @@ class TestPanelFocusIntegration:
 
     def test_action_focus_panel_implementation(self):
         """Test action_focus_panel method exists and has security checks."""
-        from openclaw_dash.app import DashboardApp
         import inspect
+
+        from openclaw_dash.app import DashboardApp
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_panel")
@@ -160,7 +161,9 @@ class TestPanelFocusIntegration:
         assert bindings_dict["shift+tab"] == "focus_prev_panel"
 
         # Verify help text exists for Shift+Tab binding
-        shift_tab_binding = next(b for b in DashboardApp.BINDINGS if b[0] == "shift+tab")
+        shift_tab_binding = next(
+            b for b in DashboardApp.BINDINGS if b[0] == "shift+tab"
+        )
         assert len(shift_tab_binding) >= 3
         help_text = shift_tab_binding[2]
         assert help_text is not None
@@ -200,5 +203,7 @@ class TestPanelFocusIntegration:
         assert STATIC_SHORTCUTS is not None
         assert isinstance(STATIC_SHORTCUTS, list)
 
+        # Check if Tab is mentioned (it might be in help content)
+        shortcuts_text = str(STATIC_SHORTCUTS)
         # Either Tab is in shortcuts or it should be added
         assert len(STATIC_SHORTCUTS) > 0
