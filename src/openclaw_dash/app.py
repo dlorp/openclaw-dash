@@ -629,8 +629,7 @@ class DashboardApp(App):
             warning_banner.check_and_update()
         except Exception:
             pass
-
-        # Refresh metric boxes bar
+            # Refresh metric boxes bar
         try:
             metric_boxes = self.query_one(MetricBoxesBar)
             metric_boxes.refresh_data()
@@ -675,8 +674,7 @@ class DashboardApp(App):
             warning_banner.check_and_update()
         except Exception:
             pass
-
-        # Refresh metric boxes bar
+            # Refresh metric boxes bar
         try:
             metric_boxes = self.query_one(MetricBoxesBar)
             metric_boxes.refresh_data()
