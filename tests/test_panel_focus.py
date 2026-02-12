@@ -197,7 +197,5 @@ class TestPanelFocusIntegration:
         assert STATIC_SHORTCUTS is not None
         assert isinstance(STATIC_SHORTCUTS, list)
 
-        # Check if Tab is mentioned (it might be in help content)
-        shortcuts_text = str(STATIC_SHORTCUTS)
         # Either Tab is in shortcuts or it should be added
         assert len(STATIC_SHORTCUTS) > 0
