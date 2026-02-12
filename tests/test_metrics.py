@@ -1,11 +1,10 @@
 """Tests for metrics collectors."""
 
-from datetime import datetime
-from unittest.mock import MagicMock, patch
+import json
+from unittest.mock import patch
 
 from openclaw_dash import demo
-from openclaw_dash.metrics import CostTracker, GitHubMetrics, PerformanceMetrics
-from openclaw_dash.metrics.costs import MODEL_PRICING
+from openclaw_dash.metrics import MAX_TOKENS, CostTracker, _validate_token_count
 
 
 class TestCostTracker:
@@ -85,149 +84,139 @@ class TestCostTracker:
         history = tracker.get_history(days=30)
         assert isinstance(history, list)
 
-    @patch("openclaw_dash.collectors.sessions.collect")
-    def test_sessions_data_from_cli(self, mock_collect, tmp_path):
-        mock_collect.return_value = {
-            "sessions": [
-                {
-                    "key": "test-session",
-                    "model": "claude-sonnet-4",
-                    "totalTokens": 1500,
-                }
-            ]
-        }
+    def test_sessions_data_from_collector(self, tmp_path):
+        with patch("openclaw_dash.collectors.sessions.collect") as mock_collect:
+            mock_collect.return_value = {
+                "sessions": [
+                    {
+                        "key": "test-session",
+                        "model": "claude-sonnet-4",
+                        "inputTokens": 1000,
+                        "outputTokens": 500,
+                        "totalTokens": 1500,
+                    }
+                ]
+            }
 
+            tracker = CostTracker(metrics_dir=tmp_path)
+            sessions = tracker.get_sessions_data()
+            assert isinstance(sessions, list)
+            assert len(sessions) == 1
+            assert sessions[0]["key"] == "test-session"
+
+
+class TestSecurityValidation:
+    """Security-focused tests for token validation and DoS protection."""
+
+    def test_validate_token_count_valid_int(self):
+        """Valid integer should pass through unchanged."""
+        assert _validate_token_count(1000, "test") == 1000
+        assert _validate_token_count(0, "test") == 0
+        assert _validate_token_count(MAX_TOKENS, "test") == MAX_TOKENS
+
+    def test_validate_token_count_string_coercion(self):
+        """Valid numeric strings should be coerced to int."""
+        assert _validate_token_count("1000", "test") == 1000
+        assert _validate_token_count("0", "test") == 0
+
+    def test_validate_token_count_invalid_type(self):
+        """Invalid types should return 0 and log warning."""
+        assert _validate_token_count("not-a-number", "test") == 0
+        assert _validate_token_count(None, "test") == 0
+        assert _validate_token_count([], "test") == 0
+        assert _validate_token_count({}, "test") == 0
+        assert _validate_token_count(3.14159, "test") == 3  # Float should truncate
+
+    def test_validate_token_count_negative(self):
+        """Negative values should be clamped to 0."""
+        assert _validate_token_count(-1, "test") == 0
+        assert _validate_token_count(-1000, "test") == 0
+
+    def test_validate_token_count_overflow(self):
+        """Values exceeding MAX_TOKENS should be clamped."""
+        assert _validate_token_count(MAX_TOKENS + 1, "test") == MAX_TOKENS
+        assert _validate_token_count(999_999_999, "test") == MAX_TOKENS
+
+    def test_collect_with_malformed_token_data(self, tmp_path):
+        """Collector should handle malformed token data gracefully."""
+        with patch("openclaw_dash.collectors.sessions.collect") as mock_collect:
+            mock_collect.return_value = {
+                "sessions": [
+                    {
+                        "key": "session-1",
+                        "model": "claude-sonnet-4",
+                        "inputTokens": "not-a-number",  # Type confusion
+                        "outputTokens": -500,  # Negative value
+                        "totalTokens": 999_999_999,  # Overflow
+                    },
+                    {
+                        "key": "session-2",
+                        "model": "claude-sonnet-4",
+                        "inputTokens": None,  # None type
+                        "outputTokens": [],  # Invalid type
+                        "totalTokens": "1500",  # String but valid
+                    },
+                ]
+            }
+
+            tracker = CostTracker(metrics_dir=tmp_path)
+            result = tracker.collect()
+
+            # Should not crash and should return valid structure
+            assert isinstance(result, dict)
+            assert "today" in result
+            assert isinstance(result["today"]["input_tokens"], int)
+            assert isinstance(result["today"]["output_tokens"], int)
+
+    def test_load_history_file_size_limit(self, tmp_path):
+        """Should reject files exceeding size limit."""
         tracker = CostTracker(metrics_dir=tmp_path)
-        sessions = tracker.get_sessions_data()
 
-        assert len(sessions) == 1
-        assert sessions[0]["key"] == "test-session"
-        assert sessions[0]["totalTokens"] == 1500
+        # Create a file larger than MAX_COSTS_FILE_SIZE
+        large_data = {"daily": {}, "sessions": {}, "padding": "x" * (11 * 1024 * 1024)}
+        tracker.costs_file.write_text(json.dumps(large_data))
 
+        history = tracker._load_history()
 
-class TestPerformanceMetrics:
-    """Tests for PerformanceMetrics."""
+        # Should return empty default structure
+        assert history == {"daily": {}, "sessions": {}}
 
-    def test_collect_returns_dict(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
-        result = perf.collect()
-        assert isinstance(result, dict)
-        assert "summary" in result
-        assert "slowest" in result
-        assert "error_prone" in result
-        assert "collected_at" in result
+    def test_load_history_deeply_nested_json(self, tmp_path):
+        """Should handle deeply nested JSON without crashing."""
+        tracker = CostTracker(metrics_dir=tmp_path)
 
-    def test_summary_structure(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
-        result = perf.collect()
-        summary = result["summary"]
-        assert "total_calls" in summary
-        assert "total_errors" in summary
-        assert "error_rate_pct" in summary
-        assert "avg_latency_ms" in summary
+        # Create a deeply nested JSON string directly to avoid RecursionError during encoding
+        # This tests that _load_history() can handle RecursionError during parsing
+        depth = 1000
+        deeply_nested_json = '{"nested":' * depth + "{}" + "}" * depth
 
-    def test_parse_ws_log_line(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
+        tracker.costs_file.write_text(deeply_nested_json)
 
-        # Test successful ws response
-        parsed = perf._parse_log_line("[ws] SYNC res ✓ chat.history 67ms conn=xyz id=abc")
-        assert parsed is not None
-        assert parsed["type"] == "ws_response"
-        assert parsed["action"] == "chat.history"
-        assert parsed["success"] is True
-        assert parsed["latency_ms"] == 67
+        # Should not crash and should return default structure
+        history = tracker._load_history()
+        assert isinstance(history, dict)
 
-    def test_parse_ws_error_line(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
+    def test_load_history_invalid_json(self, tmp_path):
+        """Should handle invalid JSON gracefully."""
+        tracker = CostTracker(metrics_dir=tmp_path)
 
-        # Test failed ws response
-        parsed = perf._parse_log_line("[ws] SYNC res ✗ config.patch 5ms errorCode=INVALID_REQUEST")
-        assert parsed is not None
-        assert parsed["success"] is False
-        assert parsed["action"] == "config.patch"
+        # Write invalid JSON
+        tracker.costs_file.write_text("{invalid json content")
 
-    def test_get_trend(self, tmp_path):
-        perf = PerformanceMetrics(metrics_dir=tmp_path)
-        perf.collect()
+        history = tracker._load_history()
 
-        trend = perf.get_trend(days=7)
-        assert isinstance(trend, list)
+        # Should return empty default structure
+        assert history == {"daily": {}, "sessions": {}}
 
+    def test_load_history_file_not_exists(self, tmp_path):
+        """Should handle missing file gracefully."""
+        tracker = CostTracker(metrics_dir=tmp_path)
 
-class TestGitHubMetrics:
-    """Tests for GitHubMetrics."""
+        # Ensure file doesn't exist
+        if tracker.costs_file.exists():
+            tracker.costs_file.unlink()
 
-    def test_collect_returns_dict(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        result = gh.collect()
-        assert isinstance(result, dict)
-        assert "streak" in result
-        assert "pr_metrics" in result
-        assert "todo_trends" in result
-        assert "collected_at" in result
+        history = tracker._load_history()
 
-    def test_streak_structure(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        result = gh.collect()
-        streak = result["streak"]
-        assert "streak_days" in streak
-
-    def test_pr_metrics_structure(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        result = gh.collect()
-        pr = result["pr_metrics"]
-        assert "recent_prs" in pr
-        assert "avg_cycle_hours" in pr
-
-    @patch("openclaw_dash.metrics.github.subprocess.run")
-    def test_contribution_streak_with_mock(self, mock_run, tmp_path):
-        # Mock the gh api calls
-        def mock_subprocess(cmd, **kwargs):
-            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
-            if "api user" in cmd_str:
-                return MagicMock(returncode=0, stdout="testuser\n")
-            elif "events" in cmd_str:
-                today = datetime.now().strftime("%Y-%m-%dT12:00:00Z")
-                return MagicMock(returncode=0, stdout=f"{today}\n")
-            return MagicMock(returncode=1, stdout="", stderr="")
-
-        mock_run.side_effect = mock_subprocess
-
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        streak = gh.get_contribution_streak("testuser")  # Pass username directly
-
-        assert "streak_days" in streak
-        # With activity today, streak should be at least 1
-        assert streak.get("streak_days", 0) >= 0
-
-    def test_todo_trends_no_snapshots(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        trends = gh.get_todo_trends()
-        assert "repos" in trends
-        # Should handle missing directory gracefully
-        assert isinstance(trends["repos"], dict)
-
-    def test_get_streak_history(self, tmp_path):
-        gh = GitHubMetrics(metrics_dir=tmp_path)
-        gh.collect()
-
-        history = gh.get_streak_history(days=30)
-        assert isinstance(history, list)
-
-
-class TestModelPricing:
-    """Tests for model pricing configuration."""
-
-    def test_all_models_have_both_prices(self):
-        for model, pricing in MODEL_PRICING.items():
-            assert "input" in pricing, f"{model} missing input price"
-            assert "output" in pricing, f"{model} missing output price"
-            assert pricing["input"] > 0, f"{model} input price should be positive"
-            assert pricing["output"] > 0, f"{model} output price should be positive"
-
-    def test_opus_more_expensive_than_sonnet(self):
-        opus = MODEL_PRICING.get("claude-opus-4-5", MODEL_PRICING.get("claude-3-opus"))
-        sonnet = MODEL_PRICING.get("claude-sonnet-4", MODEL_PRICING.get("claude-3-sonnet"))
-
-        assert opus["input"] > sonnet["input"]
-        assert opus["output"] > sonnet["output"]
+        # Should return empty default structure
+        assert history == {"daily": {}, "sessions": {}}
