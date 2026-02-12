@@ -7,7 +7,6 @@ tabbed sections: General, Tools, Appearance, Keybinds, and Models.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import ClassVar
 
 from textual import on, work
@@ -712,26 +711,20 @@ class SettingsScreen(ModalScreen[bool]):
         scan_button.disabled = True
 
         try:
-            # Get custom paths from settings
-            custom_paths_input = self.query_one("#setting-custom-model-paths", Input)
-            custom_paths_str = custom_paths_input.value.strip()
-            custom_paths = []
-            if custom_paths_str:
-                custom_paths = [Path(p.strip()) for p in custom_paths_str.split(",") if p.strip()]
-
             # Check scan settings
             hf_enabled = self.query_one("#setting-hf-cache-scan", Switch).value
             ollama_enabled = self.query_one("#setting-ollama-scan", Switch).value
 
             # Create service and scan
-            service = ModelDiscoveryService(custom_paths=custom_paths)
+            # Note: custom_paths not yet implemented in ModelDiscoveryService
+            service = ModelDiscoveryService()
             result = service.discover()
 
             # Filter results based on settings
             if not hf_enabled:
-                result.models = [m for m in result.models if m.source != "huggingface"]
+                result.models = [m for m in result.models if m.provider != "huggingface"]
             if not ollama_enabled:
-                result.models = [m for m in result.models if m.source != "ollama"]
+                result.models = [m for m in result.models if m.provider != "ollama"]
 
             self._discovered_models = result
 
