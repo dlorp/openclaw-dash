@@ -89,6 +89,7 @@ class TestPanelFocusIntegration:
 
     def test_action_focus_next_panel_implementation(self):
         """Test action_focus_next_panel method exists and has proper logic."""
+
         from openclaw_dash.app import DashboardApp
 
         # Verify method exists
@@ -104,6 +105,7 @@ class TestPanelFocusIntegration:
 
     def test_action_focus_prev_panel_implementation(self):
         """Test action_focus_prev_panel method exists and has proper logic."""
+
         from openclaw_dash.app import DashboardApp
 
         # Verify method exists
@@ -197,5 +199,5 @@ class TestPanelFocusIntegration:
         assert STATIC_SHORTCUTS is not None
         assert isinstance(STATIC_SHORTCUTS, list)
 
-        # Either Tab is in shortcuts or it should be added
+        # Verify shortcuts list is not empty
         assert len(STATIC_SHORTCUTS) > 0
