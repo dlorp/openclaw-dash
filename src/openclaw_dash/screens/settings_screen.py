@@ -748,8 +748,8 @@ class SettingsScreen(ModalScreen[bool]):
         # Update status
         status_label = self.query_one("#discovery-status", Static)
         total = len(result.models)
-        paths_scanned = len(result.scan_paths)
-        status_label.update(f"✓ Found {total} model(s) across {paths_scanned} path(s)")
+        providers_scanned = len(result.local_providers)
+        status_label.update(f"✓ Found {total} model(s) across {providers_scanned} provider(s)")
 
         # Update tier counts
         by_tier = result.by_tier

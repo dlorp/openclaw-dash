@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from rich.markup import escape
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widget import Widget
@@ -10,6 +11,7 @@ from textual.widgets import Collapsible, DataTable, Footer, Header, Static
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 from openclaw_dash.commands import DashboardCommands
 from openclaw_dash.config import Config, load_config
+from openclaw_dash.screens import SettingsScreen
 from openclaw_dash.themes import THEMES, next_theme
 from openclaw_dash.version import get_version_info
 from openclaw_dash.widgets.agents import AgentsPanel
@@ -237,7 +239,9 @@ class StatusFooter(Static):
         parts = []
 
         if self._focused_panel:
-            parts.append(f"[bold $primary]{self._focused_panel}[/]")
+            # Security: Escape panel name to prevent Rich markup injection
+            safe_name = escape(self._focused_panel)
+            parts.append(f"[bold $primary]{safe_name}[/]")
 
         if self._mode and self._mode != "normal":
             parts.append(f"[dim]({self._mode})[/]")
@@ -401,7 +405,7 @@ class DashboardApp(App):
         ("shift+tab", "focus_prev_panel", "Prev"),
         # Panel focus shortcuts
         ("g", "focus_panel('gateway-panel')", "Gateway"),
-        ("s", "focus_panel('security-panel')", "Security"),
+        ("s", "settings", "Settings"),
         ("m", "focus_panel('metrics-panel')", "Metrics"),
         ("a", "focus_panel('alerts-panel')", "Alerts"),
         ("c", "focus_panel('cron-panel')", "Cron"),
@@ -724,13 +728,95 @@ class DashboardApp(App):
         """Show the help panel with keyboard shortcuts."""
         self.push_screen(HelpScreen())
 
+    def action_settings(self) -> None:
+        """Show the settings screen."""
+        self.push_screen(SettingsScreen())
+
     def action_focus_panel(self, panel_id: str) -> None:
         """Focus a specific panel by ID."""
+        # Security: Validate panel_id is in PANEL_ORDER to prevent CSS selector injection
+        if panel_id not in self.PANEL_ORDER:
+            return
+
         try:
             panel = self.query_one(f"#{panel_id}")
             panel.focus()
+            # Update status footer
+            try:
+                footer = self.query_one("#status-footer", StatusFooter)
+                footer.set_focused_panel(panel_id)
+            except Exception:
+                pass
         except Exception:
             pass
+
+    def action_focus_next_panel(self) -> None:
+        """Focus the next panel in the PANEL_ORDER cycle."""
+        focused = self.focused
+        if focused is None:
+            # Nothing focused, focus the first panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[0])
+            return
+
+        # Find the currently focused panel container
+        current_panel_id = None
+        widget: Widget | None = focused
+        while widget is not None:
+            if hasattr(widget, "id") and widget.id and widget.id.endswith("-panel"):
+                current_panel_id = widget.id
+                break
+            widget = widget.parent if isinstance(widget.parent, Widget) else None
+
+        if current_panel_id is None:
+            # Not in a panel, focus the first panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[0])
+            return
+
+        # Find current index and move to next
+        try:
+            current_index = self.PANEL_ORDER.index(current_panel_id)
+            next_index = (current_index + 1) % len(self.PANEL_ORDER)
+            self.action_focus_panel(self.PANEL_ORDER[next_index])
+        except ValueError:
+            # Current panel not in order list, focus first panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[0])
+
+    def action_focus_prev_panel(self) -> None:
+        """Focus the previous panel in the PANEL_ORDER cycle."""
+        focused = self.focused
+        if focused is None:
+            # Nothing focused, focus the last panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[-1])
+            return
+
+        # Find the currently focused panel container
+        current_panel_id = None
+        widget: Widget | None = focused
+        while widget is not None:
+            if hasattr(widget, "id") and widget.id and widget.id.endswith("-panel"):
+                current_panel_id = widget.id
+                break
+            widget = widget.parent if isinstance(widget.parent, Widget) else None
+
+        if current_panel_id is None:
+            # Not in a panel, focus the last panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[-1])
+            return
+
+        # Find current index and move to previous
+        try:
+            current_index = self.PANEL_ORDER.index(current_panel_id)
+            prev_index = (current_index - 1) % len(self.PANEL_ORDER)
+            self.action_focus_panel(self.PANEL_ORDER[prev_index])
+        except ValueError:
+            # Current panel not in order list, focus last panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[-1])
 
     def action_scroll_down(self) -> None:
         """Scroll the focused panel down (vim j key)."""
