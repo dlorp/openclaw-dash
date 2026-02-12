@@ -1,7 +1,5 @@
 """Tests for panel focus navigation (Tab/Shift+Tab)."""
 
-import pytest
-
 
 class TestPanelFocusBindings:
     """Test panel focus keybindings are defined."""
@@ -92,15 +90,14 @@ class TestPanelFocusIntegration:
     def test_action_focus_next_panel_implementation(self):
         """Test action_focus_next_panel method exists and has proper logic."""
         from openclaw_dash.app import DashboardApp
-        import inspect
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_next_panel")
         method = getattr(DashboardApp, "action_focus_next_panel")
-        
+
         # Verify it's callable
         assert callable(method)
-        
+
         # Verify docstring exists
         assert method.__doc__ is not None
         assert "next" in method.__doc__.lower()
@@ -108,31 +105,31 @@ class TestPanelFocusIntegration:
     def test_action_focus_prev_panel_implementation(self):
         """Test action_focus_prev_panel method exists and has proper logic."""
         from openclaw_dash.app import DashboardApp
-        import inspect
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_prev_panel")
         method = getattr(DashboardApp, "action_focus_prev_panel")
-        
+
         # Verify it's callable
         assert callable(method)
-        
+
         # Verify docstring exists
         assert method.__doc__ is not None
         assert "previous" in method.__doc__.lower() or "prev" in method.__doc__.lower()
 
     def test_action_focus_panel_implementation(self):
         """Test action_focus_panel method exists and has security checks."""
-        from openclaw_dash.app import DashboardApp
         import inspect
+
+        from openclaw_dash.app import DashboardApp
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_panel")
         method = getattr(DashboardApp, "action_focus_panel")
-        
+
         # Verify it's callable
         assert callable(method)
-        
+
         # Verify method signature includes panel_id parameter
         sig = inspect.signature(method)
         assert "panel_id" in sig.parameters
@@ -144,7 +141,7 @@ class TestPanelFocusIntegration:
         bindings_dict = {b[0]: b[1] for b in DashboardApp.BINDINGS}
         assert "tab" in bindings_dict
         assert bindings_dict["tab"] == "focus_next_panel"
-        
+
         # Verify help text exists for Tab binding
         tab_binding = next(b for b in DashboardApp.BINDINGS if b[0] == "tab")
         assert len(tab_binding) >= 3
@@ -158,7 +155,7 @@ class TestPanelFocusIntegration:
         bindings_dict = {b[0]: b[1] for b in DashboardApp.BINDINGS}
         assert "shift+tab" in bindings_dict
         assert bindings_dict["shift+tab"] == "focus_prev_panel"
-        
+
         # Verify help text exists for Shift+Tab binding
         shift_tab_binding = next(b for b in DashboardApp.BINDINGS if b[0] == "shift+tab")
         assert len(shift_tab_binding) >= 3
@@ -171,7 +168,7 @@ class TestPanelFocusIntegration:
 
         panel_order = DashboardApp.PANEL_ORDER
         assert len(panel_order) > 0
-        
+
         # Each panel ID should have "-panel" or "-group" suffix
         for panel_id in panel_order:
             assert panel_id.endswith("-panel") or panel_id.endswith("-group")
@@ -181,12 +178,12 @@ class TestPanelFocusIntegration:
         from openclaw_dash.app import DashboardApp
 
         panel_order = DashboardApp.PANEL_ORDER
-        
+
         # Simulate forward wrapping
         current_index = len(panel_order) - 1  # Last panel
         next_index = (current_index + 1) % len(panel_order)
         assert next_index == 0, "Forward wrap should go to first panel"
-        
+
         # Simulate backward wrapping
         current_index = 0  # First panel
         prev_index = (current_index - 1) % len(panel_order)
@@ -199,7 +196,7 @@ class TestPanelFocusIntegration:
         # Check that shortcuts list exists
         assert STATIC_SHORTCUTS is not None
         assert isinstance(STATIC_SHORTCUTS, list)
-        
+
         # Check if Tab is mentioned (it might be in help content)
         shortcuts_text = str(STATIC_SHORTCUTS)
         # Either Tab is in shortcuts or it should be added
