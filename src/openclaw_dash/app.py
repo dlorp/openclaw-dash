@@ -734,6 +734,10 @@ class DashboardApp(App):
 
     def action_focus_panel(self, panel_id: str) -> None:
         """Focus a specific panel by ID."""
+        # Security: Validate panel_id is in PANEL_ORDER to prevent CSS selector injection
+        if panel_id not in self.PANEL_ORDER:
+            return
+
         try:
             panel = self.query_one(f"#{panel_id}")
             panel.focus()

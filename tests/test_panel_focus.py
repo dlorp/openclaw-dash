@@ -67,9 +67,9 @@ class TestPanelOrder:
         from openclaw_dash.app import DashboardApp
 
         for panel_id in DashboardApp.PANEL_ORDER:
-            assert panel_id.endswith("-panel") or panel_id.endswith(
-                "-group"
-            ), f"{panel_id} should end with '-panel' or '-group'"
+            assert panel_id.endswith("-panel") or panel_id.endswith("-group"), (
+                f"{panel_id} should end with '-panel' or '-group'"
+            )
 
 
 class TestHelpPanelFocusDocs:
