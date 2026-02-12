@@ -715,9 +715,12 @@ class SettingsScreen(ModalScreen[bool]):
             hf_enabled = self.query_one("#setting-hf-cache-scan", Switch).value
             ollama_enabled = self.query_one("#setting-ollama-scan", Switch).value
 
+            # Get custom paths from input and parse comma-separated string
+            custom_paths_str = self.query_one("#setting-custom-model-paths", Input).value
+            custom_paths = [p.strip() for p in custom_paths_str.split(",") if p.strip()]
+
             # Create service and scan
-            # Note: custom_paths not yet implemented in ModelDiscoveryService
-            service = ModelDiscoveryService()
+            service = ModelDiscoveryService(custom_paths=custom_paths)
             result = service.discover()
 
             # Filter results based on settings
@@ -766,7 +769,7 @@ class SettingsScreen(ModalScreen[bool]):
             options = [("(none)", "")]
             for model in models:
                 display = f"{model.tier_emoji} {model.display_name} ({model.quantization})"
-                options.append((display, str(model.path)))
+                options.append((display, model.name))
             return options
 
         # Update FAST selector

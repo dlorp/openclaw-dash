@@ -216,3 +216,72 @@ class TestModelTier:
         """Test that ModelTier is a string enum."""
         assert isinstance(ModelTier.FAST, str)
         assert ModelTier.FAST == "fast"
+
+
+class TestCustomPaths:
+    """Test custom paths functionality."""
+
+    def test_custom_paths_parsing_from_comma_separated_string(self):
+        """Test parsing custom paths from comma-separated string."""
+        custom_paths_str = "/path/to/models1,/path/to/models2,/path/to/models3"
+        custom_paths = [p.strip() for p in custom_paths_str.split(",") if p.strip()]
+
+        assert len(custom_paths) == 3
+        assert custom_paths[0] == "/path/to/models1"
+        assert custom_paths[1] == "/path/to/models2"
+        assert custom_paths[2] == "/path/to/models3"
+
+    def test_custom_paths_parsing_with_spaces(self):
+        """Test parsing custom paths with extra spaces."""
+        custom_paths_str = " /path/to/models1 , /path/to/models2 , /path/to/models3 "
+        custom_paths = [p.strip() for p in custom_paths_str.split(",") if p.strip()]
+
+        assert len(custom_paths) == 3
+        assert custom_paths[0] == "/path/to/models1"
+        assert custom_paths[1] == "/path/to/models2"
+        assert custom_paths[2] == "/path/to/models3"
+
+    def test_empty_custom_paths_handling(self):
+        """Test handling of empty custom paths string."""
+        custom_paths_str = ""
+        custom_paths = [p.strip() for p in custom_paths_str.split(",") if p.strip()]
+
+        assert len(custom_paths) == 0
+
+    def test_custom_paths_with_empty_entries(self):
+        """Test handling of empty entries in comma-separated string."""
+        custom_paths_str = "/path/to/models1,,/path/to/models2,,"
+        custom_paths = [p.strip() for p in custom_paths_str.split(",") if p.strip()]
+
+        assert len(custom_paths) == 2
+        assert custom_paths[0] == "/path/to/models1"
+        assert custom_paths[1] == "/path/to/models2"
+
+    def test_settings_persistence_round_trip(self):
+        """Test that custom paths can be saved and loaded."""
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        from openclaw_dash.settings_manager import SettingsManager
+
+        with TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.toml"
+            settings = SettingsManager(config_path)
+
+            # Set custom paths
+            test_paths = ["/models/llama", "/models/mistral", "/models/qwen"]
+            settings.set("models.custom_paths", ",".join(test_paths))
+            settings.save()
+
+            # Load in new instance
+            settings2 = SettingsManager(config_path)
+            loaded_value = settings2.get("models.custom_paths")
+
+            # Parse the loaded value (it's stored as comma-separated string)
+            if isinstance(loaded_value, str):
+                loaded_paths = [p.strip() for p in loaded_value.split(",") if p.strip()]
+            else:
+                loaded_paths = loaded_value or []
+
+            assert len(loaded_paths) == 3
+            assert loaded_paths == test_paths
