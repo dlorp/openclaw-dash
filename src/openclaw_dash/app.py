@@ -10,6 +10,7 @@ from textual.widgets import Collapsible, DataTable, Footer, Header, Static
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 from openclaw_dash.commands import DashboardCommands
 from openclaw_dash.config import Config, load_config
+from openclaw_dash.screens import SettingsScreen
 from openclaw_dash.themes import THEMES, next_theme
 from openclaw_dash.version import get_version_info
 from openclaw_dash.widgets.agents import AgentsPanel
@@ -401,7 +402,7 @@ class DashboardApp(App):
         ("shift+tab", "focus_prev_panel", "Prev"),
         # Panel focus shortcuts
         ("g", "focus_panel('gateway-panel')", "Gateway"),
-        ("s", "focus_panel('security-panel')", "Security"),
+        ("s", "settings", "Settings"),
         ("m", "focus_panel('metrics-panel')", "Metrics"),
         ("a", "focus_panel('alerts-panel')", "Alerts"),
         ("c", "focus_panel('cron-panel')", "Cron"),
@@ -723,6 +724,10 @@ class DashboardApp(App):
     def action_help(self) -> None:
         """Show the help panel with keyboard shortcuts."""
         self.push_screen(HelpScreen())
+
+    def action_settings(self) -> None:
+        """Show the settings screen."""
+        self.push_screen(SettingsScreen())
 
     def action_focus_panel(self, panel_id: str) -> None:
         """Focus a specific panel by ID."""
