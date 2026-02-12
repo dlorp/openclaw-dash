@@ -33,6 +33,9 @@ class TestConfig:
             "show_notifications": False,
             "show_resources": True,
             "collapsed_panels": [],
+            "models": {
+                "custom_paths": [],
+            },
         }
 
     def test_from_dict(self):
