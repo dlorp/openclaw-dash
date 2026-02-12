@@ -95,6 +95,7 @@ TUI dashboard for monitoring and managing your [OpenClaw](https://github.com/ope
 | `r` | Refresh all panels |
 | `t` | Cycle theme (dark/light/phosphor) |
 | `h` / `?` | Show help panel |
+| `s` | Open settings screen |
 | `Ctrl+P` | Open command palette |
 
 ### Navigation
@@ -112,7 +113,6 @@ TUI dashboard for monitoring and managing your [OpenClaw](https://github.com/ope
 | Key | Panel |
 |-----|-------|
 | `g` | Gateway |
-| `s` | Security |
 | `m` | Metrics |
 | `a` | Alerts |
 | `c` | Cron |
