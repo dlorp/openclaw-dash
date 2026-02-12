@@ -185,14 +185,12 @@ class TestSecurityValidation:
         """Should handle deeply nested JSON without crashing."""
         tracker = CostTracker(metrics_dir=tmp_path)
 
-        # Create a deeply nested structure that could cause RecursionError
-        nested = {}
-        current = nested
-        for i in range(1000):
-            current["level"] = {}
-            current = current["level"]
+        # Create a deeply nested JSON string directly to avoid RecursionError during encoding
+        # This tests that _load_history() can handle RecursionError during parsing
+        depth = 1000
+        deeply_nested_json = '{"nested":' * depth + "{}" + "}" * depth
 
-        tracker.costs_file.write_text(json.dumps(nested))
+        tracker.costs_file.write_text(deeply_nested_json)
 
         # Should not crash and should return default structure
         history = tracker._load_history()
