@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from rich.markup import escape
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widget import Widget
@@ -238,7 +239,9 @@ class StatusFooter(Static):
         parts = []
 
         if self._focused_panel:
-            parts.append(f"[bold $primary]{self._focused_panel}[/]")
+            # Security: Escape panel name to prevent Rich markup injection
+            safe_name = escape(self._focused_panel)
+            parts.append(f"[bold $primary]{safe_name}[/]")
 
         if self._mode and self._mode != "normal":
             parts.append(f"[dim]({self._mode})[/]")
