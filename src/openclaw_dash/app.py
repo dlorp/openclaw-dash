@@ -729,8 +729,82 @@ class DashboardApp(App):
         try:
             panel = self.query_one(f"#{panel_id}")
             panel.focus()
+            # Update status footer
+            try:
+                footer = self.query_one("#status-footer", StatusFooter)
+                footer.set_focused_panel(panel_id)
+            except Exception:
+                pass
         except Exception:
             pass
+
+    def action_focus_next_panel(self) -> None:
+        """Focus the next panel in the PANEL_ORDER cycle."""
+        focused = self.focused
+        if focused is None:
+            # Nothing focused, focus the first panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[0])
+            return
+
+        # Find the currently focused panel container
+        current_panel_id = None
+        widget: Widget | None = focused
+        while widget is not None:
+            if hasattr(widget, "id") and widget.id and widget.id.endswith("-panel"):
+                current_panel_id = widget.id
+                break
+            widget = widget.parent if isinstance(widget.parent, Widget) else None
+
+        if current_panel_id is None:
+            # Not in a panel, focus the first panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[0])
+            return
+
+        # Find current index and move to next
+        try:
+            current_index = self.PANEL_ORDER.index(current_panel_id)
+            next_index = (current_index + 1) % len(self.PANEL_ORDER)
+            self.action_focus_panel(self.PANEL_ORDER[next_index])
+        except ValueError:
+            # Current panel not in order list, focus first panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[0])
+
+    def action_focus_prev_panel(self) -> None:
+        """Focus the previous panel in the PANEL_ORDER cycle."""
+        focused = self.focused
+        if focused is None:
+            # Nothing focused, focus the last panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[-1])
+            return
+
+        # Find the currently focused panel container
+        current_panel_id = None
+        widget: Widget | None = focused
+        while widget is not None:
+            if hasattr(widget, "id") and widget.id and widget.id.endswith("-panel"):
+                current_panel_id = widget.id
+                break
+            widget = widget.parent if isinstance(widget.parent, Widget) else None
+
+        if current_panel_id is None:
+            # Not in a panel, focus the last panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[-1])
+            return
+
+        # Find current index and move to previous
+        try:
+            current_index = self.PANEL_ORDER.index(current_panel_id)
+            prev_index = (current_index - 1) % len(self.PANEL_ORDER)
+            self.action_focus_panel(self.PANEL_ORDER[prev_index])
+        except ValueError:
+            # Current panel not in order list, focus last panel
+            if self.PANEL_ORDER:
+                self.action_focus_panel(self.PANEL_ORDER[-1])
 
     def action_scroll_down(self) -> None:
         """Scroll the focused panel down (vim j key)."""
