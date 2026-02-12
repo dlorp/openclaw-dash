@@ -1,7 +1,5 @@
 """Tests for panel focus navigation (Tab/Shift+Tab)."""
 
-import pytest
-
 
 class TestPanelFocusBindings:
     """Test panel focus keybindings are defined."""
