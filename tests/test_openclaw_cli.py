@@ -147,6 +147,20 @@ class TestStatusToGatewayData:
         assert data["heartbeat_interval"] == "30m"
         assert "collected_at" in data
 
+    def test_calculates_context_pct(self):
+        """Test that context_pct is calculated as average across sessions."""
+        status = parse_status_output(SAMPLE_STATUS_OUTPUT)
+        data = status_to_gateway_data(status)
+        # Average of 48%, 82%, and 26% = 52%
+        assert "context_pct" in data
+        assert abs(data["context_pct"] - 52.0) < 0.1
+
+    def test_context_pct_zero_when_no_sessions(self):
+        """Test that context_pct is 0 when there are no sessions."""
+        status = parse_status_output("")
+        data = status_to_gateway_data(status)
+        assert data["context_pct"] == 0.0
+
 
 class TestStatusToSessionsData:
     def test_converts_to_sessions_format(self):
