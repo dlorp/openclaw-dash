@@ -1,5 +1,5 @@
 {
-  "scanned_at": "2026-02-10T04:25:56.887294",
+  "scanned_at": "2026-02-12T04:01:37.564278",
   "results": [
     {
       "name": "synapse-engine",
@@ -16,7 +16,7 @@
         {
           "package": "@tanstack/react-query",
           "current_version": "5.90.8",
-          "latest_version": "5.90.20",
+          "latest_version": "5.90.21",
           "dep_type": "npm",
           "is_security": false
         },
@@ -30,7 +30,7 @@
         {
           "package": "@types/react",
           "current_version": "18.3.26",
-          "latest_version": "19.2.13",
+          "latest_version": "19.2.14",
           "dep_type": "npm",
           "is_security": false
         },
@@ -148,7 +148,7 @@
         "backend/pyproject.toml",
         "frontend/package.json"
       ],
-      "scanned_at": "2026-02-10T04:25:55.942199",
+      "scanned_at": "2026-02-12T04:01:36.622596",
       "errors": []
     },
     {
@@ -159,7 +159,7 @@
       "dep_files": [
         "pyproject.toml"
       ],
-      "scanned_at": "2026-02-10T04:25:56.370068",
+      "scanned_at": "2026-02-12T04:01:37.046645",
       "errors": []
     },
     {
@@ -171,7 +171,7 @@
         "requirements.txt",
         "pyproject.toml"
       ],
-      "scanned_at": "2026-02-10T04:25:56.887127",
+      "scanned_at": "2026-02-12T04:01:37.564200",
       "errors": []
     }
   ]
