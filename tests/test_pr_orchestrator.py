@@ -7,8 +7,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from openclaw_dash.pr_orchestrator import PROrchestrator
 from openclaw_dash.pr_workflow import PRWorkflow
 from openclaw_dash.services.gateway_client import GatewayError
