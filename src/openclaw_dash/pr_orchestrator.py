@@ -243,7 +243,7 @@ class PROrchestrator:
 
     def _run_static_analysis(self) -> dict[str, Any]:
         result = subprocess.run(
-            ["python", "-m", "openclaw_dash.tools.audit", "--json"],
+            ["python3", "-m", "openclaw_dash.tools.audit", "--json"],
             capture_output=True,
             text=True,
             cwd=self.repo_path,
