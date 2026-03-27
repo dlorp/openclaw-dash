@@ -7,6 +7,7 @@ Uses HTTP for fast health checks and falls back to CLI for detailed data.
 from __future__ import annotations
 
 import subprocess
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -126,6 +127,114 @@ class GatewayClient:
             return status.get("healthy", False)
         except GatewayError:
             return False
+
+    def spawn_agent(self, agent_id: str, task: str) -> str:
+        """POST /agents/spawn - start an LLM agent workflow session.
+
+        Args:
+            agent_id: Gateway agent identifier to spawn.
+            task: Task prompt for the agent.
+
+        Returns:
+            Session key for the spawned agent.
+
+        Raises:
+            GatewayConnectionError: If the gateway is unavailable.
+            GatewayError: If the gateway rejects the request or omits a session key.
+        """
+        try:
+            resp = self._client.post("/agents/spawn", json={"agent_id": agent_id, "task": task})
+        except httpx.ConnectError as e:
+            raise GatewayConnectionError(f"Cannot connect to gateway at {self.config.url}: {e}")
+        except httpx.TimeoutException:
+            raise GatewayConnectionError(f"Gateway at {self.config.url} timed out")
+        except Exception as e:
+            raise GatewayError(f"Failed to spawn agent: {e}")
+
+        if resp.status_code >= 400:
+            raise GatewayError(f"Agent spawn failed: {resp.status_code} {resp.text.strip()}")
+
+        try:
+            data = resp.json()
+        except Exception as e:
+            raise GatewayError(f"Agent spawn returned invalid JSON: {e}")
+
+        session_key = data.get("session_key") or data.get("key")
+        if not session_key:
+            raise GatewayError("Agent spawn response did not include a session key")
+        return str(session_key)
+
+    def get_session_status(self, session_key: str) -> dict[str, Any]:
+        """GET /sessions/{session_key} - retrieve session status from the gateway."""
+        try:
+            resp = self._client.get(f"/sessions/{session_key}")
+        except httpx.ConnectError as e:
+            raise GatewayConnectionError(f"Cannot connect to gateway at {self.config.url}: {e}")
+        except httpx.TimeoutException:
+            raise GatewayConnectionError(f"Gateway at {self.config.url} timed out")
+        except Exception as e:
+            raise GatewayError(f"Failed to get session status: {e}")
+
+        if resp.status_code == 404:
+            raise GatewayError(f"Session not found: {session_key}")
+        if resp.status_code >= 400:
+            raise GatewayError(
+                f"Session status request failed: {resp.status_code} {resp.text.strip()}"
+            )
+
+        try:
+            data = resp.json()
+        except Exception as e:
+            raise GatewayError(f"Session status returned invalid JSON: {e}")
+
+        if "session_key" not in data and "key" not in data:
+            data["session_key"] = session_key
+        return data
+
+    def get_agent_status(self, session_key: str) -> dict[str, Any]:
+        """Backward-compatible alias for session status lookups."""
+        return self.get_session_status(session_key)
+
+    def wait_for_agent(self, session_key: str, timeout: int = 600) -> dict[str, Any]:
+        """Poll session status until the agent finishes or times out."""
+        deadline = time.monotonic() + timeout
+        last_status: dict[str, Any] | None = None
+
+        while time.monotonic() < deadline:
+            status = self.get_session_status(session_key)
+            last_status = status
+
+            if self._is_session_complete(status):
+                if self._session_failed(status):
+                    raise GatewayError(
+                        f"Agent session {session_key} failed: {status.get('error') or status.get('state')}"
+                    )
+                return status
+
+            time.sleep(2)
+
+        raise GatewayError(
+            f"Timed out waiting for agent session {session_key} after {timeout}s"
+            + (f" (last status: {last_status})" if last_status else "")
+        )
+
+    @staticmethod
+    def _is_session_complete(status: dict[str, Any]) -> bool:
+        """Return True when a session has reached a terminal completed state."""
+        if status.get("completed") is True:
+            return True
+
+        state = str(status.get("state", "")).lower()
+        return state in {"completed", "failed", "error", "cancelled"}
+
+    @staticmethod
+    def _session_failed(status: dict[str, Any]) -> bool:
+        """Return True when the terminal session state represents failure."""
+        if status.get("error"):
+            return True
+
+        state = str(status.get("state", "")).lower()
+        return state in {"failed", "error", "cancelled"}
 
     def get_sessions(self) -> list[dict[str, Any]]:
         """Get active sessions via CLI.

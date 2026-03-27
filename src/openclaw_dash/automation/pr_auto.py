@@ -1,10 +1,14 @@
 """PR automation: auto-merge and stale branch cleanup."""
 
+from __future__ import annotations
+
 import json
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+from openclaw_dash.pr_workflow import PRWorkflow
 
 
 @dataclass
@@ -131,7 +135,12 @@ class PRAutomation:
 
         return prs
 
-    def is_safe_to_merge(self, pr: PRInfo, config: MergeConfig) -> tuple[bool, str]:
+    def is_safe_to_merge(
+        self,
+        pr: PRInfo,
+        config: MergeConfig,
+        workflow: PRWorkflow | None = None,
+    ) -> tuple[bool, str]:
         """Check if a PR is safe to auto-merge based on config."""
         # Check if branch matches safelist
         branch_safe = any(pr.branch.startswith(pattern.rstrip("*")) for pattern in config.safelist)
@@ -150,15 +159,21 @@ class PRAutomation:
         if not pr.mergeable:
             return False, "PR is not mergeable (conflicts or other issues)"
 
+        if workflow is not None:
+            pr_key = f"{self.repo_name}#{pr.number}"
+            ready, reason = workflow.is_ready_for_merge(pr_key)
+            if not ready:
+                return False, reason
+
         return True, "Ready to merge"
 
-    def auto_merge(self, config: MergeConfig) -> list[dict]:
+    def auto_merge(self, config: MergeConfig, workflow: PRWorkflow | None = None) -> list[dict]:
         """Auto-merge eligible PRs."""
         results = []
         prs = self.get_open_prs()
 
         for pr in prs:
-            safe, reason = self.is_safe_to_merge(pr, config)
+            safe, reason = self.is_safe_to_merge(pr, config, workflow=workflow)
 
             if safe:
                 if config.dry_run:
