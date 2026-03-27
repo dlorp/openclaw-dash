@@ -61,6 +61,14 @@ class TestCLI:
         main()
         mock_run_tui.assert_called_once_with(refresh_interval=None)
 
+    @patch("openclaw_dash.cli.cmd_workflow", return_value=0)
+    @patch("sys.argv", ["openclaw-dash", "workflow"])
+    def test_workflow_command(self, mock_cmd_workflow):
+        """Test workflow subcommand dispatch."""
+        result = main()
+        assert result == 0
+        mock_cmd_workflow.assert_called_once()
+
 
 class TestRunTui:
     @patch("openclaw_dash.app.DashboardApp")

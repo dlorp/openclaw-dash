@@ -8,7 +8,9 @@ See services/gateway_client.py for the HTTP/CLI gateway interface.
 import argparse
 import json
 import multiprocessing
+import os
 import sys
+from pathlib import Path
 from typing import Any
 
 
@@ -808,6 +810,28 @@ def cmd_models(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_workflow(args: argparse.Namespace) -> int:
+    """Run PR workflow orchestration for all active PRs."""
+    from openclaw_dash.pr_orchestrator import PROrchestrator
+    from openclaw_dash.pr_workflow import PRWorkflow
+    from openclaw_dash.services.gateway_client import GatewayClient
+
+    repo_path = Path(getattr(args, "repo_path", None) or os.environ.get("OPENCLAW_REPO_PATH") or Path.cwd())
+    state_file = Path(
+        getattr(args, "state_file", None)
+        or os.environ.get("OPENCLAW_PR_WORKFLOW_STATE")
+        or (repo_path / ".pr-workflow-state.json")
+    )
+
+    orchestrator = PROrchestrator(
+        workflow=PRWorkflow(state_file),
+        gateway_client=GatewayClient(),
+        repo_path=repo_path,
+    )
+    orchestrator.check_all_active_prs()
+    return 0
+
+
 def print_models_text(
     models: list[Any],
     running_only: bool = False,
@@ -1034,6 +1058,10 @@ def main() -> int:
         help="Filter by model provider",
     )
 
+    workflow_parser = subparsers.add_parser("workflow", help="Run PR workflow orchestration")
+    workflow_parser.add_argument("--repo-path", help="Repository path to orchestrate")
+    workflow_parser.add_argument("--state-file", help="Workflow state file path")
+
     args = parser.parse_args()
 
     # Enable demo mode if requested (must happen before any command handling)
@@ -1059,6 +1087,9 @@ def main() -> int:
     # Handle models command
     if args.command == "models":
         return cmd_models(args)
+
+    if args.command == "workflow":
+        return cmd_workflow(args)
 
     # Handle export command
     if args.command == "export":
