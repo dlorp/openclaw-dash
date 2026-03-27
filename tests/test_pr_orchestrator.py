@@ -247,3 +247,141 @@ def test_process_ci_running_loops_back_on_failure(tmp_path):
     assert pr_state.state == "FIXES_APPLIED"
     assert pr_state.validations["ci"].result == "fail"
     assert pr_state.validations["ci"].issues_found == 1
+
+
+def test_agent_timeout_detection(tmp_path):
+    orchestrator, workflow, gateway = build_orchestrator(tmp_path)
+    workflow.transition("openclaw-dash#123", "SECURITY_REVIEW")
+    workflow.update_validation(
+        "openclaw-dash#123",
+        "security_review",
+        status="running",
+        agent_spawned=True,
+        agent_session="sess-timeout",
+        spawned_at=100,
+        file=str(orchestrator.workspace_path / "reviews" / "PR-123-security.md"),
+    )
+
+    with patch("openclaw_dash.pr_orchestrator.time.time", return_value=2_000):
+        with patch.object(orchestrator, "batch_check_ci_status", return_value={}):
+            with patch.object(orchestrator, "cleanup_completed_prs"):
+                orchestrator.check_all_active_prs()
+
+    pr_state = workflow.get_pr_state("openclaw-dash#123")
+    assert pr_state is not None
+    validation = pr_state.validations["security_review"]
+    assert validation.status == "not_started"
+    assert validation.result == "timeout"
+    assert validation.retry_count == 1
+    assert validation.agent_spawned is False
+    gateway.wait_for_agent.assert_not_called()
+
+
+def test_race_condition_protection(tmp_path):
+    orchestrator, workflow, _gateway = build_orchestrator(tmp_path)
+    workflow_data = workflow.load()
+    workflow_data["active_prs"]["openclaw-dash#123"]["in_progress"] = True
+    workflow.save(workflow_data)
+
+    with patch.object(orchestrator, "run_workflow") as run_workflow:
+        with patch.object(orchestrator, "batch_check_ci_status", return_value={}):
+            with patch.object(orchestrator, "cleanup_completed_prs"):
+                orchestrator.check_all_active_prs()
+
+    pr_state = workflow.get_pr_state("openclaw-dash#123")
+    assert pr_state is not None
+    assert pr_state.in_progress is True
+    run_workflow.assert_not_called()
+
+
+def test_idempotent_state_transitions(tmp_path):
+    orchestrator, workflow, gateway = build_orchestrator(tmp_path)
+    workflow.update_validation(
+        "openclaw-dash#123",
+        "security_review",
+        static_analysis={"critical_issues": 0, "high_issues": 0, "medium_issues": 0, "low_issues": 0, "passed": True},
+    )
+
+    with patch("openclaw_dash.pr_orchestrator.subprocess.run") as run_static_analysis:
+        orchestrator.process_created("openclaw-dash#123")
+
+    pr_state = workflow.get_pr_state("openclaw-dash#123")
+    assert pr_state is not None
+    assert pr_state.state == "SECURITY_REVIEW"
+    run_static_analysis.assert_not_called()
+
+    workflow.update_validation(
+        "openclaw-dash#123",
+        "security_review",
+        status="running",
+        agent_spawned=True,
+        agent_session="sess-1",
+        file=str(orchestrator.workspace_path / "reviews" / "PR-123-security.md"),
+    )
+
+    with patch.object(gateway, "spawn_agent") as spawn_agent:
+        with patch.object(gateway, "wait_for_agent", side_effect=GatewayError("timeout")):
+            orchestrator.process_security_review("openclaw-dash#123")
+
+    spawn_agent.assert_not_called()
+
+
+def test_error_state_handling(tmp_path):
+    orchestrator, workflow, _gateway = build_orchestrator(tmp_path)
+
+    with patch.object(orchestrator, "_run_static_analysis", side_effect=RuntimeError("boom")):
+        orchestrator.run_workflow("openclaw-dash#123")
+
+    pr_state = workflow.get_pr_state("openclaw-dash#123")
+    assert pr_state is not None
+    assert pr_state.state == "CREATED"
+    assert pr_state.error_info is not None
+    assert pr_state.error_info["retry_count"] == 1
+    assert pr_state.error_info["state_when_errored"] == "CREATED"
+
+    with patch.object(orchestrator, "_run_static_analysis", side_effect=RuntimeError("boom again")):
+        orchestrator.run_workflow("openclaw-dash#123")
+
+    pr_state = workflow.get_pr_state("openclaw-dash#123")
+    assert pr_state is not None
+    assert pr_state.state == "ERROR"
+    assert pr_state.error_info is not None
+    assert pr_state.error_info["retry_count"] == 2
+
+
+def test_pr_cleanup(tmp_path):
+    orchestrator, workflow, _gateway = build_orchestrator(tmp_path)
+    stale_timestamp = 10
+    workflow_data = workflow.load()
+    workflow_data["completed_prs"]["openclaw-dash#122"] = {
+        "state": "READY",
+        "pr_url": "https://github.com/dlorp/openclaw-dash/pull/122",
+        "pr_number": 122,
+        "repo": "dlorp/openclaw-dash",
+        "repo_short": "openclaw-dash",
+        "base_branch": "main",
+        "head_branch": "feature/old",
+        "local_branch": "feature/old",
+        "title": "old",
+        "description": "",
+        "created": 1,
+        "created_commit": "old",
+        "latest_commit": "old",
+        "last_checked_commit": "old",
+        "in_progress": False,
+        "last_heartbeat_processed": None,
+        "error_info": None,
+        "transitions": [],
+        "validations": {},
+        "completed_at": stale_timestamp,
+    }
+    workflow.save(workflow_data)
+
+    with patch("openclaw_dash.pr_orchestrator.time.time", return_value=stale_timestamp + (31 * 24 * 60 * 60)):
+        with patch.object(orchestrator, "_get_pr_lifecycle", return_value={"state": "CLOSED", "mergedAt": None}):
+            orchestrator.cleanup_completed_prs()
+
+    state = workflow.load()
+    assert "openclaw-dash#123" not in state["active_prs"]
+    assert "openclaw-dash#123" in state["completed_prs"]
+    assert "openclaw-dash#122" not in state["completed_prs"]
