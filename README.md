@@ -84,6 +84,7 @@ TUI dashboard for monitoring and managing your [OpenClaw](https://github.com/ope
 
 - **Gateway Client** — Async communication with OpenClaw gateway API
 - **Model Discovery** — Discovers available models from gateway, organized by tier (Fast/Balanced/Powerful)
+- **LLM PR Workflow** — Stateful security/code-review pipeline with agent gating before auto-merge
 
 ## Keyboard Shortcuts
 
@@ -218,6 +219,8 @@ Bundled CLI tools for repository management:
 | **changelog** | `python -m openclaw_dash.tools.changelog` | Generate changelogs |
 
 See [Tools Reference](docs/TOOLS.md) for detailed usage.
+
+See [PR Workflow Integration](docs/PR_WORKFLOW_INTEGRATION.md) for the LLM review state machine and merge-gate design.
 
 ## Automation Features
 

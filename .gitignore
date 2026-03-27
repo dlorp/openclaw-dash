@@ -17,3 +17,8 @@ axioms/
 AGENTS.md
 .editorconfig
 .gitattributes
+
+# Session notes
+SESSION_NOTES.md
+.env
+README.md.bak

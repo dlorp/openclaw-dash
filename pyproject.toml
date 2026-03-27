@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "openclaw-dash"
-version = "0.3.0"
+version = "0.4.0"
 description = "TUI dashboard for OpenClaw gateway monitoring"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -26,6 +26,7 @@ dependencies = [
     "tomli-w>=1.0.0",
     "tomli>=2.0.0; python_version < '3.11'",
     "psutil>=5.9.0",
+    "msgpack>=1.2.1",
 ]
 
 [project.optional-dependencies]
