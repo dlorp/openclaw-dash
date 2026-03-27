@@ -261,6 +261,78 @@ repo-scanner:
 
 ---
 
+## LLM Agent Workflow
+
+`openclaw-dash` now includes a PR review workflow state machine for repositories that want LLM-driven security and code review before auto-merge.
+
+### Components
+
+- `openclaw_dash.pr_workflow.PRWorkflow` persists workflow state in `.pr-workflow-state.json`
+- `openclaw_dash.services.gateway_client.GatewayClient` can spawn OpenClaw agents and poll their session status over HTTP
+- `openclaw_dash.automation.pr_auto.PRAutomation` optionally blocks auto-merge until `PRWorkflow.is_ready_for_merge()` returns ready
+
+### Workflow States
+
+```text
+CREATED -> SECURITY_REVIEW -> CODE_REVIEW -> FIXES_APPLIED -> CI_RUNNING -> READY
+```
+
+`READY` is the only state that passes the merge gate.
+
+### State File
+
+The workflow uses a separate state file from existing PR tracking:
+
+```json
+{
+  "$schema": "pr-workflow-state-v1",
+  "version": "1.1.0",
+  "description": "PR workflow state machine - OpenClaw LLM agent integration",
+  "active_prs": {},
+  "completed_prs": {}
+}
+```
+
+### Module API
+
+```python
+from pathlib import Path
+
+from openclaw_dash.pr_workflow import PRWorkflow
+from openclaw_dash.services.gateway_client import GatewayClient
+
+workflow = PRWorkflow(Path(".pr-workflow-state.json"))
+client = GatewayClient()
+
+session_key = client.spawn_agent(
+    agent_id="security-specialist",
+    task="Review PR 123 for security issues",
+)
+
+status = client.wait_for_agent(session_key, timeout=600)
+ready, reason = workflow.is_ready_for_merge("openclaw-dash#123")
+```
+
+### Auto-Merge Gate
+
+Pass a workflow instance when invoking PR automation if the repo uses the LLM review flow:
+
+```python
+from pathlib import Path
+
+from openclaw_dash.automation.pr_auto import MergeConfig, PRAutomation
+from openclaw_dash.pr_workflow import PRWorkflow
+
+automation = PRAutomation(Path("/path/to/repo"))
+workflow = PRWorkflow(Path("/path/to/repo/.pr-workflow-state.json"))
+
+results = automation.auto_merge(MergeConfig(), workflow=workflow)
+```
+
+If `workflow=None`, `pr_auto` preserves the previous behavior and skips workflow gating.
+
+---
+
 ## smart-todo-scanner
 
 Context-aware TODO scanner that distinguishes documentation notes from actionable work items.
