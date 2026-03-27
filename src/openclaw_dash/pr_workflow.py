@@ -7,11 +7,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-State = Literal["CREATED", "SECURITY_REVIEW", "CODE_REVIEW", "FIXES_APPLIED", "CI_RUNNING", "READY"]
+State = Literal["CREATED", "SECURITY_REVIEW", "CODE_REVIEW", "FIXES_APPLIED", "CI_RUNNING", "READY", "ERROR"]
 ValidationStatus = Literal["not_started", "running", "completed", "validated"]
 
 SCHEMA_NAME = "pr-workflow-state-v1"
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"
 
 
 @dataclass
@@ -40,8 +40,9 @@ class Validation:
     completed_at: int | None = None
     file: str | None = None
     file_exists: bool = False
-    result: Literal["pass", "fail"] | None = None
+    result: Literal["pass", "fail", "timeout"] | None = None
     issues_found: int = 0
+    retry_count: int = 0
 
 
 @dataclass
@@ -61,6 +62,10 @@ class PRWorkflowState:
     created: int
     created_commit: str
     latest_commit: str
+    last_checked_commit: str | None
+    in_progress: bool
+    last_heartbeat_processed: int | None
+    error_info: dict[str, Any] | None
     transitions: list[dict[str, Any]]
     validations: dict[str, Validation]
 
@@ -75,6 +80,7 @@ class PRWorkflow:
         "FIXES_APPLIED": ["CI_RUNNING"],
         "CI_RUNNING": ["READY", "FIXES_APPLIED"],
         "READY": [],
+        "ERROR": [],
     }
 
     DEFAULT_VALIDATIONS = ("security_review", "code_review", "ci")
@@ -138,6 +144,10 @@ class PRWorkflow:
             "created": metadata["created"],
             "created_commit": metadata["created_commit"],
             "latest_commit": metadata.get("latest_commit", metadata["created_commit"]),
+            "last_checked_commit": metadata.get("last_checked_commit"),
+            "in_progress": False,
+            "last_heartbeat_processed": None,
+            "error_info": None,
             "transitions": [],
             "validations": validations,
         }
@@ -246,6 +256,7 @@ class PRWorkflow:
             file_exists=data.get("file_exists", False),
             result=data.get("result"),
             issues_found=data.get("issues_found", 0),
+            retry_count=data.get("retry_count", 0),
         )
 
     def _deserialize_pr_state(self, pr_data: dict[str, Any]) -> PRWorkflowState:
@@ -268,6 +279,10 @@ class PRWorkflow:
             created=pr_data["created"],
             created_commit=pr_data["created_commit"],
             latest_commit=pr_data["latest_commit"],
+            last_checked_commit=pr_data.get("last_checked_commit"),
+            in_progress=pr_data.get("in_progress", False),
+            last_heartbeat_processed=pr_data.get("last_heartbeat_processed"),
+            error_info=pr_data.get("error_info"),
             transitions=pr_data.get("transitions", []),
             validations=validations,
         )
