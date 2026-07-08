@@ -1,75 +1,62 @@
-# OpenClaw Dashboard
+# openclaw-dash
 
-Welcome to the **openclaw-dash** documentation! 🎛️
+Welcome to the **openclaw-dash** documentation.
 
-A TUI dashboard for monitoring your [OpenClaw](https://github.com/openclaw/openclaw) ecosystem at a glance.
+A lightweight, customizable monitoring cockpit for open source projects, personal services, and small business systems. Plugin-based data sources, real-time updates, terminal-native.
 
-![Dashboard Screenshot](images/dashboard.svg)
+## The Plugin Architecture
+
+openclaw-dash is built around one idea: **any data source that can provide standardized data becomes a dashboard panel.**
+
+You have 10 services. Each exposes metrics differently — SSH for server health, HTTP endpoints for API status, database connections for query performance, custom APIs for business metrics. openclaw-dash plugins normalize them all into one real-time cockpit view.
+
+```
+┌─────────────────────────────────────────────┐
+│              Your Services                   │
+│  SSH  │  HTTP API  │  Database  │  Custom   │
+└───────┴────────────┴───────────┴────────────┘
+                    │
+          ┌─────────▼──────────┐
+          │   Plugin Engine    │
+          │  (acquire/parse/   │
+          │      push)         │
+          └─────────┬──────────┘
+                    │
+          ┌─────────▼──────────┐
+          │   Real-Time TUI    │
+          │  (WebSocket/SSE)   │
+          └────────────────────┘
+```
 
 ## Quick Links
 
 ### Getting Started
-- **[Installation](INSTALLATION.md)** — Install via pip, pipx, or from source
-- **[Configuration](CONFIGURATION.md)** — Customize themes, refresh rates, panels
-- **[Usage](Usage.md)** — Commands, keyboard shortcuts, and CLI options
+- **[Installation](INSTALLATION.md)** — Docker or from source
+- **[Configuration](CONFIGURATION.md)** — Plugin setup, YAML config
+- **[Usage](Usage.md)** — Commands, keyboard shortcuts
+
+### Plugin Development
+- **[Architecture](ARCHITECTURE.md)** — How the plugin engine works
+- **[Widgets Reference](WIDGETS.md)** — Panel types and layout
 
 ### Reference
-- **[Widgets Reference](WIDGETS.md)** — Every panel explained with examples
-- **[Integrated Tools](Integrated-Tools.md)** — Bundled automation tools
-- **[Architecture](ARCHITECTURE.md)** — Codebase structure and design
-
-### Contributing
-- **[Development Guide](DEVELOPMENT.md)** — Add widgets, run tests, contribute
-- **[Contributing Guidelines](../CONTRIBUTING.md)** — How to contribute
-
-## Features at a Glance
-
-| Feature | Description |
-|---------|-------------|
-| **Gateway Status** | Health, context usage, uptime |
-| **Metric Boxes** | Compact KPI bar (status, cost, errors, streak) |
-| **Sessions** | Active sessions with context burn rate |
-| **Cron Jobs** | Scheduled tasks and their status |
-| **Agents** | Sub-agent coordination view |
-| **Alerts** | Color-coded severity alerts |
-| **Channels** | Messaging channel status |
-| **Repos** | Repository health (PRs, CI, TODOs) |
-| **Activity** | Recent actions timeline |
-| **Metrics** | Cost tracking, performance stats, GitHub streak |
-| **Security** | Config scanning, dependency vulnerabilities |
-| **Resources** | CPU, memory, disk, network I/O |
-| **Logs** | Real-time gateway log viewer |
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `q` | Quit |
-| `r` | Refresh all panels |
-| `t` | Cycle theme (dark/light/hacker) |
-| `h` / `?` | Help panel |
-| `Ctrl+P` | Command palette |
-| `f` | Jump mode (focus any panel) |
-| `Tab` | Next panel |
-| `Enter` | Toggle panel collapse |
-| `x` | Toggle resources panel |
-
-See [Usage](Usage.md) for the complete list.
-
-## Requirements
-
-- **Python 3.10+** (3.11 or 3.12 recommended)
-- **OpenClaw gateway** (optional but recommended)
-- **gh CLI** (for GitHub integration features)
+- **[Tools](TOOLS.md)** — Standalone utilities (audit, changelog, repo scanner)
+- **[Development Guide](DEVELOPMENT.md)** — Contributing, writing plugins
 
 ## Quick Install
 
 ```bash
-pip install openclaw-dash
+git clone https://github.com/dlorp/openclaw-dash.git
+cd openclaw-dash
+pip install -e .
 openclaw-dash
 ```
 
-See [Installation](INSTALLATION.md) for detailed setup instructions.
+Or with Docker:
+
+```bash
+docker compose up -d
+```
 
 ## License
 

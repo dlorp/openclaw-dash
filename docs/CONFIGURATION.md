@@ -1,239 +1,231 @@
 # Configuration Guide
 
-openclaw-dash stores user preferences in a TOML config file and auto-discovers your OpenClaw environment.
+openclaw-dash uses YAML for all configuration: plugin definitions, panel layout, themes, and update intervals.
 
 ## Config File Location
 
-```
-~/.config/openclaw-dash/config.toml
-```
+Default: `~/.config/openclaw-dash/config.yaml`
 
-The file is created automatically when you first change a setting (theme, etc.).
+Override with: `openclaw-dash --config /path/to/config.yaml`
 
-## Configuration Options
+## Minimal Config
 
-### Full Example
+```yaml
+plugins:
+  - name: system
+    type: ssh-agent
+    host: my-server
+    metrics: [cpu, memory, disk]
 
-```toml
-# Theme: "dark", "light", or "hacker"
-theme = "dark"
+  - name: api-health
+    type: http-api
+    url: https://myapi.com/health
+    interval: 30s
 
-# Auto-refresh interval in seconds (minimum: 5)
-refresh_interval = 30
-
-# Show toast notifications for events
-show_notifications = true
-
-# Show the system resources panel (CPU, memory, disk, network)
-show_resources = true
-
-# Panels to start collapsed (by panel ID)
-collapsed_panels = ["activity-panel", "channels-panel"]
+  - name: db
+    type: db-health
+    connection: postgresql://localhost:5432/mydb
 ```
 
-### Options Reference
+This gives you three panels: server health, API status, and database connections.
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `theme` | string | `"dark"` | Color theme: `dark`, `light`, or `hacker` |
-| `refresh_interval` | integer | `30` | Seconds between auto-refresh cycles |
-| `show_notifications` | boolean | `true` | Show toast notifications |
-| `show_resources` | boolean | `true` | Display system resources panel |
-| `collapsed_panels` | array | `[]` | Panel IDs to start collapsed |
+## Plugin Configuration
 
-## Themes
+Each plugin has a standard structure:
 
-Three built-in themes with OpenClaw brand colors:
-
-### Dark (Default)
-Best for most environments. Easy on the eyes with high contrast.
-
-```toml
-theme = "dark"
+```yaml
+plugins:
+  - name: my-plugin          # Unique identifier
+    type: ssh-agent          # Plugin type (see below)
+    interval: 30s            # Update frequency (default: 60s)
+    enabled: true            # Can disable without removing
+    # ... type-specific options
 ```
 
-### Light
-For bright environments or daytime use.
+### Built-in Plugin Types
 
-```toml
-theme = "light"
+#### ssh-agent
+
+Collects system metrics via SSH.
+
+```yaml
+- name: prod-server
+  type: ssh-agent
+  host: 192.168.1.100
+  user: monitor
+  key: ~/.ssh/id_ed25519
+  metrics:
+    - cpu
+    - memory
+    - disk
+    - network
+    - load
 ```
 
-### Hacker
-Matrix-inspired green-on-black theme.
+#### http-api
 
-```toml
-theme = "hacker"
+Polls HTTP endpoints for status and latency.
+
+```yaml
+- name: api-gateway
+  type: http-api
+  url: https://api.example.com/health
+  method: GET
+  interval: 15s
+  expected_status: 200
+  timeout: 5s
+  headers:
+    Authorization: Bearer ${API_TOKEN}
 ```
 
-**Cycle themes:** Press `t` in the dashboard to cycle through themes. Your choice is saved automatically.
+#### db-health
 
-### Theme Colors
+Checks database connections and performance.
 
-The OpenClaw brand palette:
-
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Granite Gray | `#636764` | Borders, muted elements |
-| Dark Orange | `#FB8B24` | Warnings, important actions |
-| Titanium Yellow | `#F4E409` | Highlights, focus states |
-| Medium Turquoise | `#50D8D7` | Success, online status |
-| Royal Blue Light | `#3B60E4` | Primary, links |
-
-## Panel Configuration
-
-### Collapsing Panels
-
-Collapse panels to save space. Press `Enter` on a focused panel to toggle, or configure defaults:
-
-```toml
-# Start these panels collapsed
-collapsed_panels = [
-    "activity-panel",
-    "channels-panel",
-    "cron-panel"
-]
+```yaml
+- name: primary-db
+  type: db-health
+  connection: postgresql://user:pass@localhost:5432/mydb
+  checks:
+    - connection_pool
+    - slow_queries
+    - replication_lag
 ```
 
-**Panel IDs:**
-- `gateway-panel` — Gateway status
-- `task-panel` — Current task
-- `alerts-panel` — Active alerts
-- `repos-panel` — Repository health
-- `activity-panel` — Activity log
-- `cron-panel` — Scheduled jobs
-- `sessions-panel` — Active sessions
-- `agents-panel` — Sub-agents
-- `channels-panel` — Messaging channels
-- `metrics-panel` — Cost and performance
-- `security-panel` — Security audit
-- `logs-panel` — Gateway logs
-- `resources-panel` — System resources
+#### business-api
 
-### Hiding the Resources Panel
+Pulls custom metrics from internal APIs.
 
-Toggle with `x` key, or configure:
-
-```toml
-show_resources = false
+```yaml
+- name: daily-metrics
+  type: business-api
+  url: https://internal.example.com/metrics/daily
+  headers:
+    X-API-Key: ${BUSINESS_API_KEY}
+  map:
+    registrations: users.new_today
+    revenue: orders.total_cents
 ```
-
-## Refresh Behavior
-
-### Auto-Refresh
-
-```toml
-# Refresh every 30 seconds (default)
-refresh_interval = 30
-
-# More aggressive for active monitoring
-refresh_interval = 10
-
-# Conservative for lower resource use
-refresh_interval = 60
-```
-
-### Watch Mode
-
-Launch with `--watch` for aggressive 5-second refresh:
-
-```bash
-openclaw-dash --watch
-```
-
-### Manual Refresh
-
-Press `r` to refresh all panels immediately.
-
-## Auto-Discovery
-
-The dashboard automatically finds:
-
-| Resource | Default Location | Override |
-|----------|------------------|----------|
-| OpenClaw Gateway | `localhost:3000` | `OPENCLAW_GATEWAY_URL` env var |
-| Repositories | `~/repos/` | — |
-| Workspace | `~/.openclaw/workspace/` | `OPENCLAW_WORKSPACE` env var |
-| Config | `~/.config/openclaw-dash/` | `--config` flag |
 
 ### Environment Variables
 
-```bash
-# Custom gateway URL
-export OPENCLAW_GATEWAY_URL="http://localhost:4000"
+Plugins support environment variable interpolation:
 
-# Custom workspace
-export OPENCLAW_WORKSPACE="/path/to/workspace"
+```yaml
+url: https://api.example.com/health
+headers:
+  Authorization: Bearer ${API_TOKEN}
 ```
 
-## Demo Mode
+Set `API_TOKEN` in your shell or `.env` file.
 
-No OpenClaw gateway? The dashboard works standalone with simulated data for UI exploration:
+## Layout Configuration
 
-```bash
-# The dashboard auto-detects when gateway is offline
-openclaw-dash
+Panel layout is defined separately from plugins:
+
+```yaml
+layout:
+  rows:
+    - panels:
+        - title: System Health
+          source: prod-server
+          chart: sparkline
+          height: 3
+        - title: API Latency
+          source: api-gateway
+          chart: time-series
+          height: 5
+    - panels:
+        - title: Database
+          source: primary-db
+          chart: gauge
+          height: 3
+        - title: Business Metrics
+          source: daily-metrics
+          chart: bar
+          height: 3
 ```
 
-In demo mode:
-- Gateway panel shows "OFFLINE"
-- Metrics use placeholder data
-- All UI features still work
+### Chart Types
 
-## Programmatic Configuration
+| Type | Best For | Height |
+|------|----------|--------|
+| `sparkline` | Quick health overview | 1-3 lines |
+| `time-series` | Latency, throughput trends | 5+ lines |
+| `gauge` | Single values with thresholds | 3 lines |
+| `bar` | Comparing categories | 3-5 lines |
+| `table` | Structured data | Variable |
+| `heatmap` | Density over time | 5+ lines |
 
-Use the config module in Python scripts:
+## Theme Configuration
 
-```python
-from openclaw_dash.config import load_config, Config
-
-# Load existing config
-config = load_config()
-print(f"Current theme: {config.theme}")
-
-# Modify and save
-config.update(theme="hacker", refresh_interval=15)
-
-# Create fresh config
-new_config = Config(
-    theme="light",
-    refresh_interval=60,
-    show_notifications=False
-)
-new_config.save()
+```yaml
+theme:
+  name: phosphor          # Built-in: dark, light, phosphor
+  # Or define custom:
+  colors:
+    background: "#0a0a0a"
+    text: "#ff9500"
+    accent: "#ff6600"
+    success: "#00ff00"
+    warning: "#ffff00"
+    error: "#ff0000"
 ```
 
-## Responsive Layout
+## Global Settings
 
-The dashboard adapts to terminal size:
-
-| Width | Behavior |
-|-------|----------|
-| ≥100 cols | Full layout, all panels |
-| <100 cols | Hide less-critical panels (channels, security, metrics) |
-| <80 cols | Minimum supported, basic layout |
-
-Resize your terminal to see the responsive behavior.
-
-## Keyboard Shortcuts for Config
-
-| Key | Action |
-|-----|--------|
-| `t` | Cycle theme (saves automatically) |
-| `x` | Toggle resources panel (saves automatically) |
-| `Enter` | Toggle focused panel collapse (saves automatically) |
-| `Ctrl+[` | Collapse all panels |
-| `Ctrl+]` | Expand all panels |
-
-## Resetting Configuration
-
-Delete the config file to reset to defaults:
-
-```bash
-rm ~/.config/openclaw-dash/config.toml
+```yaml
+settings:
+  refresh_interval: 30s    # Global default for all plugins
+  log_level: info          # debug, info, warn, error
+  demo_mode: false         # Use mock data
+  gateway_url: http://localhost:18789  # Optional gateway
 ```
 
-## Next Steps
+## Full Example
 
-- [Widgets](WIDGETS.md) — Detailed guide to each panel
-- [Development](DEVELOPMENT.md) — Create custom themes and widgets
+```yaml
+plugins:
+  - name: web-server
+    type: ssh-agent
+    host: web.example.com
+    user: monitor
+    metrics: [cpu, memory, disk, network]
+
+  - name: api-status
+    type: http-api
+    url: https://api.example.com/health
+    interval: 10s
+
+  - name: database
+    type: db-health
+    connection: postgresql://localhost:5432/app
+
+  - name: signups
+    type: business-api
+    url: https://internal.example.com/metrics/signups
+    interval: 300s
+
+layout:
+  rows:
+    - panels:
+        - title: Web Server
+          source: web-server
+          chart: sparkline
+        - title: API Health
+          source: api-status
+          chart: gauge
+    - panels:
+        - title: Database
+          source: database
+          chart: time-series
+        - title: Signups
+          source: signups
+          chart: bar
+
+theme:
+  name: dark
+
+settings:
+  refresh_interval: 30s
+```

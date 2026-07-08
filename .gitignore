@@ -22,3 +22,11 @@ AGENTS.md
 SESSION_NOTES.md
 .env
 README.md.bak
+
+# Tool state files
+src/openclaw_dash/tools/.pr_state.json
+src/openclaw_dash/tools/.pr-state.json
+src/openclaw_dash/tools/.pr-tracker-state.json
+src/openclaw_dash/tools/.dep_state.json
+src/openclaw_dash/tools/.pr-workflow-state.json
+src/openclaw_dash/tools/snapshots/

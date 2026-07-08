@@ -3,109 +3,89 @@
 ## Basic Commands
 
 ```bash
-openclaw-dash              # Launch TUI dashboard
-openclaw-dash --status     # Quick text status
-openclaw-dash --json       # JSON output for scripting
+openclaw-dash              # Launch TUI
+openclaw-dash --status     # Text status report
+openclaw-dash --json       # JSON output
+openclaw-dash --demo       # Demo mode with mock data
+openclaw-dash --config /path/to/config.yaml  # Custom config
 ```
 
-## Security Commands
+## Keyboard Shortcuts
 
-```bash
-openclaw-dash security              # Run security audit
-openclaw-dash security --deep       # Full vulnerability scan
-openclaw-dash security --fix        # Auto-fix issues
-```
-
-## Metrics
-
-```bash
-openclaw-dash metrics               # View metrics
-```
-
-## Automation
-
-```bash
-openclaw-dash auto merge            # Auto-merge approved PRs
-openclaw-dash auto cleanup          # Clean stale branches
-```
-
-## TUI Dashboard
-
-When you run `openclaw-dash` without arguments, the full TUI dashboard launches.
-
-### Panels
-
-- **Gateway** — Shows OpenClaw gateway status (online/offline), context usage percentage, and uptime
-- **Current Task** — Displays what your agent is currently working on
-- **Repos** — Repository health at a glance with PR counts and status indicators
-- **Activity** — Recent actions with timestamps
-- **Sessions** — Active agent sessions and their context burn rate
-- **Cron** — Scheduled tasks and their status/next run time
-- **Alerts** — Color-coded alerts from various sources
-- **Channels** — Connected messaging channels (Discord, Slack, etc.)
-- **System Resources** — CPU, memory, disk, network (toggleable with `x`)
-
-### Keyboard Shortcuts
-
-#### Global Actions
 | Key | Action |
 |-----|--------|
-| `q` | Quit application |
+| `q` | Quit |
 | `r` | Refresh all panels |
 | `t` | Cycle theme (dark/light/phosphor) |
-| `h` / `?` | Show help panel |
-| `s` | Open settings screen |
-| `Ctrl+P` | Open command palette |
+| `h` / `?` | Help panel |
+| `Ctrl+P` | Command palette |
+| `f` | Jump mode (focus any panel) |
+| `Tab` | Next panel |
+| `Shift+Tab` | Previous panel |
+| `Enter` | Toggle panel collapse |
+| `Ctrl+[` / `Ctrl+]` | Collapse/expand all panels |
+| `x` | Toggle resources panel |
+| `s` | Settings screen |
 
-#### Navigation
-| Key | Action |
-|-----|--------|
-| `Tab` / `Shift+Tab` | Navigate to next/previous panel |
-| `f` / `/` | Enter jump mode (show panel labels) |
-| `j` / `k` | Scroll down/up (Vim-style) |
-| `G` | Jump to end of panel |
-| `Home` | Jump to top of panel |
+## Jump Mode
 
-#### Panel Focus Shortcuts
-| Key | Panel |
-|-----|-------|
-| `g` | Gateway |
-| `m` | Metrics |
-| `a` | Alerts |
-| `c` | Cron |
-| `p` | Repos |
-| `l` | Logs |
-| `n` | Agents |
+Press `f` to enter jump mode. Each panel gets a letter label. Press the letter to focus that panel. Press `Escape` to exit jump mode.
 
-#### Panel Management
-| Key | Action |
-|-----|--------|
-| `Enter` | Toggle focused panel collapse/expand |
-| `Ctrl+[` | Collapse all panels |
-| `Ctrl+]` | Expand all panels |
-| `x` | Toggle resources panel visibility |
+## Command Palette
 
-#### Tab Groups
-| Key | Action |
-|-----|--------|
-| `1` | Focus Runtime tab group (Sessions/Agents/Cron/Channels) |
-| `2` | Focus Code tab group (Repos/Activity) |
-| `[` | Previous tab in focused group |
-| `]` | Next tab in focused group |
+Press `Ctrl+P` to open the command palette. Type to filter commands. Press `Enter` to execute.
 
-#### Input
-| Key | Action |
-|-----|--------|
-| `:` / `i` | Focus command input pane |
+Available commands:
+- Refresh all panels
+- Cycle theme
+- Toggle panel collapse
+- Export metrics to JSON
+- Show/hide specific panels
 
-## JSON Output
+## Themes
 
-For scripting and automation, use `--json` to get machine-readable output:
+Three built-in themes:
+- **dark**: Default dark theme
+- **light**: Light background
+- **phosphor**: Amber CRT aesthetic
 
-```bash
-openclaw-dash --json | jq '.gateway.status'
+Cycle themes with `t` or set in config:
+
+```yaml
+theme:
+  name: phosphor
 ```
 
----
+## Settings Screen
 
-See also: [Integrated Tools](Integrated-Tools.md)
+Press `s` to open the settings screen. Tabbed sections:
+- **General**: Refresh interval, log level
+- **Tools**: Plugin enable/disable
+- **Appearance**: Theme, font size
+- **Keybinds**: Custom keyboard shortcuts
+- **Models**: Available data sources
+
+## Status Mode
+
+For scripting and automation:
+
+```bash
+# Quick status check
+openclaw-dash --status
+
+# JSON output for processing
+openclaw-dash --json | jq '.plugins[] | select(.status == "error")'
+
+# Check specific plugin
+openclaw-dash --status --plugin web-server
+```
+
+## Demo Mode
+
+Run without any plugins configured:
+
+```bash
+openclaw-dash --demo
+```
+
+Uses mock data to showcase the dashboard layout and features.

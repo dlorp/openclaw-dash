@@ -1,505 +1,144 @@
 # Widgets Reference
 
-Complete guide to every panel and widget in openclaw-dash.
+Every panel type in openclaw-dash, with examples and configuration.
 
-## Dashboard Layout
+## Panel Types
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  HEADER (clock)                                                         │
-├──────────────────────────── METRIC BOXES ───────────────────────────────┤
-│  [ Gateway ] [ Cost ] [ Error Rate ] [ Streak ]                         │
-├─────────────────────────────────────────────────────────────────────────┤
-│  GATEWAY    │  CURRENT TASK                                             │
-├─────────────┼───────────────────────────────────────────────────────────┤
-│  ALERTS (2 columns)                                                     │
-├─────────────────────────────────────────────────────────────────────────┤
-│  REPOS (2 cols)           │  ACTIVITY                                   │
-├─────────────┬─────────────┼─────────────────────────────────────────────┤
-│  CRON       │  SESSIONS   │  AGENTS                                     │
-├─────────────┴─────────────┴─────────────────────────────────────────────┤
-│  METRICS (2 columns)      │  CHANNELS                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│  SECURITY (2 columns)                                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│  LOGS (3 columns)                                                       │
-├─────────────────────────────────────────────────────────────────────────┤
-│  RESOURCES (3 columns)                                                  │
-├─────────────────────────────────────────────────────────────────────────┤
-│  INPUT PANE                                                             │
-├─────────────────────────────────────────────────────────────────────────┤
-│  FOOTER                                                                 │
-└─────────────────────────────────────────────────────────────────────────┘
+### Sparkline
+
+Mini time-series chart in a single line. Best for quick health overviews.
+
+```yaml
+- title: CPU Usage
+  source: web-server
+  chart: sparkline
+  height: 3
 ```
 
----
+Shows: current value, trend, min/max over window.
 
-## Metric Boxes Bar
+### Time-Series
 
-Compact KPI summary always visible at the top.
+Full chart with axes. Best for latency, throughput, and trend analysis.
 
-### Boxes
-
-| Box | Shows | Colors |
-|-----|-------|--------|
-| **Gateway** | Online/Offline status | Green = online, Red = offline |
-| **Cost** | Today's API cost | Neutral display |
-| **Error Rate** | Error percentage today | Green <1%, Yellow 1-5%, Red >5% |
-| **Streak** | GitHub contribution streak | 🔥 for active streak |
-
-### Example
-```
-✓ ONLINE  │  $0.42/day  │  0.2% err  │  🔥 12 days
+```yaml
+- title: API Latency
+  source: api-gateway
+  chart: time-series
+  height: 5
+  time_range: 1h
 ```
 
----
+Shows: line chart with time axis, value axis, legend.
 
-## Gateway Panel
+### Gauge
 
-**Focus key:** `g`
+Single value with threshold coloring. Best for utilization, health scores.
 
-Shows OpenClaw gateway health and resource usage.
-
-### Data Displayed
-- **Status**: Online/Offline indicator
-- **Context**: Current context window usage (%)
-- **Uptime**: How long the gateway has been running
-
-### States
-
-| State | Display |
-|-------|---------|
-| Healthy | `✓ ONLINE` with green indicator |
-| Degraded | `⚠ DEGRADED` with yellow indicator |
-| Offline | `✗ OFFLINE` with red indicator, error message |
-
-### Example
-```
-✓ ONLINE
-────────────────────
-Context: 24%
-████████░░░░░░░░░░░░
-Uptime: 2h 15m
+```yaml
+- title: Memory Usage
+  source: web-server
+  chart: gauge
+  height: 3
+  thresholds:
+    warning: 70
+    error: 90
 ```
 
----
+Shows: current value, threshold zones (green/yellow/red).
 
-## Current Task Panel
+### Bar
 
-Shows what the agent is currently working on.
+Comparative values. Best for categorical data, resource allocation.
 
-### Data Displayed
-- Active task description from the agent's current context
-- Subtask indicators if available
-
-### Example
-```
-▸ Building new feature for project-x
-  > Implementing auth module
-  > Writing tests
+```yaml
+- title: Disk Usage by Mount
+  source: web-server
+  chart: bar
+  height: 3
+  metric: disk_usage
+  group_by: mount
 ```
 
----
+Shows: horizontal bars with labels and values.
 
-## Alerts Panel
+### Table
 
-**Focus key:** `a`
+Structured data. Best for lists, inventories, detailed status.
 
-Aggregates alerts from multiple sources with severity-based color coding.
-
-### Alert Sources
-- CI/CD failures
-- Security vulnerabilities
-- High context usage warnings
-- PR review requests
-- Custom alerts
-
-### Severity Levels
-
-| Level | Color | Icon |
-|-------|-------|------|
-| Critical | Red | 🔴 |
-| High | Orange | 🟠 |
-| Medium | Yellow | 🟡 |
-| Low | Blue | 🔵 |
-| Info | Gray | ⚪ |
-
-### Example
-```
-🔴 2 critical • 🟠 1 high
-
-🔴 CI failing on main
-   project-x • 2h ago
-
-🟠 5 vulnerable dependencies
-   another-repo • 1d ago
+```yaml
+- title: Active Connections
+  source: database
+  chart: table
+  height: 5
+  columns:
+    - name: source
+      label: Source IP
+    - name: count
+      label: Connections
+    - name: state
+      label: State
 ```
 
----
+Shows: formatted table with headers and alignment.
 
-## Repos Panel
+### Heatmap
 
-**Focus key:** `p`
+Density visualization. Best for request patterns, usage over time.
 
-Repository health overview as a data table.
-
-### Columns
-
-| Column | Description |
-|--------|-------------|
-| Repo | Repository name |
-| Health | Status emoji (✨ clean, 🟢 good, 🟡 needs attention, 🔴 issues) |
-| PRs | Open pull request count |
-| Last Commit | Relative time of last commit |
-
-### Example
-```
-┌──────────────┬────────┬─────┬─────────────┐
-│ Repo         │ Health │ PRs │ Last Commit │
-├──────────────┼────────┼─────┼─────────────┤
-│ my-project   │   ✨   │  0  │   2h ago    │
-│ another-repo │   🟢   │  2  │   1d ago    │
-│ side-project │   🟡   │  5  │   3d ago    │
-└──────────────┴────────┴─────┴─────────────┘
+```yaml
+- title: Request Distribution
+  source: api-gateway
+  chart: heatmap
+  height: 5
+  time_range: 24h
+  bucket: 1h
 ```
 
----
+Shows: color-coded grid (hour vs. day) with density intensity.
 
-## Activity Panel
+## Widget Configuration
 
-Recent actions log with timestamps.
+All widgets support these common options:
 
-### Data Displayed
-- Action description
-- Timestamp
-- Source indicator
-
-### Example
-```
-▸ 14:30 Pushed feature branch
-▸ 14:00 Reviewed PR #42
-▸ 13:30 Fixed CI pipeline
-▸ 12:00 Merged hotfix
+```yaml
+- title: Panel Title        # Required
+  source: plugin-name       # Required: which plugin feeds this
+  chart: sparkline          # Required: panel type
+  height: 3                 # Lines of terminal height
+  enabled: true             # Can disable without removing
+  refresh: 30s              # Override global refresh interval
 ```
 
----
+## Layout Structure
 
-## Sessions Panel
+Panels are organized in rows:
 
-**Focus key:** `s` (via sessions)
-
-Active OpenClaw sessions and context usage.
-
-### Data Displayed
-- Session identifier
-- Active/inactive status
-- Context burn rate (% of context window used)
-
-### Example
-```
-2/4 active ████░░░░
-──────────────────────────
-  ● main         ████░ 45%
-  ○ sub-agent-1  █░░░░ 12%
-  ○ sub-agent-2  ░░░░░  8%
-  ○ background   ░░░░░  2%
+```yaml
+layout:
+  rows:
+    - panels:
+        - title: Panel 1
+          source: plugin-a
+          chart: sparkline
+        - title: Panel 2
+          source: plugin-b
+          chart: gauge
+    - panels:
+        - title: Panel 3
+          source: plugin-c
+          chart: time-series
 ```
 
----
+Rows stack vertically. Panels within a row share horizontal space equally.
 
-## Agents Panel
+## Color Scheme
 
-**Focus key:** `n`
+Widget colors come from the active theme. Threshold zones:
 
-Sub-agent coordination view.
-
-### Data Displayed
-- Agent name/ID
-- Current status (active, idle, completed, error)
-- Context usage
-- Current task summary
-
-### Example
-```
-🤖 Agents
-──────────────────────────
-  ● researcher   [active]
-    Context: 34%
-    Finding API docs
-
-  ● coder        [idle]
-    Context: 12%
-    Waiting for specs
-```
-
----
-
-## Cron Panel
-
-**Focus key:** `c`
-
-Scheduled jobs and their status.
-
-### Data Displayed
-- Job name
-- Enabled/disabled status
-- Last run time
-- Next scheduled run
-
-### Example
-```
-3/5 enabled ████░░░░
-──────────────────────────
-  ▸ daily-backup     (enabled)
-  ▸ sync-repos       (enabled)
-  ▸ cleanup-logs     (enabled)
-  ○ weekly-audit     (disabled)
-  ○ monthly-report   (disabled)
-```
-
----
-
-## Channels Panel
-
-Connected messaging channels and their status.
-
-### Data Displayed
-- Channel type (Discord, Slack, etc.)
-- Connection status
-- Message activity
-
-### Example
-```
-Channels
-──────────────────────────
-  ● Discord    online  (3 servers)
-  ● Slack      online  (2 workspaces)
-  ○ Telegram   offline
-```
-
----
-
-## Metrics Panel
-
-**Focus key:** `m`
-
-Cost tracking and performance statistics.
-
-### Sections
-
-#### Token Costs
-- Today's spend
-- Input/output token breakdown
-- 7-day trend
-
-#### Performance
-- Total API calls
-- Error count and rate
-- Average latency
-
-#### GitHub
-- Contribution streak
-- PR cycle time averages
-
-### Example
-```
-📊 Metrics
-──────────────────────────
-💰 Today: $0.42
-   Input:  12,456 tokens
-   Output: 3,891 tokens
-
-⚡ Performance
-   Calls: 234 | Errors: 2 (0.9%)
-   Latency: 450ms avg
-
-🐙 GitHub
-   🔥 12 day streak
-   PR cycle: 4.2h avg
-```
-
----
-
-## Security Panel
-
-**Focus key:** `s`
-
-Security audit results and recommendations.
-
-### Data Displayed
-- Config security score
-- Dependency vulnerabilities
-- Audit findings by severity
-
-### Example
-```
-🔒 Security
-──────────────────────────
-Config Score: 85/100
-  ⚠ 2 warnings
-  ℹ 3 suggestions
-
-Dependencies:
-  🔴 1 critical (lodash)
-  🟡 3 moderate
-  Total: 4 issues
-```
-
----
-
-## Logs Panel
-
-**Focus key:** `l`
-
-Real-time gateway log viewer.
-
-### Features
-- Auto-scrolling log tail
-- Color-coded log levels
-- Timestamp display
-- Configurable line count
-
-### Log Levels
-
-| Level | Color |
-|-------|-------|
-| ERROR | Red |
-| WARN | Yellow |
-| INFO | Default |
-| DEBUG | Dim |
-
-### Example
-```
-📜 Logs
-──────────────────────────
-14:32:01 [INFO]  Request completed in 234ms
-14:32:00 [DEBUG] Processing message...
-14:31:58 [WARN]  Rate limit approaching
-14:31:55 [INFO]  New session started
-```
-
----
-
-## Resources Panel
-
-**Focus key:** `x` (toggle visibility)
-
-System resource monitoring.
-
-### Data Displayed
-
-#### CPU
-- Overall usage percentage
-- Per-core usage bars
-- Load average (1m/5m/15m)
-- Usage sparkline history
-
-#### Memory
-- Usage percentage
-- Used/Total/Available
-- Swap usage (if significant)
-
-#### Disk
-- Per-mount usage
-- Free space
-
-#### Network
-- Upload/download rates
-- Rate sparklines
-
-### Example
-```
-📊 Resources
-──────────────────────────
-✓ CPU: 23.5% ████████░░░░ ▁▂▃▄▃▂▁▂▃▄
-  Cores: ██░░░░██░░░░ (8 total)
-  Load: 1.23 / 1.45 / 1.67
-────────────────────────────────────────
-✓ MEM: 67.2% ████████████░░░ ▄▅▅▆▆▅▅▆
-  10.8G / 16.0G (5.2G free)
-────────────────────────────────────────
-█ DISK
-  ✓ /: 45% ████░░░░ (120G free)
-  ⚠ /data: 82% ████████░░ (18G free)
-────────────────────────────────────────
-⚡ NET
-  ↑ 1.2 MB/s ▁▂▃▄▃▂▁▂
-  ↓ 3.4 MB/s ▂▃▄▅▄▃▂▃
-```
-
----
-
-## Input Pane
-
-**Focus key:** `:` or `i`
-
-Command input for sending commands to the gateway.
-
-### Usage
-1. Press `:` or `i` to focus
-2. Type command
-3. Press Enter to send
-4. Press Escape to cancel
-
----
-
-## Help Panel
-
-**Focus key:** `h` or `?`
-
-Overlay showing all keyboard shortcuts and navigation help.
-
----
-
-## Collapsible Panels
-
-All main panels support collapse/expand:
-
-| Key | Action |
-|-----|--------|
-| `Enter` | Toggle focused panel |
-| `Ctrl+[` | Collapse all panels |
-| `Ctrl+]` | Expand all panels |
-
-Collapsed panels show a summary line instead of full content.
-
----
-
-## Navigation
-
-### Focus Keys
-
-| Key | Panel |
-|-----|-------|
-| `g` | Gateway |
-| `s` | Security |
-| `m` | Metrics |
-| `a` | Alerts |
-| `c` | Cron |
-| `p` | Repos |
-| `l` | Logs |
-| `n` | Agents |
-| `x` | Toggle Resources |
-
-### Jump Mode
-
-Press `f` to enter jump mode, then press the letter shown on each panel to focus it.
-
-### Tab Navigation
-
-- `Tab` — Next panel
-- `Shift+Tab` — Previous panel
-
-### Vim-Style Scrolling
-
-- `j` — Scroll down
-- `k` — Scroll up
-- `G` — Jump to end
-- `Home` — Jump to top
-
----
-
-## Next Steps
-
-- [Configuration](CONFIGURATION.md) — Customize panel visibility and behavior
-- [Development](DEVELOPMENT.md) — Create custom widgets
+| Zone | Color | Usage |
+|------|-------|-------|
+| Normal | Green/Blue | Within expected range |
+| Warning | Yellow/Amber | Approaching threshold |
+| Error | Red | Exceeds threshold |
+| Neutral | Gray | No data / inactive |
