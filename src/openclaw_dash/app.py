@@ -575,6 +575,12 @@ class DashboardApp(App):
         # Load user config
         self.config = load_config()
 
+        # Start metric sinks (MQTT, etc.)
+        from openclaw_dash.sinks.manager import SinkManager
+
+        self._sink_manager = SinkManager()
+        self._sink_manager.start_all()
+
         # Register custom themes
         for theme in THEMES:
             self.register_theme(theme)
@@ -663,6 +669,10 @@ class DashboardApp(App):
                 auto_refresh_panel.refresh_data()  # type: ignore[attr-defined]
             except Exception:
                 pass
+
+        # Push metrics to configured sinks (MQTT, etc.)
+        if hasattr(self, "_sink_manager"):
+            self._sink_manager.refresh_and_publish()
 
     def action_cycle_theme(self) -> None:
         """Cycle through available themes and save preference."""

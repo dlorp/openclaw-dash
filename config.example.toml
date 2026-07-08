@@ -1,0 +1,24 @@
+# openclaw-dash example config with MQTT sink
+#
+# Copy to: ~/.config/openclaw-dash/config.toml
+# Or merge the [sinks] section into your existing config.
+
+# === Existing settings ===
+# theme = "dark"
+# refresh_interval = 30
+# show_notifications = true
+# show_resources = true
+
+# === Metric sinks ===
+# Sinks publish dashboard metrics to external targets.
+# The TUI starts them on mount; they run in background threads.
+
+[sinks.mqtt]
+enabled = true
+broker = "localhost"          # MQTT broker hostname
+port = 1883                   # MQTT broker port
+topic = "ocd/panel"           # MQTT topic (must match firmware MQTT_TOPIC)
+interval = 10                 # Seconds between publish cycles
+# client_id = "ocd-dash"      # MQTT client ID (optional, default: ocd-dash)
+# username = ""               # MQTT auth (optional)
+# password = ""               # MQTT auth (optional)

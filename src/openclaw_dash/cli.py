@@ -486,6 +486,80 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
     return 1 if audit_result.critical_count > 0 or audit_result.high_count > 0 else 0
 
 
+def cmd_sinks(args: argparse.Namespace) -> int:
+    """Show sink status and configuration.
+
+    Args:
+        args: Parsed arguments with json option.
+
+    Returns:
+        Exit code (0 for success).
+    """
+    from openclaw_dash.sinks.manager import SinkManager, _load_sink_config
+
+    configs = _load_sink_config()
+
+    if args.sinks_json:
+        import json
+
+        print(json.dumps({"configured": configs, "count": len(configs)}, indent=2))
+        return 0
+
+    from rich import box
+    from rich.console import Console
+    from rich.table import Table
+
+    console = Console()
+
+    if not configs:
+        console.print("[dim]No sinks configured in ~/.config/openclaw-dash/config.toml[/]")
+        console.print()
+        console.print("[bold]Example config.toml:[/]")
+        console.print()
+        console.print("  [sinks.mqtt]")
+        console.print('  enabled = true')
+        console.print('  broker = "localhost"')
+        console.print("  port = 1883")
+        console.print('  topic = "ocd/panel"')
+        console.print("  interval = 10")
+        return 0
+
+    table = Table(title="Configured Sinks", box=box.ROUNDED)
+    table.add_column("Type")
+    table.add_column("Target")
+    table.add_column("Topic/Path")
+    table.add_column("Interval")
+    table.add_column("Status")
+
+    for name, cfg in configs.items():
+        if name == "mqtt":
+            broker = cfg.get("broker", "localhost")
+            port = cfg.get("port", 1883)
+            topic = cfg.get("topic", "ocd/panel")
+            interval = cfg.get("interval", 10)
+            table.add_row(
+                "MQTT",
+                f"{broker}:{port}",
+                topic,
+                f"{interval}s",
+                "[green]enabled[/]",
+            )
+        else:
+            table.add_row(name, "-", "-", "-", "[yellow]unknown type[/]")
+
+    console.print(table)
+
+    # Quick test: try to import paho-mqtt
+    try:
+        import paho.mqtt.client  # noqa: F401
+
+        console.print("[green]paho-mqtt installed[/] (pip install openclaw-dash[mqtt])")
+    except ImportError:
+        console.print("[red]paho-mqtt NOT installed[/] — run: pip install openclaw-dash[mqtt]")
+
+    return 0
+
+
 def cmd_auto(args: argparse.Namespace) -> int:
     """Handle auto subcommands.
 
@@ -978,6 +1052,10 @@ def main() -> int:
         "--json", dest="backup_json", action="store_true", help="JSON output"
     )
 
+    # Sinks subcommand
+    sinks_parser = subparsers.add_parser("sinks", help="Show configured metric sinks")
+    sinks_parser.add_argument("--json", dest="sinks_json", action="store_true", help="JSON output")
+
     # Export subcommand
     export_parser = subparsers.add_parser("export", help="Export dashboard data to file")
     export_parser.add_argument(
@@ -1059,6 +1137,10 @@ def main() -> int:
     # Handle models command
     if args.command == "models":
         return cmd_models(args)
+
+    # Handle sinks command
+    if args.command == "sinks":
+        return cmd_sinks(args)
 
     # Handle export command
     if args.command == "export":
