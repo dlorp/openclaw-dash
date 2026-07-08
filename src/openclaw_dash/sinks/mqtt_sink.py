@@ -55,11 +55,14 @@ class MqttSink(SinkBase):
             import paho.mqtt.client as mqtt
         except ImportError:
             raise ImportError(
-                "paho-mqtt is required for MQTT sink. "
-                "Install with: pip install openclaw-dash[mqtt]"
+                "paho-mqtt is required for MQTT sink. Install with: pip install openclaw-dash[mqtt]"
             )
 
-        self._client = mqtt.Client(client_id=self.client_id)
+        # paho-mqtt v2+ requires CallbackAPIVersion as first arg
+        if hasattr(mqtt, "CallbackAPIVersion"):
+            self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=self.client_id)
+        else:
+            self._client = mqtt.Client(client_id=self.client_id)
 
         if self.username and self.password:
             self._client.username_pw_set(self.username, self.password)
@@ -139,13 +142,21 @@ class MqttSink(SinkBase):
     # -- Callbacks -----------------------------------------------------------
 
     @staticmethod
-    def _on_connect(client: Any, userdata: Any, flags: Any, rc: int) -> None:
-        if rc == 0:
+    def _on_connect(client: Any, userdata: Any, flags: Any, *args: Any) -> None:
+        # paho-mqtt v1: (client, userdata, flags, rc)
+        # paho-mqtt v2: (client, userdata, flags, reason_code, properties)
+        rc = args[0] if args else -1
+        rc_value = int(rc) if not isinstance(rc, int) else rc
+        if rc_value == 0:
             logger.info("MQTT connected (rc=0)")
         else:
-            logger.warning("MQTT connect returned rc=%d", rc)
+            logger.warning("MQTT connect returned rc=%s", rc)
 
     @staticmethod
-    def _on_disconnect(client: Any, userdata: Any, rc: int) -> None:
-        if rc != 0:
-            logger.warning("MQTT unexpected disconnect (rc=%d), will reconnect", rc)
+    def _on_disconnect(client: Any, userdata: Any, *args: Any) -> None:
+        # paho-mqtt v1: (client, userdata, rc)
+        # paho-mqtt v2: (client, userdata, flags, reason_code, properties)
+        rc = args[0] if args else -1
+        rc_value = int(rc) if not isinstance(rc, int) else rc
+        if rc_value != 0:
+            logger.warning("MQTT unexpected disconnect (rc=%s), will reconnect", rc)

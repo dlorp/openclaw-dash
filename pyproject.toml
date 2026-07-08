@@ -32,9 +32,6 @@ dependencies = [
 [project.optional-dependencies]
 mqtt = [
     "paho-mqtt>=1.6.0",
-[project.optional-dependencies]
-mqtt = [
-    "paho-mqtt>=1.6.0",
 ]
 dev = [
     "pytest>=7.0.0",

@@ -674,6 +674,11 @@ class DashboardApp(App):
         if hasattr(self, "_sink_manager"):
             self._sink_manager.refresh_and_publish()
 
+    def on_unmount(self) -> None:
+        """Stop sink manager on app exit."""
+        if hasattr(self, "_sink_manager"):
+            self._sink_manager.stop_all()
+
     def action_cycle_theme(self) -> None:
         """Cycle through available themes and save preference."""
         self.theme = next_theme(self.theme)

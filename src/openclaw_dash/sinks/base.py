@@ -81,11 +81,13 @@ class SinkBase(ABC):
             unit: Optional unit label ('%', 'GB', 'count').
         """
         try:
-            self._queue.put_nowait({
-                "metric": metric_name,
-                "value": value,
-                "unit": unit,
-            })
+            self._queue.put_nowait(
+                {
+                    "metric": metric_name,
+                    "value": value,
+                    "unit": unit,
+                }
+            )
         except queue.Full:
             logger.debug("Sink %s queue full, dropping %s", self.name, metric_name)
 
@@ -125,7 +127,9 @@ class SinkBase(ABC):
                     self.connect()
                     self._connected = True
                 except Exception:
-                    logger.exception("Sink %s connect failed, retrying in %ds", self.name, self.interval)
+                    logger.exception(
+                        "Sink %s connect failed, retrying in %ds", self.name, self.interval
+                    )
                     self._stop_event.wait(timeout=self.interval)
                     continue
 
