@@ -1,55 +1,42 @@
 # openclaw-dash
 
-Welcome to the **openclaw-dash** documentation.
+A terminal-native monitoring cockpit. Plugin-based data sources, real-time updates, no browser required.
 
-A lightweight, customizable monitoring cockpit for open source projects, personal services, and small business systems. Plugin-based data sources, real-time updates, terminal-native.
+## The Plugin Model
 
-## The Plugin Architecture
+openclaw-dash is built on one idea: any data source that can provide structured metrics becomes a dashboard panel.
 
-openclaw-dash is built around one idea: **any data source that can provide standardized data becomes a dashboard panel.**
-
-You have 10 services. Each exposes metrics differently — SSH for server health, HTTP endpoints for API status, database connections for query performance, custom APIs for business metrics. openclaw-dash plugins normalize them all into one real-time cockpit view.
+Your services speak different protocols. SSH for system metrics. HTTP for API status. Database connections for query performance. Custom APIs for business KPIs. openclaw-dash plugins normalize them all into one live view.
 
 ```
-┌─────────────────────────────────────────────┐
-│              Your Services                   │
-│  SSH  │  HTTP API  │  Database  │  Custom   │
-└───────┴────────────┴───────────┴────────────┘
+    Your Services
+    ┌─────┬────────┬───────────┬────────┐
+    │ SSH │  HTTP  │ Database  │ Custom │
+    └──┬──┴────┬───┴─────┬─────┴───┬────┘
+       │       │         │         │
+       └───────┴────┬────┴─────────┘
                     │
-          ┌─────────▼──────────┐
-          │   Plugin Engine    │
-          │  (acquire/parse/   │
-          │      push)         │
-          └─────────┬──────────┘
+            ┌───────▼────────┐
+            │ Plugin Engine  │
+            │  acquire()     │
+            │  parse()       │
+            │  push()        │
+            └───────┬────────┘
                     │
-          ┌─────────▼──────────┐
-          │   Real-Time TUI    │
-          │  (Textual reactive system)   │
-          └────────────────────┘
+            ┌───────▼────────┐
+            │  Terminal TUI  │
+            │ Real-time view │
+            └────────────────┘
 ```
 
-## Quick Links
+## Getting Started
 
-### Getting Started
-- **[Installation](INSTALLATION.md)** — Docker or from source
-- **[Configuration](CONFIGURATION.md)** — Plugin setup, YAML config
-- **[Usage](Usage.md)** — Commands, keyboard shortcuts
-
-### Plugin Development
-- **[Architecture](ARCHITECTURE.md)** — How the plugin engine works
-- **[Widgets Reference](WIDGETS.md)** — Panel types and layout
-
-### Reference
-- **[Tools](TOOLS.md)** — Standalone utilities (audit, changelog, repo scanner)
-- **[Development Guide](DEVELOPMENT.md)** — Contributing, writing plugins
-
-## Quick Install
+### Installation
 
 ```bash
 git clone https://github.com/dlorp/openclaw-dash.git
 cd openclaw-dash
 pip install -e .
-openclaw-dash
 ```
 
 Or with Docker:
@@ -58,6 +45,64 @@ Or with Docker:
 docker compose up -d
 ```
 
+### Quick Start
+
+```bash
+# Run demo with mock data
+openclaw-dash --demo
+
+# Create config and run
+mkdir -p ~/.config/openclaw-dash
+cat > ~/.config/openclaw-dash/config.yaml << 'EOF'
+plugins:
+  - name: localhost
+    type: ssh-agent
+    host: localhost
+    metrics: [cpu, memory, disk]
+
+layout:
+  rows:
+    - panels:
+        - title: System
+          source: localhost
+          chart: sparkline
+EOF
+
+openclaw-dash
+```
+
+## Documentation
+
+### Setup
+- [Installation](INSTALLATION.md) - Docker, pipx, from source
+- [Configuration](CONFIGURATION.md) - Plugin setup, YAML config
+- [Usage](Usage.md) - Commands, keyboard shortcuts
+
+### Reference
+- [Architecture](ARCHITECTURE.md) - How the plugin engine works
+- [Widgets](WIDGETS.md) - Panel types and layout
+- [Tools](TOOLS.md) - Standalone utilities
+
+### Development
+- [Development Guide](DEVELOPMENT.md) - Writing plugins, contributing
+
+## What It Looks Like
+
+```
+┌─ Server Health ──────────────┐┌─ API Latency ────────────────┐
+│ CPU  ████████████████████ 45%││        ╭────╮                │
+│ Mem  ██████████████░░░░░░ 62%││  200ms │    │    ╭──╮        │
+│ Disk ████████░░░░░░░░░░░░ 28%││        │    ╭───╯  ╰──╮      │
+└──────────────────────────────┘└──────────────────────────────┘
+┌─ Database ───────────────────────────────────────────────────┐
+│ connections │████████████████████████████████████████│  42   │
+│ slow queries│██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│   3   │
+│ repl lag    │█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│  12ms │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Terminal-native. Real-time updates. Keyboard driven.
+
 ## License
 
-[PolyForm NonCommercial 1.0.0](../LICENSE) — free for personal and non-commercial use
+[PolyForm Noncommercial 1.0.0](../LICENSE) - free for personal and non-commercial use

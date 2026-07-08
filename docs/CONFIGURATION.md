@@ -1,33 +1,39 @@
-# Configuration Guide
+# Configuration
 
-openclaw-dash uses YAML for all configuration: plugin definitions, panel layout, themes, and update intervals.
+openclaw-dash uses one YAML file for everything: plugins, layout, themes, intervals.
 
-## Config File Location
+## Config Location
 
 Default: `~/.config/openclaw-dash/config.yaml`
 
-Override with: `openclaw-dash --config /path/to/config.yaml`
+Override: `openclaw-dash --config /path/to/config.yaml`
 
-## Minimal Config
+## Minimal Example
 
 ```yaml
 plugins:
-  - name: system
+  - name: server
     type: ssh-agent
-    host: my-server
+    host: 192.168.1.10
     metrics: [cpu, memory, disk]
 
-  - name: api-health
+  - name: api
     type: http-api
-    url: https://myapi.com/health
+    url: https://api.example.com/health
     interval: 30s
 
-  - name: db
-    type: db-health
-    connection: postgresql://localhost:5432/mydb
+layout:
+  rows:
+    - panels:
+        - title: Server
+          source: server
+          chart: sparkline
+        - title: API
+          source: api
+          chart: gauge
 ```
 
-This gives you three panels: server health, API status, and database connections.
+This gives you two panels: server health and API status.
 
 ## Plugin Configuration
 
@@ -35,23 +41,21 @@ Each plugin has a standard structure:
 
 ```yaml
 plugins:
-  - name: my-plugin          # Unique identifier
-    type: ssh-agent          # Plugin type (see below)
-    interval: 30s            # Update frequency (default: 60s)
-    enabled: true            # Can disable without removing
+  - name: my-source       # Unique identifier
+    type: ssh-agent       # Plugin type
+    interval: 30s         # Update frequency (default: 60s)
+    enabled: true         # Can disable without removing
     # ... type-specific options
 ```
 
-### Built-in Plugin Types
+### ssh-agent
 
-#### ssh-agent
-
-Collects system metrics via SSH.
+System metrics via SSH.
 
 ```yaml
-- name: prod-server
+- name: prod-web
   type: ssh-agent
-  host: 192.168.1.100
+  host: web-01.prod.internal
   user: monitor
   key: ~/.ssh/id_ed25519
   metrics:
@@ -62,14 +66,16 @@ Collects system metrics via SSH.
     - load
 ```
 
-#### http-api
+Requires SSH key auth. Password auth is not supported.
 
-Polls HTTP endpoints for status and latency.
+### http-api
+
+Poll HTTP endpoints.
 
 ```yaml
-- name: api-gateway
+- name: gateway-health
   type: http-api
-  url: https://api.example.com/health
+  url: https://gateway.example.com/health
   method: GET
   interval: 15s
   expected_status: 200
@@ -78,26 +84,30 @@ Polls HTTP endpoints for status and latency.
     Authorization: Bearer ${API_TOKEN}
 ```
 
-#### db-health
+Returns: status code, response time, optional JSON fields.
 
-Checks database connections and performance.
+### db-health
+
+Database connection and performance.
 
 ```yaml
 - name: primary-db
   type: db-health
-  connection: postgresql://user:pass@localhost:5432/mydb
+  connection: postgresql://user:${DB_PASS}@localhost:5432/app
   checks:
     - connection_pool
     - slow_queries
     - replication_lag
 ```
 
-#### business-api
+Supports PostgreSQL, MySQL, and SQLite.
 
-Pulls custom metrics from internal APIs.
+### business-api
+
+Custom metrics from internal APIs.
 
 ```yaml
-- name: daily-metrics
+- name: daily-kpis
   type: business-api
   url: https://internal.example.com/metrics/daily
   headers:
@@ -107,79 +117,122 @@ Pulls custom metrics from internal APIs.
     revenue: orders.total_cents
 ```
 
+The `map` section translates API response fields to metric names.
+
 ### Environment Variables
 
-Plugins support environment variable interpolation:
+Use `${VAR_NAME}` syntax anywhere in plugin config:
 
 ```yaml
-url: https://api.example.com/health
+connection: postgresql://user:${DB_USER}@localhost:5432/app
 headers:
   Authorization: Bearer ${API_TOKEN}
 ```
 
-Set `API_TOKEN` in your shell or `.env` file.
+Variables are read from environment at startup.
 
 ## Layout Configuration
 
-Panel layout is defined separately from plugins:
+Define panel arrangement separately from plugins:
 
 ```yaml
 layout:
   rows:
     - panels:
-        - title: System Health
-          source: prod-server
+        - title: CPU Usage
+          source: prod-web
           chart: sparkline
           height: 3
-        - title: API Latency
-          source: api-gateway
-          chart: time-series
-          height: 5
-    - panels:
-        - title: Database
-          source: primary-db
+        - title: Memory
+          source: prod-web
           chart: gauge
           height: 3
-        - title: Business Metrics
-          source: daily-metrics
-          chart: bar
-          height: 3
+    - panels:
+        - title: API Latency
+          source: gateway-health
+          chart: time-series
+          height: 5
 ```
+
+Rows stack vertically. Panels in a row share horizontal space equally.
 
 ### Chart Types
 
-| Type | Best For | Height |
-|------|----------|--------|
-| `sparkline` | Quick health overview | 1-3 lines |
-| `time-series` | Latency, throughput trends | 5+ lines |
-| `gauge` | Single values with thresholds | 3 lines |
-| `bar` | Comparing categories | 3-5 lines |
-| `table` | Structured data | Variable |
-| `heatmap` | Density over time | 5+ lines |
+| Type | Height | Best For |
+|------|--------|----------|
+| sparkline | 1-3 | Quick health overview |
+| time-series | 5+ | Latency, throughput trends |
+| gauge | 3 | Single values with thresholds |
+| bar | 3-5 | Category comparison |
+| table | variable | Structured lists |
+| heatmap | 5+ | Density over time |
+
+### Widget Options
+
+Common options for all widgets:
+
+```yaml
+- title: Panel Title        # Required
+  source: plugin-name       # Required - which plugin feeds this
+  chart: sparkline          # Required - panel type
+  height: 3                 # Lines of terminal height
+  enabled: true             # Can disable without removing
+  refresh: 30s              # Override global interval
+```
+
+Gauge-specific options:
+
+```yaml
+- title: Disk Usage
+  source: prod-web
+  chart: gauge
+  thresholds:
+    warning: 70
+    error: 90
+```
+
+Time-series options:
+
+```yaml
+- title: Request Latency
+  source: gateway-health
+  chart: time-series
+  time_range: 1h            # Display window
+  y_axis: latency_ms        # Metric field to plot
+```
 
 ## Theme Configuration
 
+Use a built-in theme:
+
 ```yaml
 theme:
-  name: phosphor          # Built-in: dark, light, phosphor
-  # Or define custom:
+  name: phosphor    # dark | light | phosphor
+```
+
+Or define custom colors:
+
+```yaml
+theme:
   colors:
     background: "#0a0a0a"
     text: "#ff9500"
     accent: "#ff6600"
-    success: "#00ff00"
-    warning: "#ffff00"
+    success: "#00aa00"
+    warning: "#ffaa00"
     error: "#ff0000"
 ```
+
+The `phosphor` theme uses amber (#ff9500) on dark gray to mimic CRT phosphor.
 
 ## Global Settings
 
 ```yaml
 settings:
-  refresh_interval: 30s    # Global default for all plugins
-  log_level: info          # debug, info, warn, error
-  demo_mode: false         # Use mock data
-  gateway_url: http://localhost:18789  # Optional gateway
+  refresh_interval: 30s     # Default for all plugins
+  log_level: info           # debug | info | warn | error
+  demo_mode: false          # Use mock data
+  gateway_url: null         # Optional gateway endpoint
 ```
 
 ## Full Example
@@ -188,13 +241,13 @@ settings:
 plugins:
   - name: web-server
     type: ssh-agent
-    host: web.example.com
+    host: web-01.internal
     user: monitor
     metrics: [cpu, memory, disk, network]
 
-  - name: api-status
+  - name: api-gateway
     type: http-api
-    url: https://api.example.com/health
+    url: https://api.internal/health
     interval: 10s
 
   - name: database
@@ -203,7 +256,7 @@ plugins:
 
   - name: signups
     type: business-api
-    url: https://internal.example.com/metrics/signups
+    url: https://metrics.internal/signups
     interval: 300s
 
 layout:
@@ -212,20 +265,35 @@ layout:
         - title: Web Server
           source: web-server
           chart: sparkline
+          height: 3
         - title: API Health
-          source: api-status
+          source: api-gateway
           chart: gauge
+          height: 3
     - panels:
         - title: Database
           source: database
           chart: time-series
-        - title: Signups
+          height: 5
+        - title: Daily Signups
           source: signups
           chart: bar
+          height: 5
 
 theme:
   name: dark
 
 settings:
   refresh_interval: 30s
+  log_level: info
+```
+
+## Validation
+
+Config is validated on startup. Errors are printed to stderr with line numbers. The dashboard will not start with invalid config.
+
+Check config without running:
+
+```bash
+openclaw-dash --config-check
 ```

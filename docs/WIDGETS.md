@@ -1,12 +1,10 @@
-# Widgets Reference
+# Widgets
 
-Every panel type in openclaw-dash, with examples and configuration.
+All panel types in openclaw-dash: what they show, when to use them, and how to configure them.
 
-## Panel Types
+## Sparkline
 
-### Sparkline
-
-Mini time-series chart in a single line. Best for quick health overviews.
+A mini time-series in a single line. Best for quick health checks.
 
 ```yaml
 - title: CPU Usage
@@ -15,9 +13,14 @@ Mini time-series chart in a single line. Best for quick health overviews.
   height: 3
 ```
 
-Shows: current value, trend, min/max over window.
+Shows:
+- Current value
+- Sparkline trend
+- Min/max over the window
 
-### Time-Series
+Use for: CPU, memory, request rate - anything where the trend matters more than the history.
+
+## Time-Series
 
 Full chart with axes. Best for latency, throughput, and trend analysis.
 
@@ -29,11 +32,20 @@ Full chart with axes. Best for latency, throughput, and trend analysis.
   time_range: 1h
 ```
 
-Shows: line chart with time axis, value axis, legend.
+Shows:
+- Line chart with time axis
+- Value axis with labels
+- Legend for multiple series
 
-### Gauge
+Use for: Response times, throughput, queue depth - metrics where history and patterns matter.
 
-Single value with threshold coloring. Best for utilization, health scores.
+Options:
+- `time_range` - Display window (default: 1h)
+- `y_axis` - Which metric field to plot
+
+## Gauge
+
+Single value with threshold coloring. Best for utilization and health scores.
 
 ```yaml
 - title: Memory Usage
@@ -45,14 +57,23 @@ Single value with threshold coloring. Best for utilization, health scores.
     error: 90
 ```
 
-Shows: current value, threshold zones (green/yellow/red).
+Shows:
+- Current value
+- Visual threshold zones (green/yellow/red)
+- Percentage or absolute value
 
-### Bar
+Use for: Disk usage, memory utilization, health scores - anything with clear good/bad ranges.
 
-Comparative values. Best for categorical data, resource allocation.
+Options:
+- `thresholds.warning` - Yellow zone start
+- `thresholds.error` - Red zone start
+
+## Bar
+
+Comparative values. Best for categorical data.
 
 ```yaml
-- title: Disk Usage by Mount
+- title: Disk by Mount
   source: web-server
   chart: bar
   height: 3
@@ -60,34 +81,53 @@ Comparative values. Best for categorical data, resource allocation.
   group_by: mount
 ```
 
-Shows: horizontal bars with labels and values.
+Shows:
+- Horizontal bars
+- Labels and values
+- Sorted by value (descending)
 
-### Table
+Use for: Disk usage by filesystem, memory by process, request count by endpoint.
 
-Structured data. Best for lists, inventories, detailed status.
+Options:
+- `metric` - Which metric to display
+- `group_by` - Field to group by
+
+## Table
+
+Structured data. Best for lists and detailed status.
 
 ```yaml
-- title: Active Connections
+- title: Connections
   source: database
   chart: table
   height: 5
   columns:
-    - name: source
-      label: Source IP
+    - name: source_ip
+      label: Source
     - name: count
-      label: Connections
+      label: Count
     - name: state
       label: State
 ```
 
-Shows: formatted table with headers and alignment.
+Shows:
+- Formatted table with headers
+- Aligned columns
+- Scrollable if content overflows
 
-### Heatmap
+Use for: Active connections, recent errors, process lists - any structured data.
 
-Density visualization. Best for request patterns, usage over time.
+Options:
+- `columns` - List of column definitions
+- `columns[].name` - Metric field name
+- `columns[].label` - Display header
+
+## Heatmap
+
+Density visualization. Best for patterns over time.
 
 ```yaml
-- title: Request Distribution
+- title: Request Heatmap
   source: api-gateway
   chart: heatmap
   height: 5
@@ -95,50 +135,78 @@ Density visualization. Best for request patterns, usage over time.
   bucket: 1h
 ```
 
-Shows: color-coded grid (hour vs. day) with density intensity.
+Shows:
+- Color-coded grid
+- Hours on one axis, days on the other
+- Intensity = request count/latency
 
-## Widget Configuration
+Use for: Traffic patterns, error spikes, usage distribution.
 
-All widgets support these common options:
+Options:
+- `time_range` - Total window
+- `bucket` - Size of each cell (1h, 30m, etc.)
+
+## Common Options
+
+All widgets support:
 
 ```yaml
-- title: Panel Title        # Required
-  source: plugin-name       # Required: which plugin feeds this
-  chart: sparkline          # Required: panel type
+- title: Panel Title        # Required - shown in header
+  source: plugin-name       # Required - which plugin feeds this
+  chart: sparkline          # Required - widget type
   height: 3                 # Lines of terminal height
   enabled: true             # Can disable without removing
-  refresh: 30s              # Override global refresh interval
+  refresh: 30s              # Override global refresh
 ```
 
-## Layout Structure
+## Layout
 
-Panels are organized in rows:
+Panels organize in rows:
 
 ```yaml
 layout:
   rows:
     - panels:
-        - title: Panel 1
+        - title: Panel A
           source: plugin-a
           chart: sparkline
-        - title: Panel 2
+        - title: Panel B
           source: plugin-b
           chart: gauge
     - panels:
-        - title: Panel 3
+        - title: Panel C
           source: plugin-c
           chart: time-series
 ```
 
-Rows stack vertically. Panels within a row share horizontal space equally.
+- Rows stack vertically
+- Panels in a row share horizontal space equally
+- Each panel gets a border and title header
+- Collapsed panels show only the title bar
 
 ## Color Scheme
 
-Widget colors come from the active theme. Threshold zones:
+Colors come from the active theme. Threshold zones:
 
-| Zone | Color | Usage |
-|------|-------|-------|
-| Normal | Green/Blue | Within expected range |
+| Zone | Default | Meaning |
+|------|---------|---------|
+| Normal | Green | Within expected range |
 | Warning | Yellow/Amber | Approaching threshold |
 | Error | Red | Exceeds threshold |
 | Neutral | Gray | No data / inactive |
+
+In the `phosphor` theme:
+- Normal: amber (#ff9500)
+- Warning: bright amber (#ffb000)
+- Error: red-orange (#ff4400)
+
+## Choosing Widgets
+
+| If you want to show... | Use |
+|------------------------|-----|
+| "Is it healthy right now?" | sparkline |
+| "What happened over the last hour?" | time-series |
+| "How full is it?" | gauge |
+| "Which is biggest?" | bar |
+| "What are the details?" | table |
+| "When do spikes happen?" | heatmap |

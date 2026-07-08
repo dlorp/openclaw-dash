@@ -1,8 +1,8 @@
-# Development Guide
+# Development
 
-How to contribute to openclaw-dash: writing plugins, running tests, and following project conventions.
+How to write plugins, run tests, and contribute to openclaw-dash.
 
-## Getting Started
+## Setup
 
 ```bash
 git clone https://github.com/dlorp/openclaw-dash.git
@@ -11,26 +11,31 @@ pip install -e ".[dev]"
 pytest
 ```
 
+The `[dev]` extra installs: pytest, pytest-cov, ruff, mypy.
+
 ## Writing a Plugin
 
-Plugins are the core extensibility mechanism. Any Python class that implements the plugin interface becomes a data source.
+Plugins are the extension mechanism. Any class implementing the plugin interface becomes a data source.
 
-### Plugin Interface
+### The Interface
 
 ```python
 from openclaw_dash.plugins import DataSourcePlugin, Metric
 
 class MyPlugin(DataSourcePlugin):
-    """Example plugin that collects custom metrics."""
+    """Example plugin collecting custom metrics."""
 
     def acquire(self) -> dict:
         """Fetch raw data from your source."""
-        # Call API, SSH, read file, whatever
-        response = requests.get("https://api.example.com/metrics")
+        response = requests.get(
+            "https://api.example.com/metrics",
+            timeout=5
+        )
+        response.raise_for_status()
         return response.json()
 
     def parse(self, raw: dict) -> list[Metric]:
-        """Convert raw data to structured metrics."""
+        """Convert to structured metrics."""
         return [
             Metric(
                 name="requests_per_second",
@@ -40,16 +45,20 @@ class MyPlugin(DataSourcePlugin):
             ),
             Metric(
                 name="error_rate",
-                value=raw["errors"],
+                value=raw["error_pct"],
                 unit="%",
                 timestamp=time.time(),
             ),
         ]
+
+    def push(self, metrics: list[Metric]) -> None:
+        """Send to collector. Base class handles this."""
+        super().push(metrics)
 ```
 
-### Plugin Registration
+### Registration
 
-Drop your plugin in `src/openclaw_dash/plugins/` and register it:
+Add your plugin to the registry:
 
 ```python
 # src/openclaw_dash/plugins/__init__.py
@@ -60,13 +69,13 @@ PLUGIN_REGISTRY = {
     "http-api": HTTPAPIPlugin,
     "db-health": DBHealthPlugin,
     "business-api": BusinessAPIPlugin,
-    "my-plugin": MyPlugin,  # Add yours here
+    "my-plugin": MyPlugin,  # Add here
 }
 ```
 
-### Plugin Config
+### Configuration
 
-Plugins receive their config section from `config.yaml`:
+Plugins receive their config section from YAML:
 
 ```yaml
 plugins:
@@ -83,22 +92,27 @@ Access in your plugin:
 class MyPlugin(DataSourcePlugin):
     def __init__(self, config: dict):
         self.api_url = config["api_url"]
-        self.api_key = os.environ.get(config.get("api_key_env", ""), "")
+        self.api_key = os.environ.get(
+            config.get("api_key_env", ""), ""
+        )
 ```
 
 ### Error Handling
 
-Plugins should handle errors gracefully. The collector will retry on failure:
+Handle errors gracefully. Return empty data on failure; the collector retries:
 
 ```python
 def acquire(self) -> dict:
     try:
-        response = requests.get(self.api_url, timeout=5)
+        response = requests.get(
+            self.api_url,
+            timeout=5
+        )
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        logger.warning(f"Plugin {self.name} acquire failed: {e}")
-        return {}  # Return empty, collector handles retry
+        logger.warning(f"Plugin {self.name} failed: {e}")
+        return {}
 ```
 
 ## Running Tests
@@ -110,31 +124,75 @@ pytest
 # With coverage
 pytest --cov=openclaw_dash
 
-# Specific test file
+# Specific file
 pytest tests/test_collectors.py
 
-# Verbose output
+# Verbose
 pytest -v
+
+# Fail fast
+pytest -x
 ```
 
-## Project Conventions
+## Code Conventions
 
-- **Linting**: Ruff (not Black/flake8)
-- **Type hints**: Required for new code
-- **Docstrings**: Required for public functions
-- **Tests**: Required for new plugins and features
-- **Commits**: Descriptive messages, no AI attribution
+- **Linting:** Ruff (configured in pyproject.toml)
+- **Types:** Required for new code
+- **Docstrings:** Required for public functions
+- **Tests:** Required for new plugins
+
+Run checks:
+
+```bash
+ruff check src/
+ruff format --check src/
+mypy src/openclaw_dash
+```
+
+## Adding a Widget
+
+1. Create `src/openclaw_dash/widgets/my_widget.py`
+2. Implement the widget interface (see existing widgets)
+3. Register in `src/openclaw_dash/widgets/__init__.py`
+4. Add chart type to layout parser
+5. Write tests
+
+Widget interface:
+
+```python
+from textual.widgets import Static
+
+class MyWidget(Static):
+    """Custom panel type."""
+
+    def __init__(self, config: dict, collector: Collector):
+        self.config = config
+        self.collector = collector
+        super().__init__()
+
+    def on_mount(self):
+        """Subscribe to collector updates."""
+        self.collector.subscribe(self.update)
+
+    def update(self, metrics: list[Metric]):
+        """Render new data."""
+        self.update(self.render(metrics))
+
+    def render(self, metrics: list[Metric]) -> RenderableType:
+        """Return Rich renderable."""
+        return Panel("Hello")
+```
 
 ## Directory Structure
 
 ```
 src/openclaw_dash/
-├── plugins/           # Data source plugins (add yours here)
+├── plugins/           # Data source plugins
 ├── collectors/        # Metric collectors
 ├── widgets/           # UI widgets
 ├── tools/             # Standalone utilities
 ├── services/          # External service clients
-├── metrics/           # Metric definitions
+├── metrics/           # Metric type definitions
 ├── security/          # Security audit tools
 ├── app.py             # Main TUI application
 ├── cli.py             # CLI entry point
@@ -142,17 +200,25 @@ src/openclaw_dash/
 └── themes.py          # Theme definitions
 ```
 
-## Adding a Widget Type
+## Why These Choices
 
-1. Create `src/openclaw_dash/widgets/my_widget.py`
-2. Implement the widget interface (see existing widgets for reference)
-3. Register in `src/openclaw_dash/widgets/__init__.py`
-4. Add chart type to layout config parser
-5. Write tests
+**Textual for TUI**
+Modern, maintained, good terminal support. Reactive system fits the dashboard model.
 
-## Architecture Decisions
+**Three-method plugin interface**
+Small surface area. Easy to implement. Separates fetching, parsing, and pushing concerns.
 
-- **Textual for TUI**: Modern, well-maintained, good terminal support
-- **Plugin interface**: Three functions (acquire/parse/push) keep plugins simple
-- **YAML config**: Human-readable, no code changes for common customizations
-- **Textual reactive system**: Real-time updates without page refreshes
+**YAML configuration**
+Human-readable. No code changes for common customizations.
+
+**No external dependencies for core**
+Keep the dashboard lightweight. Optional dependencies for specific plugins only.
+
+## Submitting Changes
+
+1. Fork and branch
+2. Write tests for new features
+3. Run the test suite
+4. Submit PR with clear description
+
+Issues and feature requests welcome. Plugin ideas especially welcome - if you need a data source, others probably do too.

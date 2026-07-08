@@ -1,123 +1,139 @@
-# Architecture Overview
+# Architecture
 
-openclaw-dash is a plugin-based monitoring cockpit. The architecture separates data acquisition (plugins), processing (collectors), and presentation (widgets).
+openclaw-dash separates data acquisition (plugins), collection (buffers), and presentation (widgets). The TUI layer never talks directly to data sources.
 
-## High-Level Design
+## Overview
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                        TUI Application                          │
-│                         (app.py)                                │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    Textual Framework                      │  │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │  │
-│  │  │   Widgets   │ │   Themes    │ │   Commands  │        │  │
-│  │  │ (widgets/)  │ │ (themes.py) │ │(commands.py)│        │  │
-│  │  └──────┬──────┘ └─────────────┘ └─────────────┘        │  │
-│  │         │                                                │  │
-│  │         ▼                                                │  │
-│  │  ┌─────────────────────────────────────────────────────┐ │  │
-│  │  │                   Collectors                         │ │  │
-│  │  │  system.py | api.py | database.py | custom.py | ... │ │  │
-│  │  └──────────────────────────┬──────────────────────────┘ │  │
-│  └─────────────────────────────┼────────────────────────────┘  │
-│                                │                                │
-└────────────────────────────────┼────────────────────────────────┘
-                                 │
-                                 ▼
-┌────────────────────────────────────────────────────────────────┐
-│                      Plugin Engine                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │
-│  │   SSH    │ │  HTTP    │ │ Database │ │  Custom  │         │
-│  │  Agent   │ │   API    │ │  Health  │ │   API    │         │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘         │
-└────────────────────────────────────────────────────────────────┘
+                    Data Flow
+    ┌─────────────────────────────────────────────────────┐
+    │                                                      │
+    │   ┌──────────┐     ┌──────────┐     ┌──────────┐   │
+    │   │  Plugin  │────▶│ Collector│────▶│  Widget  │   │
+    │   │ (source) │     │ (buffer) │     │ (render) │   │
+    │   └──────────┘     └──────────┘     └──────────┘   │
+    │        │                │                │         │
+    │   acquire()        batch/poll        textual      │
+    │   parse()          reactive          render()      │
+    │   push()                                            │
+    │                                                      │
+    └─────────────────────────────────────────────────────┘
 ```
 
-## Core Components
+## Components
 
-### 1. CLI Entry Point (`cli.py`)
+### CLI (`cli.py`)
+
+Entry point. Handles arguments, config loading, dispatches to TUI or command modes.
 
 ```bash
 openclaw-dash              # Launch TUI
-openclaw-dash --status     # Quick text status
-openclaw-dash --json       # JSON output
-openclaw-dash --demo       # Demo mode with mock data
+openclaw-dash --status     # Text output
+openclaw-dash --json       # JSON for piping
+openclaw-dash --demo       # Mock data mode
 ```
 
-### 2. Main Application (`app.py`)
+### Main App (`app.py`)
 
-The Textual `App` subclass that orchestrates the TUI:
-- **Compose**: Builds the widget tree from config
-- **Key bindings**: Keyboard shortcuts for navigation
-- **Refresh loop**: Periodic updates from all plugins
-- **Responsive layout**: Adapts to terminal size
+Textual `App` subclass. Orchestrates the widget tree, handles keyboard input, manages the refresh loop.
 
-### 3. Plugin Engine
+Key responsibilities:
+- Compose widget tree from config
+- Bind keyboard shortcuts
+- Coordinate periodic updates
+- Adapt layout to terminal resize
 
-The core differentiator. Plugins implement three functions:
+### Plugin Engine
+
+Plugins implement three methods:
 
 ```python
 class DataSourcePlugin:
     def acquire(self) -> RawData:
-        """Fetch raw data from the source."""
+        """Fetch from source."""
         pass
 
     def parse(self, raw: RawData) -> list[Metric]:
-        """Convert raw data to structured metrics."""
+        """Normalize to structured metrics."""
         pass
 
     def push(self, metrics: list[Metric]) -> None:
-        """Send metrics to the dashboard core."""
+        """Send to collector."""
         pass
 ```
 
-Any service that can implement these three functions becomes a plugin. The engine handles scheduling, error recovery, and metric normalization.
+Any source that implements these becomes a plugin. The engine handles scheduling, error recovery, and metric normalization.
 
-### 4. Collectors
+Built-in types:
+- `ssh-agent` - System metrics over SSH
+- `http-api` - Poll HTTP endpoints
+- `db-health` - Database connection status
+- `business-api` - Custom internal APIs
 
-Collectors sit between plugins and widgets. They:
+### Collectors
+
+Sit between plugins and widgets:
 - Poll plugins at configured intervals
 - Buffer and batch metrics
 - Handle connection failures gracefully
-- Expose metrics via Textual reactive system to the frontend
+- Expose metrics via Textual reactive system
 
-### 5. Widgets
+### Widgets
 
-Widgets render metrics in the terminal. Supported types:
-- **Sparkline**: Mini time-series in a single line
-- **Time-series**: Full chart with axes
-- **Gauge**: Single-value with threshold coloring
-- **Bar**: Comparative values
-- **Table**: Structured data
-- **Heatmap**: Density visualization
+Render metrics in the terminal:
 
-### 6. Themes
+| Type | Lines | Use Case |
+|------|-------|----------|
+| sparkline | 1-3 | Quick health overview |
+| time-series | 5+ | Trends, latency over time |
+| gauge | 3 | Single values with thresholds |
+| bar | 3-5 | Category comparison |
+| table | variable | Structured data |
+| heatmap | 5+ | Density patterns |
 
-Terminal color themes. Built-in: dark, light, phosphor (amber CRT aesthetic). Custom themes via YAML.
+### Themes
 
-## Data Flow
+Terminal color schemes. Built-in:
+- `dark` - Default
+- `light` - For bright terminals
+- `phosphor` - Amber CRT aesthetic
+
+Custom themes via YAML color definitions.
+
+## Data Flow Detail
 
 ```
-Plugin.acquire() → RawData
-       │
-       ▼
-Plugin.parse() → list[Metric]
-       │
-       ▼
-Collector.push() → Buffer
-       │
-       ▼
-Textual reactive system → Widget.render() → Terminal Display
+1. Plugin.acquire()
+   └── Fetch raw data (SSH, HTTP, DB query)
+
+2. Plugin.parse()
+   └── Convert to list[Metric]
+       Metric: name, value, unit, timestamp, tags
+
+3. Collector.push()
+   └── Buffer in circular buffer
+       Configurable retention (default: 100 points)
+
+4. Textual reactive update
+   └── Widget observes buffer change
+
+5. Widget.render()
+   └── Rich renderables to terminal
 ```
 
-## Design Principles
+## Design Decisions
 
-1. **Plugin-first**: Everything is a plugin. Adding a new data source means writing a plugin, not modifying core code.
-2. **Terminal-native**: No browser required. Runs in any terminal with 256-color support.
-3. **Lightweight**: Minimal dependencies. Single binary deployment possible.
-4. **Real-time**: Textual reactive system for live updates. No page refreshes.
-5. **Configurable**: YAML for layout, plugins, and themes. No code changes for common customizations.
+**Plugin-first architecture**
+Everything is a plugin. Adding a source means writing a plugin, not modifying core code. The interface is intentionally small: three methods.
+
+**Terminal-native**
+No browser. No WebSocket. No SSE. Runs in any terminal with 256-color support. Uses Textual's reactive system for live updates.
+
+**Lightweight**
+Minimal dependencies. No database required. Single-binary deployment possible with PyInstaller or similar.
+
+**YAML configuration**
+No code changes for common customizations. Plugin definitions, layout, and themes all in one file.
 
 ## Directory Structure
 
@@ -127,15 +143,48 @@ openclaw-dash/
 │   ├── app.py              # Main TUI application
 │   ├── cli.py              # CLI entry point
 │   ├── commands.py         # Keyboard commands
-│   ├── config.py           # Configuration loader
-│   ├── themes.py           # Theme definitions
-│   ├── collectors/         # Data collectors
+│   ├── config.py           # YAML config loader
+│   ├── themes.py           # Color schemes
+│   ├── collectors/         # Metric collectors
 │   ├── widgets/            # UI widgets
 │   ├── tools/              # Standalone utilities
-│   ├── services/           # Gateway client, services
-│   ├── metrics/            # Metric definitions
+│   ├── services/           # External service clients
+│   ├── metrics/            # Metric type definitions
 │   └── security/           # Security audit tools
 ├── docs/                   # Documentation
 ├── tests/                  # Test suite
 └── scripts/                # Build/deploy scripts
 ```
+
+## Plugin Lifecycle
+
+```
+Config Load
+     │
+     ▼
+Plugin Registry
+     │
+     ▼
+Plugin Init (with config dict)
+     │
+     ▼
+Collector Thread Spawn
+     │
+     ├───▶ acquire() ──▶ parse() ──▶ push()
+     │         │
+     │         └── Retry on failure (exponential backoff)
+     │
+     └───▶ Buffer Update
+                │
+                ▼
+           Textual Reactive
+                │
+                ▼
+           Widget Re-render
+```
+
+## Error Handling
+
+Plugins are expected to handle their own errors. Return empty data on failure; the collector will retry with backoff. Widgets show last-known-good data with a staleness indicator.
+
+Connection failures, timeouts, and parse errors are logged at `WARNING` level. The dashboard stays up even if individual plugins fail.

@@ -1,40 +1,48 @@
 # Integrated Tools
 
-openclaw-dash bundles standalone utilities that complement the monitoring cockpit. These tools work independently or as part of the dashboard.
+openclaw-dash bundles standalone utilities for repository management, security auditing, and development workflows.
 
-See [TOOLS.md](TOOLS.md) for comprehensive reference.
+See [TOOLS.md](TOOLS.md) for full reference.
 
-## Quick Overview
+## Overview
 
 | Tool | Purpose |
 |------|---------|
-| `audit` | Security audit for repos and configs |
-| `changelog` | Generate CHANGELOG.md from git history |
-| `dep-shepherd` | Dependency management and vulnerability scanning |
-| `pr-create` | Create pull requests with structured descriptions |
-| `pr-describe` | Analyze and describe existing pull requests |
-| `pr-tracker` | Track PR status across repositories |
-| `repo-scanner` | Scan repos for TODOs, issues, and patterns |
-| `smart-todo-scanner` | Intelligent TODO detection with context |
-| `status` | Quick status report for repos |
+| `audit` | Security vulnerability scanning |
+| `changelog` | Generate changelogs from git |
+| `dep-shepherd` | Dependency management |
+| `pr-create` | Create structured pull requests |
+| `pr-describe` | Analyze pull requests |
+| `pr-tracker` | Track PRs across repositories |
+| `repo-scanner` | Scan for TODOs and patterns |
+| `smart-todo` | Intelligent TODO detection |
+| `status` | Quick repository status |
 | `version-bump` | Semantic version management |
 
 ## Usage
 
-All tools are available as CLI commands:
+As CLI commands:
 
 ```bash
 openclaw-dash audit /path/to/repo
 openclaw-dash changelog /path/to/repo
-openclaw-dash pr-describe 42
+openclaw-dash status /path/to/repo
 ```
 
-Or as standalone scripts:
+As standalone modules:
 
 ```bash
 python -m openclaw_dash.tools.audit /path/to/repo
+python -m openclaw_dash.tools.changelog /path/to/repo
 ```
 
-## Writing Tool Plugins
+## Plugin Architecture
 
-Tools follow the same plugin architecture as data sources. See [DEVELOPMENT.md](DEVELOPMENT.md) for the plugin interface.
+Tools follow the same plugin pattern as data sources. Each tool is a module in `src/openclaw_dash/tools/` that implements a standard interface.
+
+This means:
+- Tools are independently testable
+- New tools can be added without modifying core code
+- Tools work standalone or integrate with the dashboard
+
+See [Development Guide](DEVELOPMENT.md) for writing tool plugins.

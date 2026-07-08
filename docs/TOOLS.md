@@ -1,25 +1,25 @@
-# Tools Reference
+# Tools
 
-openclaw-dash bundles standalone utilities for repo management, security auditing, and PR workflows. These tools work independently of the dashboard.
+Standalone utilities bundled with openclaw-dash. These work independently of the dashboard TUI.
 
 ## Quick Reference
 
-| Tool | Command | Description |
-|------|---------|-------------|
-| Audit | `openclaw-dash audit` | Security vulnerability scanning |
-| Changelog | `openclaw-dash changelog` | Generate changelogs from git |
-| Dep Shepherd | `openclaw-dash dep-shepherd` | Dependency management |
-| PR Create | `openclaw-dash pr-create` | Structured PR creation |
-| PR Describe | `openclaw-dash pr-describe` | PR analysis and description |
-| PR Tracker | `openclaw-dash pr-tracker` | Cross-repo PR tracking |
-| Repo Scanner | `openclaw-dash repo-scanner` | Pattern and TODO scanning |
-| Smart TODO | `openclaw-dash smart-todo-scanner` | Contextual TODO detection |
-| Status | `openclaw-dash status` | Quick repo status report |
-| Version Bump | `openclaw-dash version-bump` | Semantic version management |
+| Command | Purpose |
+|---------|---------|
+| `openclaw-dash audit` | Security vulnerability scanning |
+| `openclaw-dash changelog` | Generate changelog from git |
+| `openclaw-dash dep-shepherd` | Dependency management |
+| `openclaw-dash pr-create` | Create structured pull requests |
+| `openclaw-dash pr-describe` | Analyze existing pull requests |
+| `openclaw-dash pr-tracker` | Track PRs across repos |
+| `openclaw-dash repo-scanner` | Scan for TODOs and patterns |
+| `openclaw-dash smart-todo` | Intelligent TODO detection |
+| `openclaw-dash status` | Quick repo status |
+| `openclaw-dash version-bump` | Semantic version management |
 
 ## audit
 
-Security vulnerability scanning for Python projects.
+Security scanning for Python projects.
 
 ```bash
 openclaw-dash audit /path/to/repo
@@ -28,14 +28,14 @@ openclaw-dash audit /path/to/repo --fix
 ```
 
 Checks:
-- Dependency vulnerabilities (pip-audit integration)
+- Dependency vulnerabilities (pip-audit)
 - Hardcoded secrets and API keys
-- Dangerous code patterns (eval, exec, shell=True)
+- Dangerous patterns (eval, exec, shell=True)
 - Insecure configurations (debug mode, CORS, TLS)
 
 ## changelog
 
-Generate CHANGELOG.md from git commit history.
+Generate CHANGELOG.md from git history.
 
 ```bash
 openclaw-dash changelog /path/to/repo
@@ -43,11 +43,17 @@ openclaw-dash changelog /path/to/repo --since v1.0.0
 openclaw-dash changelog /path/to/repo --format conventional
 ```
 
-Parses conventional commits (feat:, fix:, chore:, etc.) and groups by type.
+Parses conventional commits:
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `chore:` - Maintenance
+- `docs:` - Documentation
+- `refactor:` - Code changes
+- `test:` - Test changes
 
 ## dep-shepherd
 
-Dependency management and vulnerability scanning.
+Dependency management.
 
 ```bash
 openclaw-dash dep-shepherd check /path/to/repo
@@ -57,8 +63,8 @@ openclaw-dash dep-shepherd audit /path/to/repo
 
 Features:
 - Outdated dependency detection
-- Vulnerability scanning via pip-audit
-- Automated update suggestions
+- Vulnerability scanning
+- Update suggestions
 - Lock file generation
 
 ## pr-create
@@ -66,16 +72,16 @@ Features:
 Create pull requests with structured descriptions.
 
 ```bash
-openclaw-dash pr-create --title "feat: add plugin system" --body "Description here"
+openclaw-dash pr-create --title "feat: add plugin"
 openclaw-dash pr-create --from feature-branch --to main
 openclaw-dash pr-create --reviewers user1,user2
 ```
 
-Auto-generates PR description from commit history when `--body` is omitted.
+Auto-generates description from commits when `--body` is omitted.
 
 ## pr-describe
 
-Analyze and describe existing pull requests.
+Analyze existing pull requests.
 
 ```bash
 openclaw-dash pr-describe 42
@@ -84,7 +90,7 @@ openclaw-dash pr-describe 42 --summary-only
 ```
 
 Outputs:
-- Change summary (files changed, lines added/removed)
+- Change summary (files, lines)
 - Risk assessment
 - Testing recommendations
 - Review checklist
@@ -99,42 +105,41 @@ openclaw-dash pr-tracker --status open
 openclaw-dash pr-tracker --assigned me
 ```
 
-Aggregates PR status from multiple repos into a single view.
+Aggregates status into a single view. Requires gh CLI.
 
 ## repo-scanner
 
-Scan repositories for TODOs, issues, and code patterns.
+Scan repositories for patterns.
 
 ```bash
 openclaw-dash repo-scanner /path/to/repo
-openclaw-dash repo-scanner /path/to/repo --pattern "FIXME|HACK|XXX"
-openclaw-dash repo-scanner /path/to/repo --skip-docstrings
+openclaw-dash repo-scanner /path/to/repo --pattern "FIXME|HACK"
+openclaw-dash repo-scanner /path/to/repo --json
 ```
 
-Features:
-- TODO/FIXME/HACK detection
-- Custom pattern matching
-- Docstring filtering
-- Structured output (JSON, markdown)
+Finds:
+- TODO, FIXME, HACK, XXX comments
+- Custom patterns
+- Can filter docstrings
 
 ## smart-todo-scanner
 
-Intelligent TODO detection with context analysis.
+Intelligent TODO detection with context.
 
 ```bash
-openclaw-dash smart-todo-scanner /path/to/repo
-openclaw-dash smart-todo-scanner /path/to/repo --priority high
+openclaw-dash smart-todo /path/to/repo
+openclaw-dash smart-todo /path/to/repo --priority high
 ```
 
-Goes beyond simple pattern matching:
+Goes beyond pattern matching:
 - Analyzes surrounding code context
-- Assigns priority based on impact
+- Assigns priority by impact
 - Groups related TODOs
 - Suggests resolution approaches
 
 ## status
 
-Quick status report for repositories.
+Quick repository status.
 
 ```bash
 openclaw-dash status /path/to/repo
@@ -143,7 +148,7 @@ openclaw-dash status /path/to/repo --brief
 ```
 
 Shows:
-- Branch status (ahead/behind remote)
+- Branch status (ahead/behind)
 - Uncommitted changes
 - Recent activity
 - CI status (if gh CLI available)
@@ -159,4 +164,34 @@ openclaw-dash version-bump major    # 1.0.0 -> 2.0.0
 openclaw-dash version-bump 1.2.3    # Explicit version
 ```
 
-Updates version in pyproject.toml, setup.py, and __init__.py.
+Updates version in:
+- pyproject.toml
+- setup.py
+- __init__.py
+
+## Standalone Usage
+
+All tools can run as standalone modules:
+
+```bash
+python -m openclaw_dash.tools.audit /path/to/repo
+python -m openclaw_dash.tools.changelog /path/to/repo
+```
+
+This is useful for CI/CD pipelines or when you want specific tool functionality without the full dashboard.
+
+## Configuration
+
+Tools read optional config from `~/.config/openclaw-dash/tools.yaml`:
+
+```yaml
+tools:
+  audit:
+    severity_threshold: medium
+    ignore_patterns:
+      - "test_*"
+  
+  changelog:
+    default_format: conventional
+    include_authors: true
+```

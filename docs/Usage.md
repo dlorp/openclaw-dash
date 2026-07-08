@@ -1,91 +1,150 @@
 # Usage
 
-## Basic Commands
+Command reference and keyboard shortcuts for openclaw-dash.
+
+## Commands
 
 ```bash
-openclaw-dash              # Launch TUI
-openclaw-dash --status     # Text status report
-openclaw-dash --json       # JSON output
-openclaw-dash --demo       # Demo mode with mock data
-openclaw-dash --config /path/to/config.yaml  # Custom config
+openclaw-dash                      # Launch TUI
+openclaw-dash --status             # Text status report
+openclaw-dash --json               # JSON output
+openclaw-dash --demo               # Demo mode with mock data
+openclaw-dash --config /path       # Custom config file
+openclaw-dash --list-plugins       # Show installed plugins
+openclaw-dash --version            # Version info
+openclaw-dash --config-check       # Validate config without running
 ```
 
 ## Keyboard Shortcuts
 
+### Navigation
+
 | Key | Action |
 |-----|--------|
 | `q` | Quit |
-| `r` | Refresh all panels |
-| `t` | Cycle theme (dark/light/phosphor) |
-| `h` / `?` | Help panel |
-| `Ctrl+P` | Command palette |
-| `f` | Jump mode (focus any panel) |
+| `h` or `?` | Toggle help panel |
 | `Tab` | Next panel |
 | `Shift+Tab` | Previous panel |
+| `f` | Jump mode (focus any panel by letter) |
+
+### Actions
+
+| Key | Action |
+|-----|--------|
+| `r` | Refresh all panels |
+| `t` | Cycle theme (dark / light / phosphor) |
 | `Enter` | Toggle panel collapse |
-| `Ctrl+[` / `Ctrl+]` | Collapse/expand all panels |
+| `Ctrl+[` | Collapse all panels |
+| `Ctrl+]` | Expand all panels |
 | `x` | Toggle resources panel |
-| `s` | Settings screen |
+| `s` | Open settings screen |
+| `Ctrl+P` | Command palette |
 
-## Jump Mode
+### Jump Mode
 
-Press `f` to enter jump mode. Each panel gets a letter label. Press the letter to focus that panel. Press `Escape` to exit jump mode.
+Press `f` to enter jump mode. Each panel gets a letter label:
+
+```
+[a] Server Health    [b] API Latency
+[c] Database         [d] Signups
+```
+
+Press the letter to focus that panel. Press `Escape` to exit jump mode.
 
 ## Command Palette
 
-Press `Ctrl+P` to open the command palette. Type to filter commands. Press `Enter` to execute.
+Press `Ctrl+P` to open the command palette. Type to filter:
 
-Available commands:
 - Refresh all panels
 - Cycle theme
 - Toggle panel collapse
 - Export metrics to JSON
 - Show/hide specific panels
 
+Press `Enter` to execute, `Escape` to close.
+
 ## Themes
 
 Three built-in themes:
-- **dark**: Default dark theme
-- **light**: Light background
-- **phosphor**: Amber CRT aesthetic
 
-Cycle themes with `t` or set in config:
+| Theme | Description |
+|-------|-------------|
+| `dark` | Default dark colors |
+| `light` | Light background |
+| `phosphor` | Amber CRT aesthetic |
+
+Cycle with `t` or set in config:
 
 ```yaml
 theme:
   name: phosphor
 ```
 
+The phosphor theme uses amber (#ff9500) on near-black to mimic old CRT monitors.
+
 ## Settings Screen
 
-Press `s` to open the settings screen. Tabbed sections:
-- **General**: Refresh interval, log level
-- **Tools**: Plugin enable/disable
-- **Appearance**: Theme, font size
-- **Keybinds**: Custom keyboard shortcuts
-- **Models**: Available data sources
+Press `s` to open settings. Tab through sections:
+
+- **General** - Refresh interval, log level
+- **Plugins** - Enable/disable individual plugins
+- **Appearance** - Theme selection
+- **Keybinds** - View shortcuts (custom keybinds planned)
+- **Data Sources** - View configured sources
+
+Changes in the settings screen are temporary. Edit `config.yaml` for permanent changes.
 
 ## Status Mode
 
 For scripting and automation:
 
 ```bash
-# Quick status check
+# Quick status
 openclaw-dash --status
 
-# JSON output for processing
+# JSON for processing
 openclaw-dash --json | jq '.plugins[] | select(.status == "error")'
 
-# Check specific plugin
+# Specific plugin only
 openclaw-dash --status --plugin web-server
+```
+
+JSON output schema:
+
+```json
+{
+  "timestamp": 1234567890,
+  "plugins": [
+    {
+      "name": "web-server",
+      "status": "ok",
+      "metrics": [
+        {"name": "cpu", "value": 45.2, "unit": "%"}
+      ]
+    }
+  ]
+}
 ```
 
 ## Demo Mode
 
-Run without any plugins configured:
+Run without any configuration:
 
 ```bash
 openclaw-dash --demo
 ```
 
-Uses mock data to showcase the dashboard layout and features.
+Uses mock data to demonstrate widgets and layout. Useful for:
+- Testing terminal compatibility
+- Exploring widget types
+- Screenshots and demos
+
+## Tips
+
+**Small terminals:** Collapse panels with `Enter` or `Ctrl+[` to focus on specific metrics.
+
+**Many plugins:** Use jump mode (`f`) to quickly navigate between panels.
+
+**Scripting:** Combine `--json` with `jq` for custom alerting or logging.
+
+**Performance:** If the UI feels sluggish, increase `refresh_interval` in config or disable unused plugins.
