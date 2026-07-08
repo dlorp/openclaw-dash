@@ -67,7 +67,7 @@ def export_json(data: dict[str, Any]) -> str:
 def export_markdown(data: dict[str, Any]) -> str:
     """Export data as Markdown document."""
     lines = [
-        "# OpenClaw Dashboard Export",
+        "# Hermes Dashboard Export",
         "",
         f"**Generated:** {data.get('timestamp', 'unknown')}",
         "",

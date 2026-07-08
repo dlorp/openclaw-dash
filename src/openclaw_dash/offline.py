@@ -1,7 +1,7 @@
 """Gateway-independent features and error handling.
 
-The OpenClaw gateway runs LOCALLY on the user's machine. After initial setup
-(pip install, git clone), everything should work without network access.
+The Hermes Agent gateway runs LOCALLY on the user's machine. After initial
+setup (pip install, hermes setup), everything should work without network access.
 
 This module identifies which features require the gateway to be running
 vs which work independently. If the gateway is unavailable, it's likely
@@ -20,27 +20,27 @@ _skip_gateway: bool = False
 # (These are local operations that don't need gateway connectivity)
 GATEWAY_INDEPENDENT_FEATURES = {
     "security": {
-        "command": "openclaw-dash security",
+        "command": "hermes-dash security",
         "description": "Security audit (scans config files, dependencies)",
     },
     "auto_backup": {
-        "command": "openclaw-dash auto backup",
+        "command": "hermes-dash auto backup",
         "description": "Verify backup status",
     },
     "auto_cleanup": {
-        "command": "openclaw-dash auto cleanup",
+        "command": "hermes-dash auto cleanup",
         "description": "Clean up stale git branches",
     },
     "auto_deps": {
-        "command": "openclaw-dash auto deps",
+        "command": "hermes-dash auto deps",
         "description": "Check/update dependencies",
     },
     "metrics_github": {
-        "command": "openclaw-dash metrics --github",
+        "command": "hermes-dash metrics --github",
         "description": "GitHub metrics (uses local git)",
     },
     "export": {
-        "command": "openclaw-dash export",
+        "command": "hermes-dash export",
         "description": "Export dashboard data",
     },
     "pr_tracker": {
@@ -114,7 +114,7 @@ def is_offline_mode() -> bool:
     Returns:
         True if gateway checks should be skipped.
     """
-    return _skip_gateway or os.environ.get("OPENCLAW_DASH_SKIP_GATEWAY", "").lower() in (
+    return _skip_gateway or os.environ.get("HERMES_DASH_SKIP_GATEWAY", "").lower() in (
         "1",
         "true",
         "yes",
@@ -137,7 +137,7 @@ def get_offline_hint(feature: str, error: str | None = None) -> GatewayErrorHint
     """Get a hint for when a gateway-dependent feature fails.
 
     The gateway runs locally, so failures are typically either:
-    - Gateway not started yet (run `openclaw gateway start`)
+    - Gateway not started yet (run `hermes setup gateway`)
     - A bug (unexpected timeout or hang)
 
     Args:
@@ -155,11 +155,11 @@ def get_offline_hint(feature: str, error: str | None = None) -> GatewayErrorHint
             feature_name=feature,
             error_message="Command timed out unexpectedly — this may be a bug",
             independent_commands=[
-                "Run `openclaw gateway status` to check gateway health",
-                "Run `openclaw gateway restart` if the gateway is stuck",
-                "Report at: https://github.com/dlorp/openclaw-dash/issues",
+                "Run `hermes status` to check gateway health",
+                "Run `hermes gateway restart` if the gateway is stuck",
+                "Report at: https://github.com/dlorp/hermes-dash/issues",
             ],
-            primary_suggestion="openclaw gateway status",
+            primary_suggestion="hermes status",
         )
 
     # Build the error message for non-timeout errors
@@ -169,7 +169,7 @@ def get_offline_hint(feature: str, error: str | None = None) -> GatewayErrorHint
         error_msg = "Gateway not responding"
 
     commands = [
-        "Run `openclaw gateway start` to start the gateway",
+        "Run `hermes setup gateway` to configure the gateway",
         f"`{GATEWAY_INDEPENDENT_FEATURES['security']['command']}` - "
         f"{GATEWAY_INDEPENDENT_FEATURES['security']['description']}",
     ]
@@ -178,7 +178,7 @@ def get_offline_hint(feature: str, error: str | None = None) -> GatewayErrorHint
         feature_name=feature,
         error_message=error_msg,
         independent_commands=commands,
-        primary_suggestion="openclaw gateway start",
+        primary_suggestion="hermes setup gateway",
     )
 
 
@@ -190,7 +190,7 @@ def format_gateway_error(
     """Format a gateway error message.
 
     The gateway runs locally, so errors are typically either:
-    - Gateway not started yet (run `openclaw gateway start`)
+    - Gateway not started yet (run `hermes setup gateway`)
     - A bug (unexpected timeout or hang)
 
     Args:
@@ -223,12 +223,12 @@ def format_gateway_error(
             lines.append(f"  ({context})")
 
         lines.append("")
-        lines.append("Try: `openclaw gateway start`")
+        lines.append("Try: `hermes setup gateway`")
 
         if verbose:
             lines.append("")
             lines.append("If this persists, please report the issue:")
-            lines.append("  https://github.com/dlorp/openclaw-dash/issues")
+            lines.append("  https://github.com/dlorp/hermes-dash/issues")
 
     return "\n".join(lines)
 
@@ -245,7 +245,7 @@ def format_gateway_error_short(error: str | None = None) -> str:
     # Check if this is a timeout (potential bug since gateway is local)
     if error and ("timeout" in error.lower() or "timed out" in error.lower()):
         return "Command timed out unexpectedly — this may be a bug"
-    return "Gateway not responding. Try: `openclaw gateway start`"
+    return "Gateway not responding. Try: `hermes setup gateway`"
 
 
 def should_skip_feature(feature: str) -> bool:
@@ -287,17 +287,17 @@ def check_gateway_available() -> tuple[bool, str | None]:
 
     try:
         result = subprocess.run(
-            ["openclaw", "gateway", "status"],
+            ["hermes", "status"],
             capture_output=True,
             text=True,
             timeout=5,
         )
         if result.returncode == 0 and "running" in result.stdout.lower():
             return True, None
-        return False, "Gateway not running. Start with: openclaw gateway start"
+        return False, "Gateway not running. Run: hermes setup gateway"
     except subprocess.TimeoutExpired:
         return False, "Gateway check timed out (this may be a bug)"
     except FileNotFoundError:
-        return False, "OpenClaw CLI not found. Install with: pip install openclaw"
+        return False, "Hermes CLI not found. Install with: hermes setup"
     except Exception as e:
         return False, f"Unexpected error: {e}"

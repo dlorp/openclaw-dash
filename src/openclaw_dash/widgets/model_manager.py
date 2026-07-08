@@ -1,10 +1,10 @@
 """Model Manager Panel widget for managing LLMs.
 
 This module provides widgets for monitoring and managing language models
-discovered via the OpenClaw gateway, with tier-based grouping,
+discovered via the Hermes Agent gateway, with tier-based grouping,
 status indicators, and model details.
 
-Wired to OpenClaw gateway API for model switching via GatewayClient.patch_config().
+Wired to Hermes Agent gateway API for model switching via GatewayClient.patch_config().
 """
 
 from __future__ import annotations

@@ -32,17 +32,17 @@ def quick_gateway_check() -> bool:
         return False
 
 
-GATEWAY_UNREACHABLE_MSG = """WARNING  OpenClaw gateway not responding at localhost:18789
+GATEWAY_UNREACHABLE_MSG = """WARNING  Hermes Agent gateway not responding at localhost:18789
 
     Try:
-      • openclaw gateway status    (check if running)
-      • openclaw gateway start     (start the gateway)
+      • hermes status              (check if running)
+      • hermes setup gateway       (configure the gateway)
       • openclaw-dash --skip-gateway  (run without gateway)
 """
 
 GATEWAY_TIMEOUT_MSG = (
     "Command timed out unexpectedly. The gateway should respond instantly. "
-    "This may be a bug — please report it at https://github.com/dlorp/openclaw-dash/issues"
+    "This may be a bug — please report it at https://github.com/dlorp/hermes-dash/issues"
 )
 
 GATEWAY_TIMEOUT_SECONDS = 10
@@ -373,7 +373,7 @@ def run_security_audit(deep: bool = False, fix: bool = False, json_output: bool 
     console = Console()
 
     if not json_output:
-        console.print("[bold] Running OpenClaw Security Audit...[/]\n")
+        console.print("[bold] Running Hermes Agent Security Audit...[/]\n")
 
     # Run config/secrets audit
     audit = SecurityAudit()
@@ -578,7 +578,7 @@ def cmd_auto(args: argparse.Namespace) -> int:
     elif args.auto_command == "backup":
         return cmd_auto_backup(args)
     else:
-        print("Usage: openclaw-dash auto {merge|cleanup|deps|backup}")
+        print("Usage: hermes-dash auto {merge|cleanup|deps|backup}")
         return 1
 
 
@@ -837,7 +837,7 @@ def print_collectors_text(health: dict[str, Any], stats: dict[str, Any]) -> None
 
 
 def cmd_models(args: argparse.Namespace) -> int:
-    """List models available via OpenClaw gateway.
+    """List models available via Hermes Agent gateway.
 
     Discovers models through gateway-based model discovery.
     Supports filtering by running status, tier, and provider.
@@ -928,7 +928,7 @@ def print_models_text(
 
     if not models:
         console.print(
-            "\n[dim]No models found. Check gateway connection with: openclaw gateway status[/]"
+            "\\n[dim]No models found. Check gateway connection with: hermes status[/]"
         )
         return
 
@@ -979,8 +979,8 @@ def main() -> int:
         Exit code (0 for success, non-zero for failure).
     """
     parser = argparse.ArgumentParser(
-        prog="openclaw-dash",
-        description="TUI dashboard for OpenClaw gateway monitoring",
+        prog="hermes-dash",
+        description="TUI dashboard for Hermes Agent monitoring",
     )
     parser.add_argument("--status", action="store_true", help="Quick text status")
     parser.add_argument("--json", action="store_true", help="JSON output")
@@ -1002,6 +1002,11 @@ def main() -> int:
         "--skip-gateway",
         action="store_true",
         help="Skip gateway-dependent features (for testing or during gateway restart)",
+    )
+    parser.add_argument(
+        "--bare",
+        action="store_true",
+        help="Bare mode: stripped-down config for new HDLS deployments (only core collectors)",
     )
 
     # Subparsers for commands
@@ -1088,7 +1093,7 @@ def main() -> int:
     # Models subcommand
     models_parser = subparsers.add_parser(
         "models",
-        help="List models available via OpenClaw gateway",
+        help="List models available via Hermes Agent",
     )
     models_parser.add_argument(
         "--json",
@@ -1125,6 +1130,12 @@ def main() -> int:
         from openclaw_dash.offline import enable_offline_mode
 
         enable_offline_mode()
+
+    # Bare mode: minimal HDLS-only config
+    if args.bare:
+        from openclaw_dash.config import set_bare_mode
+
+        set_bare_mode()
 
     # Handle auto command
     if args.command == "auto":

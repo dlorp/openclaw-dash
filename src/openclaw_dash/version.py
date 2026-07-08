@@ -1,4 +1,4 @@
-"""Version and build information for openclaw-dash."""
+"""Version and build information for hermes-dash (openclaw-dash)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from functools import lru_cache
 
 __all__ = ["VERSION", "get_version_info", "VersionInfo"]
 
-VERSION = "0.1.0"
+VERSION = "0.5.0"
 
 
 @dataclass
@@ -36,7 +36,7 @@ class VersionInfo:
 
     def format_full(self) -> str:
         """Format as full version string."""
-        parts = [f"openclaw-dash v{self.version}"]
+        parts = [f"hermes-dash v{self.version}"]
         if self.git_commit:
             parts.append(f"({self.short_commit})")
         if self.git_branch and self.git_branch != "main":

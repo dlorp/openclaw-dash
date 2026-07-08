@@ -1,6 +1,6 @@
-"""OpenClaw Gateway API client.
+"""Hermes Agent Gateway API client.
 
-Provides interface for querying OpenClaw gateway at localhost:18789.
+Provides interface for querying Hermes Agent gateway at localhost:18789.
 Uses HTTP for fast health checks and falls back to CLI for detailed data.
 """
 
@@ -24,7 +24,7 @@ ALLOWED_CONFIG_KEYS = frozenset(
 
 @dataclass
 class GatewayConfig:
-    """OpenClaw gateway configuration."""
+    """Hermes Agent gateway configuration."""
 
     url: str = DEFAULT_GATEWAY_URL
     timeout: float = 10.0
@@ -43,7 +43,7 @@ class GatewayConnectionError(GatewayError):
 
 
 class GatewayClient:
-    """Client for OpenClaw gateway API.
+    """Client for Hermes Agent gateway API.
 
     Provides methods for checking gateway status, listing sessions,
     and managing configuration. Uses HTTP API where available and
@@ -239,7 +239,7 @@ class GatewayClient:
     def get_sessions(self) -> list[dict[str, Any]]:
         """Get active sessions via CLI.
 
-        Uses `openclaw status` to retrieve session information since
+        Uses `hermes status` to retrieve session information since
         the HTTP API doesn't expose session details.
 
         Returns:
@@ -256,13 +256,13 @@ class GatewayClient:
         """
         try:
             result = subprocess.run(
-                ["openclaw", "status"],
+                ["hermes", "status"],
                 capture_output=True,
                 text=True,
                 timeout=15,
             )
             if result.returncode != 0:
-                raise GatewayError(f"openclaw status failed: {result.stderr}")
+                raise GatewayError(f"hermes status failed: {result.stderr}")
 
             # Parse session data from CLI output
             from openclaw_dash.collectors.openclaw_cli import (
@@ -275,16 +275,16 @@ class GatewayClient:
             return data.get("sessions", [])
 
         except subprocess.TimeoutExpired:
-            raise GatewayError("openclaw status timed out")
+            raise GatewayError("hermes status timed out")
         except FileNotFoundError:
-            raise GatewayError("openclaw CLI not found - is OpenClaw installed?")
+            raise GatewayError("hermes CLI not found - is Hermes Agent installed?")
         except Exception as e:
             raise GatewayError(f"Failed to get sessions: {e}")
 
     def get_config(self) -> dict[str, Any]:
         """Get current gateway configuration via CLI.
 
-        Uses `openclaw config` to retrieve current configuration.
+        Uses `hermes config` to retrieve current configuration.
 
         Returns:
             Dictionary containing gateway configuration.
@@ -294,7 +294,7 @@ class GatewayClient:
         """
         try:
             result = subprocess.run(
-                ["openclaw", "config", "--json"],
+                ["hermes", "config", "--json"],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -305,7 +305,7 @@ class GatewayClient:
                 return json.loads(result.stdout)
             # Fall back to non-JSON output parsing
             result = subprocess.run(
-                ["openclaw", "config"],
+                ["hermes", "config"],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -322,18 +322,18 @@ class GatewayClient:
                             value = parts[1].strip()
                             config[key] = value
                 return config
-            raise GatewayError(f"openclaw config failed: {result.stderr}")
+            raise GatewayError(f"hermes config failed: {result.stderr}")
         except subprocess.TimeoutExpired:
-            raise GatewayError("openclaw config timed out")
+            raise GatewayError("hermes config timed out")
         except FileNotFoundError:
-            raise GatewayError("openclaw CLI not found")
+            raise GatewayError("hermes CLI not found")
         except Exception as e:
             raise GatewayError(f"Failed to get config: {e}")
 
     def patch_config(self, patch: dict[str, Any]) -> bool:
         """Patch gateway configuration via CLI.
 
-        Uses `openclaw config set` to update configuration values.
+        Uses `hermes config set` to update configuration values.
 
         Args:
             patch: Dictionary of configuration keys and values to set.
@@ -355,7 +355,7 @@ class GatewayClient:
         for key, value in patch.items():
             try:
                 result = subprocess.run(
-                    ["openclaw", "config", "set", key, str(value)],
+                    ["hermes", "config", "set", key, str(value)],
                     capture_output=True,
                     text=True,
                     timeout=10,
@@ -372,7 +372,7 @@ class GatewayClient:
         return True
 
     def get_available_models(self) -> list[str]:
-        """Get models available in OpenClaw config.
+        """Get models available in Hermes Agent config.
 
         Retrieves the list of configured models from the gateway.
 

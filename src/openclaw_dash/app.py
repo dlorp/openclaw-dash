@@ -11,6 +11,7 @@ from textual.widgets import Collapsible, DataTable, Footer, Header, Static
 from openclaw_dash.collectors import activity, cron, gateway, repos, sessions
 from openclaw_dash.commands import DashboardCommands
 from openclaw_dash.config import Config, load_config
+from openclaw_dash.config import is_bare_mode
 from openclaw_dash.screens import SettingsScreen
 from openclaw_dash.themes import THEMES, next_theme
 from openclaw_dash.version import get_version_info
@@ -256,7 +257,7 @@ class StatusFooter(Static):
 
 
 class DashboardApp(App):
-    """Lorp's system dashboard."""
+    """Hermes Agent dashboard."""
 
     COMMANDS = {DashboardCommands}
 
@@ -314,7 +315,7 @@ class DashboardApp(App):
 
     CSS = """
     /* =================================================================
-       OpenClaw Dashboard - Brand Styling
+       Hermes Dashboard - Brand Styling
        -----------------------------------------------------------------
        Brand Colors:
          #636764 Granite Gray    - borders, muted elements
@@ -435,7 +436,12 @@ class DashboardApp(App):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield ConnectionWarningBanner(id="connection-warning")
-        yield MetricBoxesBar(id="metric-boxes")
+
+        # In bare mode, skip non-HDLS panels (alerts, metrics, security, logs, resources, channels)
+        _bare = is_bare_mode()
+
+        if not _bare:
+            yield MetricBoxesBar(id="metric-boxes")
 
         with Container(id="gateway-panel", classes="panel"):
             with Collapsible(
@@ -457,15 +463,16 @@ class DashboardApp(App):
             ):
                 yield CurrentTaskPanel()
 
-        with Container(id="alerts-panel", classes="panel"):
-            with Collapsible(
-                title=" Alerts",
-                collapsed=False,
-                collapsed_symbol="▸",
-                expanded_symbol="▾",
-                id="alerts-panel-collapsible",
-            ):
-                yield AlertsPanel()
+        if not _bare:
+            with Container(id="alerts-panel", classes="panel"):
+                with Collapsible(
+                    title=" Alerts",
+                    collapsed=False,
+                    collapsed_symbol="\u25b8",
+                    expanded_symbol="\u25be",
+                    id="alerts-panel-collapsible",
+                ):
+                    yield AlertsPanel()
 
         with Container(id="repos-panel", classes="panel"):
             with Collapsible(
@@ -517,55 +524,60 @@ class DashboardApp(App):
             ):
                 yield AgentsPanel()
 
-        with Container(id="channels-panel", classes="panel"):
-            with Collapsible(
-                title="Channels",
-                collapsed=False,
-                collapsed_symbol="▸",
-                expanded_symbol="▾",
-                id="channels-panel-collapsible",
-            ):
-                yield ChannelsPanel()
+        if not _bare:
+            with Container(id="channels-panel", classes="panel"):
+                with Collapsible(
+                    title="Channels",
+                    collapsed=False,
+                    collapsed_symbol="\u25b8",
+                    expanded_symbol="\u25be",
+                    id="channels-panel-collapsible",
+                ):
+                    yield ChannelsPanel()
 
-        with Container(id="metrics-panel", classes="panel"):
-            with Collapsible(
-                title=" Metrics",
-                collapsed=False,
-                collapsed_symbol="▸",
-                expanded_symbol="▾",
-                id="metrics-panel-collapsible",
-            ):
-                yield MetricsPanel()
+        if not _bare:
+            with Container(id="metrics-panel", classes="panel"):
+                with Collapsible(
+                    title=" Metrics",
+                    collapsed=False,
+                    collapsed_symbol="\u25b8",
+                    expanded_symbol="\u25be",
+                    id="metrics-panel-collapsible",
+                ):
+                    yield MetricsPanel()
 
-        with Container(id="security-panel", classes="panel"):
-            with Collapsible(
-                title=" Security",
-                collapsed=False,
-                collapsed_symbol="▸",
-                expanded_symbol="▾",
-                id="security-panel-collapsible",
-            ):
-                yield SecurityPanel()
+        if not _bare:
+            with Container(id="security-panel", classes="panel"):
+                with Collapsible(
+                    title=" Security",
+                    collapsed=False,
+                    collapsed_symbol="\u25b8",
+                    expanded_symbol="\u25be",
+                    id="security-panel-collapsible",
+                ):
+                    yield SecurityPanel()
 
-        with Container(id="logs-panel", classes="panel"):
-            with Collapsible(
-                title="Logs Logs",
-                collapsed=False,
-                collapsed_symbol="▸",
-                expanded_symbol="▾",
-                id="logs-panel-collapsible",
-            ):
-                yield LogsPanel(n_lines=12)
+        if not _bare:
+            with Container(id="logs-panel", classes="panel"):
+                with Collapsible(
+                    title="Logs Logs",
+                    collapsed=False,
+                    collapsed_symbol="\u25b8",
+                    expanded_symbol="\u25be",
+                    id="logs-panel-collapsible",
+                ):
+                    yield LogsPanel(n_lines=12)
 
-        with Container(id="resources-panel", classes="panel"):
-            with Collapsible(
-                title=" Resources",
-                collapsed=False,
-                collapsed_symbol="▸",
-                expanded_symbol="▾",
-                id="resources-panel-collapsible",
-            ):
-                yield ResourcesPanel()
+        if not _bare:
+            with Container(id="resources-panel", classes="panel"):
+                with Collapsible(
+                    title=" Resources",
+                    collapsed=False,
+                    collapsed_symbol="\u25b8",
+                    expanded_symbol="\u25be",
+                    id="resources-panel-collapsible",
+                ):
+                    yield ResourcesPanel()
 
         yield InputPane(id="input-pane")
         yield Footer()
@@ -575,11 +587,14 @@ class DashboardApp(App):
         # Load user config
         self.config = load_config()
 
-        # Start metric sinks (MQTT, etc.)
-        from openclaw_dash.sinks.manager import SinkManager
+        # Start metric sinks (MQTT, etc.) — skip in bare mode
+        if not is_bare_mode():
+            from openclaw_dash.sinks.manager import SinkManager
 
-        self._sink_manager = SinkManager()
-        self._sink_manager.start_all()
+            self._sink_manager = SinkManager()
+            self._sink_manager.start_all()
+        else:
+            self._sink_manager = None
 
         # Register custom themes
         for theme in THEMES:
@@ -671,12 +686,12 @@ class DashboardApp(App):
                 pass
 
         # Push metrics to configured sinks (MQTT, etc.)
-        if hasattr(self, "_sink_manager"):
+        if hasattr(self, "_sink_manager") and self._sink_manager is not None:
             self._sink_manager.refresh_and_publish()
 
     def on_unmount(self) -> None:
         """Stop sink manager on app exit."""
-        if hasattr(self, "_sink_manager"):
+        if hasattr(self, "_sink_manager") and self._sink_manager is not None:
             self._sink_manager.stop_all()
 
     def action_cycle_theme(self) -> None:

@@ -1,7 +1,7 @@
-"""Token and API cost tracking for OpenClaw sessions.
+"""Token and API cost tracking for Hermes Agent sessions.
 
 This module tracks the actual API costs based on real input/output token counts
-from the OpenClaw gateway, rather than estimating token splits.
+from the Hermes Agent gateway, rather than estimating token splits.
 
 FUTURE ENHANCEMENT - Local Model Energy Tracking:
 --------------------------------------------------
@@ -223,7 +223,7 @@ class CostTracker:
     def get_sessions_data(self) -> list[dict[str, Any]]:
         """Fetch current session data from the sessions collector.
 
-        Uses the sessions collector which parses openclaw status output.
+        Uses the sessions collector which parses hermes status output.
         Returns sessions with token usage data including input/output split.
         """
         from openclaw_dash.collectors import sessions

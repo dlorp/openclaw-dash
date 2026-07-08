@@ -1,4 +1,4 @@
-"""Metrics collectors for OpenClaw monitoring."""
+"""Metrics collectors for Hermes Agent monitoring."""
 
 from openclaw_dash.metrics.costs import MAX_TOKENS, CostTracker, _validate_token_count
 from openclaw_dash.metrics.github import GitHubMetrics

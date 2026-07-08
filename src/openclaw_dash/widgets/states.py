@@ -249,7 +249,7 @@ def render_disconnected(
         # Suggest starting the gateway for gateway-related disconnections
         if show_gateway_hint and service_name.lower() in ("gateway", "service"):
             lines.append("")
-            lines.append("[dim]Try: openclaw gateway start[/]")
+            lines.append("[dim]Try: hermes setup gateway[/]")
 
     return "\n".join(lines)
 

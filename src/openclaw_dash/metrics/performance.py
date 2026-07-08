@@ -58,7 +58,7 @@ class PerformanceMetrics:
         """Find gateway log files to parse."""
         logs: list[Path] = []
 
-        # Check ~/.openclaw/logs/
+        # Check ~/.hermes/logs/
         if GATEWAY_LOG_DIR.exists():
             logs.extend(GATEWAY_LOG_DIR.glob("gateway*.log"))
 

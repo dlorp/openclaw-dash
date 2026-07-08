@@ -1,6 +1,6 @@
 """Sessions table panel widget using DataTable for tabular display.
 
-This module provides a DataTable-based widget for viewing active OpenClaw
+This module provides a DataTable-based widget for viewing active Hermes Agent
 sessions with clickable rows for taking actions on sessions.
 """
 

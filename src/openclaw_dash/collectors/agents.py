@@ -1,6 +1,6 @@
 """Sub-agents collector for the dashboard.
 
-Collects information about active sub-agents spawned by OpenClaw,
+Collects information about active sub-agents spawned by Hermes Agent,
 including their status, running time, and task summaries.
 """
 
@@ -212,7 +212,7 @@ def collect() -> dict[str, Any]:
 
 
 def _fetch_sessions() -> tuple[list[dict[str, Any]], str | None]:
-    """Fetch sessions from OpenClaw CLI with error tracking and caching.
+    """Fetch sessions from Hermes CLI with error tracking and caching.
 
     Returns:
         Tuple of (sessions_list, error_message_or_none).
@@ -255,7 +255,7 @@ def _fetch_sessions() -> tuple[list[dict[str, Any]], str | None]:
         return [], err
 
     except FileNotFoundError:
-        err = "OpenClaw CLI not found"
+        err = "Hermes CLI not found"
         _sessions_cache = {"data": [], "error": err, "timestamp": now}
         return [], err
 

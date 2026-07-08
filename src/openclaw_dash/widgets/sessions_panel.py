@@ -1,6 +1,6 @@
 """Sessions panel widget with DataTable display and phosphor amber aesthetic.
 
-Lists active sessions from OpenClaw gateway with token-based highlighting.
+Lists active sessions from Hermes Agent gateway with token-based highlighting.
 """
 
 from __future__ import annotations

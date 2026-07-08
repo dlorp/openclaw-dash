@@ -1,4 +1,4 @@
-"""Gateway status widget for displaying OpenClaw gateway health and metrics.
+"""Gateway status widget for displaying Hermes Agent gateway health and metrics.
 
 This module provides a Textual widget that displays real-time gateway
 status including connection health, uptime, active sessions, model in use,
@@ -141,7 +141,7 @@ def _calculate_total_tokens(sessions_data: dict[str, Any]) -> int:
 
 
 class GatewayStatusWidget(Static):
-    """Widget displaying OpenClaw gateway status with phosphor amber aesthetic.
+    """Widget displaying Hermes Agent gateway status with phosphor amber aesthetic.
 
     Polls the gateway API and displays:
     - Connection status (connected/disconnected)

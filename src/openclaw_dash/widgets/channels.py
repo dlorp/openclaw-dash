@@ -1,7 +1,7 @@
 """Channels panel widget for displaying messaging channel status.
 
 This module provides widgets for monitoring the connection status of
-messaging channels (Discord, Telegram, WhatsApp, etc.) in the OpenClaw system.
+messaging channels (Discord, Telegram, WhatsApp, etc.) in the Hermes Agent system.
 """
 
 from __future__ import annotations

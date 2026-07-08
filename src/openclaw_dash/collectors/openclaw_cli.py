@@ -1,4 +1,4 @@
-"""Parser for `openclaw status` CLI output."""
+"""Parser for `hermes status` CLI output."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Any
 
 @dataclass
 class SessionInfo:
-    """Parsed session from openclaw status."""
+    """Parsed session from hermes status."""
 
     key: str
     kind: str
@@ -25,7 +25,7 @@ class SessionInfo:
 
 @dataclass
 class OpenClawStatus:
-    """Parsed openclaw status output."""
+    """Parsed hermes status output."""
 
     # Gateway info
     gateway_mode: str = "unknown"  # local, remote, etc.
@@ -101,7 +101,7 @@ def parse_heartbeat(text: str) -> str:
 
 
 def parse_status_output(output: str) -> OpenClawStatus:
-    """Parse the full openclaw status output."""
+    """Parse the full hermes status output."""
     status = OpenClawStatus(raw_output=output)
 
     lines = output.split("\n")
@@ -222,7 +222,7 @@ _CACHE_TTL: float = 10.0  # Cache for 10 seconds
 
 
 def get_openclaw_status(timeout: int = 5) -> OpenClawStatus | None:
-    """Run openclaw status and parse the output.
+    """Run hermes status and parse the output.
 
     Results are cached for 10 seconds to avoid repeated slow CLI calls.
     """

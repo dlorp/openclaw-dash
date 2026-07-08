@@ -103,7 +103,7 @@ class SecurityAudit:
     """Main security audit class."""
 
     def __init__(self, openclaw_dir: Path | str | None = None):
-        self.openclaw_dir = Path(openclaw_dir) if openclaw_dir else Path.home() / ".openclaw"
+        self.openclaw_dir = Path(openclaw_dir) if openclaw_dir else Path.home() / ".hermes"
         self.result = AuditResult()
 
     def _should_skip(self, path: Path) -> bool:
@@ -171,13 +171,13 @@ class SecurityAudit:
                         break  # One finding per line
 
     def check_permissions(self) -> None:
-        """Check file permissions on OpenClaw directory."""
+        """Check file permissions on Hermes config directory."""
         if not self.openclaw_dir.exists():
             self.result.findings.append(
                 Finding(
                     severity="info",
                     category="permissions",
-                    title="OpenClaw directory not found",
+                    title="Hermes config directory not found",
                     description=f"{self.openclaw_dir} does not exist",
                     path=str(self.openclaw_dir),
                 )
@@ -203,7 +203,7 @@ class SecurityAudit:
                     Finding(
                         severity=severity,
                         category="permissions",
-                        title="OpenClaw directory too permissive",
+                        title="Hermes config directory too permissive",
                         description=f"Directory has mode {oct(dir_mode)} (should be 0700)",
                         path=str(self.openclaw_dir),
                         recommendation=f"chmod 700 {self.openclaw_dir}",
@@ -438,15 +438,15 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(
         prog="audit",
-        description="Security audit tool for OpenClaw configurations and workspaces.",
-        epilog="Example: python -m openclaw_dash.security.audit --path ~/.openclaw --deep",
+        description="Security audit tool for Hermes Agent configurations and workspaces.",
+        epilog="Example: python -m openclaw_dash.security.audit --path ~/.hermes --deep",
     )
     parser.add_argument(
         "--path",
         "-p",
         type=Path,
         default=None,
-        help="Path to directory to audit (default: ~/.openclaw)",
+        help="Path to directory to audit (default: ~/.hermes)",
     )
     parser.add_argument(
         "--json",

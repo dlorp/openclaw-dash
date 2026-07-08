@@ -52,7 +52,7 @@ def collect() -> dict[str, Any]:
             error = "Command timed out"
             error_type = "timeout"
         elif state == CollectorState.UNAVAILABLE:
-            error = "OpenClaw CLI not found"
+            error = "Hermes CLI not found"
             error_type = "cli_not_found"
         elif error:
             error_type = "command_failed"

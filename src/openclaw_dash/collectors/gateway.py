@@ -145,9 +145,9 @@ def _collect_gateway_impl() -> dict[str, Any]:
         # Add helpful hints based on failure count
         # The gateway runs locally, so failures are unexpected
         if _connection_failures >= 5:
-            error_data["_hint"] = "Run 'openclaw gateway start' to start the local gateway"
+            error_data["_hint"] = "Run 'hermes setup gateway' to configure the local gateway"
         elif _connection_failures >= 3:
-            error_data["_hint"] = "Gateway may need to be started: openclaw gateway start"
+            error_data["_hint"] = "Gateway may need to be configured: hermes setup gateway"
         else:
             error_data["_hint"] = "Checking local gateway connection..."
 

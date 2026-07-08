@@ -1,7 +1,7 @@
 """Agents panel widget for displaying active sub-agents and their status.
 
 This module provides widgets for monitoring and displaying the status of
-sub-agents running within the OpenClaw system, including their activity state,
+sub-agents running within the Hermes Agent system, including their activity state,
 context usage, and task summaries.
 """
 

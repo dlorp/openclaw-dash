@@ -21,6 +21,9 @@ except ImportError:
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "openclaw-dash"
 DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / "config.toml"
 
+# Global bare mode flag -- when set, only HDLS-used collectors are active
+_bare_mode: bool = False
+
 
 @dataclass
 class Config:
@@ -34,6 +37,7 @@ class Config:
     custom_model_paths: list[str] = field(
         default_factory=list
     )  # Custom directories to scan for models
+    bare_mode: bool = False  # When True, only HDLS core collectors active
 
     # File path for this config (not persisted)
     _path: Path = field(default=DEFAULT_CONFIG_PATH, repr=False, compare=False)
@@ -46,6 +50,7 @@ class Config:
             "show_notifications": self.show_notifications,
             "show_resources": self.show_resources,
             "collapsed_panels": self.collapsed_panels,
+            "bare_mode": self.bare_mode,
             "models": {
                 "custom_paths": self.custom_model_paths,
             },
@@ -61,6 +66,7 @@ class Config:
             show_notifications=data.get("show_notifications", True),
             show_resources=data.get("show_resources", True),
             collapsed_panels=data.get("collapsed_panels", []),
+            bare_mode=data.get("bare_mode", False),
             custom_model_paths=models_data.get("custom_paths", []),
             _path=path or DEFAULT_CONFIG_PATH,
         )
@@ -116,3 +122,23 @@ def save_config(config: Config, path: Path | None = None) -> None:
     if path:
         config._path = path
     config.save()
+
+
+def set_bare_mode() -> None:
+    """Enable bare mode globally.
+
+    In bare mode, only HDLS-used collectors are active:
+    gateway, repos, sessions, cron, activity, agents, vault.
+    Sinks, billing, security panel, metrics boxes, channels are disabled.
+    """
+    global _bare_mode
+    _bare_mode = True
+
+
+def is_bare_mode() -> bool:
+    """Check if bare mode is active.
+
+    Returns:
+        True if bare mode is enabled.
+    """
+    return _bare_mode

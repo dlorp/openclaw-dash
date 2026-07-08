@@ -57,10 +57,10 @@ def collect() -> dict[str, Any]:
         "collected_at": datetime.now().isoformat(),
     }
 
-    # Try to read OpenClaw config for channel info
-    config_path = Path.home() / ".openclaw" / "config.yaml"
+    # Try to read Hermes Agent config for channel info
+    config_path = Path.home() / ".hermes" / "config.yaml"
     if not config_path.exists():
-        config_path = Path.home() / ".openclaw" / "config.yml"
+        config_path = Path.home() / ".hermes" / "config.yml"
 
     if config_path.exists():
         config = _parse_yaml_config(config_path)

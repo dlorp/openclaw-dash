@@ -2,7 +2,7 @@
 
 Discovers LLM models from:
 1. Local providers (Ollama, LM Studio, vLLM)
-2. OpenClaw gateway API (remote models)
+2. Hermes Agent gateway API (remote models)
 """
 
 from __future__ import annotations
@@ -296,7 +296,7 @@ class ModelDiscoveryService:
     """Service for discovering and managing LLM models.
 
     Supports both local providers (Ollama, LM Studio, vLLM) and
-    remote models via OpenClaw gateway.
+    remote models via Hermes Agent gateway.
     """
 
     # Tier thresholds (in billions of parameters)
@@ -336,7 +336,7 @@ class ModelDiscoveryService:
 
         Args:
             include_local: Include local providers (Ollama, LM Studio, vLLM)
-            include_gateway: Include OpenClaw gateway models
+            include_gateway: Include Hermes Agent gateway models
 
         Returns:
             DiscoveryResult with all discovered models

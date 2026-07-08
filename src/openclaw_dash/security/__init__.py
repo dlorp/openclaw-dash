@@ -1,4 +1,4 @@
-"""Security audit module for OpenClaw."""
+"""Security audit module for Hermes Agent."""
 
 from openclaw_dash.security.audit import SecurityAudit, run_audit
 from openclaw_dash.security.deps import DependencyScanner

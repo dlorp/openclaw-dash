@@ -7,14 +7,14 @@ core design system variables that panels and widgets use.
 from textual.theme import Theme
 
 # =============================================================================
-# OpenClaw Brand Colors
+# Hermes Brand Colors
 # =============================================================================
 # These are the canonical brand colors used throughout the dashboard.
 # Reference these constants instead of hardcoding hex values.
 
 
 class BrandColors:
-    """OpenClaw brand color palette."""
+    """Hermes brand color palette."""
 
     GRANITE_GRAY = "#636764"  # Borders, muted elements
     DARK_ORANGE = "#FB8B24"  # Warnings, important actions
@@ -36,7 +36,7 @@ ROYAL_BLUE_LIGHT = BrandColors.ROYAL_BLUE_LIGHT
 # =============================================================================
 
 # Phosphor amber - underground garage × demoscene aesthetic
-# This is the signature OpenClaw theme with amber as the star
+# This is the signature Hermes theme with amber as the star
 PHOSPHOR_THEME = Theme(
     name="phosphor",
     primary="#FB8B24",  # Dark Orange - THE AMBER

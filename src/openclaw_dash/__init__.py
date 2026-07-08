@@ -1,4 +1,4 @@
-"""openclaw-dash: TUI dashboard for OpenClaw gateway monitoring."""
+"""hermes-dash (openclaw-dash): TUI dashboard for Hermes Agent monitoring."""
 
 from openclaw_dash.version import VERSION, VersionInfo, get_version_info
 

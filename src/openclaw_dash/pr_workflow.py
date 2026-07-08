@@ -91,7 +91,7 @@ class PRWorkflow:
         return {
             "$schema": SCHEMA_NAME,
             "version": SCHEMA_VERSION,
-            "description": "PR workflow state machine - OpenClaw LLM agent integration",
+            "description": "PR workflow state machine - Hermes Agent LLM integration",
             "active_prs": {},
             "completed_prs": {},
         }

@@ -1,4 +1,4 @@
-"""Input pane widget for sending commands to OpenClaw."""
+"""Input pane widget for sending commands to Hermes Agent."""
 
 from __future__ import annotations
 
@@ -31,11 +31,11 @@ class CommandSent(Message):
 
 
 class InputPane(Static):
-    """Input pane for sending commands/messages to OpenClaw.
+    """Input pane for sending commands/messages to Hermes Agent.
 
     Features:
     - Text input with command history (up/down arrows)
-    - Send to OpenClaw agent API
+    - Send to Hermes Agent API
     - Visual feedback for command status
     """
 
@@ -127,7 +127,7 @@ class InputPane(Static):
         with Horizontal(id="input-container"):
             yield Static("❯ ", id="input-prompt")
             yield Input(
-                placeholder="Send command to OpenClaw...",
+                placeholder="Send command to Hermes Agent...",
                 id="command-input",
             )
             yield Static("", id="input-status")
@@ -170,7 +170,7 @@ class InputPane(Static):
         self._current_input = ""
 
     def _send_command(self, command: str) -> None:
-        """Send a command to OpenClaw."""
+        """Send a command to Hermes Agent."""
         self._set_status("sending", "")
         self.add_class("sending")
         self.remove_class("error", "success")
