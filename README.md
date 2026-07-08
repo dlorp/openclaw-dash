@@ -14,15 +14,7 @@ Most monitoring tools are either heavy (Grafana, Datadog) or too minimal to be u
 
 **The plugin architecture is the differentiator.** You have 10 services. Each exposes metrics differently — SSH for server health, HTTP endpoints for API status, database connections for query performance, custom APIs for business metrics. openclaw-dash plugins normalize them all into one real-time cockpit view.
 
-**Use it for:**
-- Server health (CPU, memory, disk, network)
-- Service status (HTTP endpoints, database connections, API health)
-- Business metrics (registrations, conversions, order flow)
-- Infrastructure monitoring across multiple hosts
-
 ## Quick Start
-
-### From Source
 
 ```bash
 git clone https://github.com/dlorp/openclaw-dash.git
@@ -31,15 +23,9 @@ pip install -e .
 openclaw-dash
 ```
 
-### Demo Mode
+Try the demo without plugins: `openclaw-dash --demo`
 
-No plugins configured? Try the demo:
-
-```bash
-openclaw-dash --demo
-```
-
-### Minimal Config
+## Config
 
 Create `~/.config/openclaw-dash/config.yaml`:
 
@@ -60,99 +46,31 @@ plugins:
     connection: postgresql://localhost:5432/mydb
 ```
 
-## Plugin System
+See [Configuration Guide](docs/CONFIGURATION.md) for all plugin types and layout options.
 
-openclaw-dash uses a plugin-based data source architecture. Any service that can provide standardized data can become a dashboard panel.
+## Docs
 
-**Built-in plugins:**
+- [Installation](docs/INSTALLATION.md) — Docker, from source, pipx
+- [Configuration](docs/CONFIGURATION.md) — Plugins, layout, themes
+- [Usage](docs/Usage.md) — Commands, keyboard shortcuts, settings
+- [Architecture](docs/ARCHITECTURE.md) — Plugin engine, data flow, design
+- [Widgets](docs/WIDGETS.md) — Panel types (sparkline, time-series, gauge, bar, table, heatmap)
+- [Development](docs/DEVELOPMENT.md) — Writing plugins, contributing
+- [Tools](docs/TOOLS.md) — Standalone utilities (audit, changelog, PR tools, repo scanner)
 
-| Plugin | Description |
-|--------|-------------|
-| `ssh-agent` | Collect CPU, memory, disk I/O via SSH |
-| `http-api` | Poll HTTP endpoints for status codes and latency |
-| `db-health` | Check database connections, slow queries, pool usage |
-| `business-api` | Pull custom metrics from internal APIs |
+## Built With
 
-**Write your own:** Implement the data source interface (acquire, parse, push) and drop it in the plugins directory. See [Development Guide](docs/DEVELOPMENT.md) for the plugin interface.
-
-## Architecture
-
-Built with Python 3.10+, [Textual](https://textual.textualize.io/) for the TUI framework, and [Rich](https://rich.readthedocs.io/) for terminal rendering. The plugin engine is pure Python — no external services required.
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│                        TUI Application                          │
-│                    (Textual + Rich)                              │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                   Collectors                              │  │
-│  │  system.py | api.py | database.py | custom.py | ...     │  │
-│  └──────────────────────────┬───────────────────────────────┘  │
-└─────────────────────────────┼──────────────────────────────────┘
-                              │
-                    ┌─────────▼──────────┐
-                    │   Plugin Engine    │
-                    │  (acquire/parse/   │
-                    │      push)         │
-                    └─────────┬──────────┘
-                              │
-            ┌─────────────────┼─────────────────┐
-            │                 │                 │
-       ┌────▼───┐      ┌─────▼────┐      ┌────▼───┐
-       │  SSH   │      │  HTTP    │      │   DB   │
-       │ Agent  │      │   API    │      │ Health │
-       └────────┘      └──────────┘      └────────┘
-```
-
-## Layout Configuration
-
-Panel layout is defined in YAML:
-
-```yaml
-layout:
-  rows:
-    - panels:
-        - title: System Health
-          source: system
-          chart: sparkline
-        - title: API Latency
-          source: api-health
-          chart: time-series
-    - panels:
-        - title: Database
-          source: db
-          chart: gauge
-```
-
-Supported chart types: `sparkline`, `time-series`, `gauge`, `bar`, `table`, `heatmap`.
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `q` | Quit |
-| `r` | Refresh all panels |
-| `t` | Cycle theme (dark/light/phosphor) |
-| `f` | Jump mode (focus any panel) |
-| `Ctrl+P` | Command palette |
-| `s` | Settings |
+Python 3.10+, [Textual](https://textual.textualize.io/) for the TUI, [Rich](https://rich.readthedocs.io/) for terminal rendering. Plugin engine is pure Python.
 
 ## Contributing
 
 ```bash
-git clone https://github.com/dlorp/openclaw-dash.git
-cd openclaw-dash
 pip install -e ".[dev]"
 pytest
 ```
 
-Suggested areas for contribution:
-- New data source plugins (Prometheus, MQTT, home automation)
-- Additional chart types
-- Alert rules and notification channels
-- Dashboard export/import
-
-See [Development Guide](docs/DEVELOPMENT.md) for plugin development.
+New plugins welcome. See [Development Guide](docs/DEVELOPMENT.md).
 
 ## License
 
-PolyForm Noncommercial 1.0.0. See [LICENSE](LICENSE) for details.
+PolyForm Noncommercial 1.0.0. See [LICENSE](LICENSE).
