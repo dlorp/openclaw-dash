@@ -80,7 +80,7 @@ Collectors sit between plugins and widgets. They:
 - Poll plugins at configured intervals
 - Buffer and batch metrics
 - Handle connection failures gracefully
-- Expose metrics via WebSocket/SSE to the frontend
+- Expose metrics via Textual reactive system to the frontend
 
 ### 5. Widgets
 
@@ -108,7 +108,7 @@ Plugin.parse() → list[Metric]
 Collector.push() → Buffer
        │
        ▼
-WebSocket/SSE → Widget.render() → Terminal Display
+Textual reactive system → Widget.render() → Terminal Display
 ```
 
 ## Design Principles
@@ -116,7 +116,7 @@ WebSocket/SSE → Widget.render() → Terminal Display
 1. **Plugin-first**: Everything is a plugin. Adding a new data source means writing a plugin, not modifying core code.
 2. **Terminal-native**: No browser required. Runs in any terminal with 256-color support.
 3. **Lightweight**: Minimal dependencies. Single binary deployment possible.
-4. **Real-time**: WebSocket/SSE for live updates. No page refreshes.
+4. **Real-time**: Textual reactive system for live updates. No page refreshes.
 5. **Configurable**: YAML for layout, plugins, and themes. No code changes for common customizations.
 
 ## Directory Structure

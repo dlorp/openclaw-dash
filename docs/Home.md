@@ -24,7 +24,7 @@ You have 10 services. Each exposes metrics differently — SSH for server health
                     │
           ┌─────────▼──────────┐
           │   Real-Time TUI    │
-          │  (WebSocket/SSE)   │
+          │  (Textual reactive system)   │
           └────────────────────┘
 ```
 

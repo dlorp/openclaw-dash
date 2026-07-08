@@ -155,4 +155,4 @@ src/openclaw_dash/
 - **Textual for TUI**: Modern, well-maintained, good terminal support
 - **Plugin interface**: Three functions (acquire/parse/push) keep plugins simple
 - **YAML config**: Human-readable, no code changes for common customizations
-- **WebSocket/SSE**: Real-time updates without page refreshes
+- **Textual reactive system**: Real-time updates without page refreshes

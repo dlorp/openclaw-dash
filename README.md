@@ -6,11 +6,13 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/dlorp/openclaw-dash/ci.yml?label=CI)](https://github.com/dlorp/openclaw-dash/actions)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](https://github.com/dlorp/openclaw-dash)
 
-A lightweight, customizable, real-time monitoring cockpit for open source projects, personal services, and small business systems. See all your key indicators in one view.
+A lightweight, customizable monitoring cockpit for open source projects, personal services, and small business systems. Plugin-based data sources, real-time terminal display, zero browser required.
 
 ## Why openclaw-dash?
 
-Most monitoring tools are either heavy (Grafana, Datadog) or too minimal to be useful. openclaw-dash sits in the middle: plugin-based data sources, real-time updates, YAML config, and a clean TUI interface that runs in your terminal. No browser required, no logs to grep.
+Most monitoring tools are either heavy (Grafana, Datadog) or too minimal to be useful. openclaw-dash sits in the middle: plugin-based data sources, real-time updates, YAML config, and a clean TUI that runs in your terminal.
+
+**The plugin architecture is the differentiator.** You have 10 services. Each exposes metrics differently — SSH for server health, HTTP endpoints for API status, database connections for query performance, custom APIs for business metrics. openclaw-dash plugins normalize them all into one real-time cockpit view.
 
 **Use it for:**
 - Server health (CPU, memory, disk, network)
@@ -19,14 +21,6 @@ Most monitoring tools are either heavy (Grafana, Datadog) or too minimal to be u
 - Infrastructure monitoring across multiple hosts
 
 ## Quick Start
-
-### Docker
-
-```bash
-git clone https://github.com/dlorp/openclaw-dash.git
-cd openclaw-dash
-docker compose up -d
-```
 
 ### From Source
 
@@ -37,9 +31,17 @@ pip install -e .
 openclaw-dash
 ```
 
+### Demo Mode
+
+No plugins configured? Try the demo:
+
+```bash
+openclaw-dash --demo
+```
+
 ### Minimal Config
 
-Create a `config.yaml`:
+Create `~/.config/openclaw-dash/config.yaml`:
 
 ```yaml
 plugins:
@@ -60,7 +62,7 @@ plugins:
 
 ## Plugin System
 
-openclaw-dash uses a plugin-based data source architecture. Any service that can provide standardized data can become a data source.
+openclaw-dash uses a plugin-based data source architecture. Any service that can provide standardized data can become a dashboard panel.
 
 **Built-in plugins:**
 
@@ -71,15 +73,39 @@ openclaw-dash uses a plugin-based data source architecture. Any service that can
 | `db-health` | Check database connections, slow queries, pool usage |
 | `business-api` | Pull custom metrics from internal APIs |
 
-**Write your own:** Implement the data source interface (acquire, parse, push) and drop it in the plugins directory. No core changes needed.
+**Write your own:** Implement the data source interface (acquire, parse, push) and drop it in the plugins directory. See [Development Guide](docs/DEVELOPMENT.md) for the plugin interface.
 
-## Real-Time Updates
+## Architecture
 
-Data streams to the dashboard via WebSocket or Server-Sent Events. No page refreshes. Each plugin defines its own update frequency. The dashboard renders charts using ECharts or Chart.js, depending on your layout config.
+Built with Python 3.10+, [Textual](https://textual.textualize.io/) for the TUI framework, and [Rich](https://rich.readthedocs.io/) for terminal rendering. The plugin engine is pure Python — no external services required.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                        TUI Application                          │
+│                    (Textual + Rich)                              │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                   Collectors                              │  │
+│  │  system.py | api.py | database.py | custom.py | ...     │  │
+│  └──────────────────────────┬───────────────────────────────┘  │
+└─────────────────────────────┼──────────────────────────────────┘
+                              │
+                    ┌─────────▼──────────┐
+                    │   Plugin Engine    │
+                    │  (acquire/parse/   │
+                    │      push)         │
+                    └─────────┬──────────┘
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                 │                 │
+       ┌────▼───┐      ┌─────▼────┐      ┌────▼───┐
+       │  SSH   │      │  HTTP    │      │   DB   │
+       │ Agent  │      │   API    │      │ Health │
+       └────────┘      └──────────┘      └────────┘
+```
 
 ## Layout Configuration
 
-Panel layout is defined in YAML. Specify which plugins feed which panels, chart types, and refresh intervals:
+Panel layout is defined in YAML:
 
 ```yaml
 layout:
@@ -99,27 +125,16 @@ layout:
 
 Supported chart types: `sparkline`, `time-series`, `gauge`, `bar`, `table`, `heatmap`.
 
-## Architecture
+## Keyboard Shortcuts
 
-```
-┌─────────────┐     WebSocket/SSE     ┌──────────────┐
-│   Frontend  │◄──────────────────────│    Backend    │
-│  (React/    │                       │  (Node.js/   │
-│   Vue.js)   │                       │    Go)       │
-└─────────────┘                       └──────┬───────┘
-                                             │
-                                    ┌────────▼────────┐
-                                    │  Plugin Engine   │
-                                    │  (data sources)  │
-                                    └────────┬────────┘
-                                             │
-                              ┌──────────────┼──────────────┐
-                              │              │              │
-                         ┌────▼───┐    ┌─────▼────┐   ┌────▼───┐
-                         │ SSH    │    │ HTTP API │   │  DB    │
-                         │ Agent  │    │  Plugin  │   │ Health │
-                         └────────┘    └──────────┘   └────────┘
-```
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `r` | Refresh all panels |
+| `t` | Cycle theme (dark/light/phosphor) |
+| `f` | Jump mode (focus any panel) |
+| `Ctrl+P` | Command palette |
+| `s` | Settings |
 
 ## Contributing
 
@@ -135,6 +150,8 @@ Suggested areas for contribution:
 - Additional chart types
 - Alert rules and notification channels
 - Dashboard export/import
+
+See [Development Guide](docs/DEVELOPMENT.md) for plugin development.
 
 ## License
 
