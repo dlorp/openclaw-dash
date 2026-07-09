@@ -1,6 +1,6 @@
 # Widgets
 
-All panel types in openclaw-dash: what they show, when to use them, and how to configure them.
+All panel types in hermes-dash: what they show, when to use them, and how to configure them.
 
 ## Sparkline
 

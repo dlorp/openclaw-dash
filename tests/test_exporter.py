@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from openclaw_dash.exporter import (
+from hermes_dash.exporter import (
     collect_all_data,
     export_json,
     export_markdown,
@@ -20,16 +20,16 @@ from openclaw_dash.exporter import (
 def mock_collectors():
     """Mock all collectors to avoid network calls."""
     with (
-        patch("openclaw_dash.collectors.gateway.collect") as gw,
-        patch("openclaw_dash.collectors.sessions.collect") as sess,
-        patch("openclaw_dash.collectors.cron.collect") as cr,
-        patch("openclaw_dash.collectors.repos.collect") as rep,
-        patch("openclaw_dash.collectors.activity.collect") as act,
-        patch("openclaw_dash.collectors.channels.collect") as chan,
-        patch("openclaw_dash.collectors.alerts.collect") as alerts,
-        patch("openclaw_dash.metrics.CostTracker") as cost,
-        patch("openclaw_dash.metrics.PerformanceMetrics") as perf,
-        patch("openclaw_dash.metrics.GitHubMetrics") as gh,
+        patch("hermes_dash.collectors.gateway.collect") as gw,
+        patch("hermes_dash.collectors.sessions.collect") as sess,
+        patch("hermes_dash.collectors.cron.collect") as cr,
+        patch("hermes_dash.collectors.repos.collect") as rep,
+        patch("hermes_dash.collectors.activity.collect") as act,
+        patch("hermes_dash.collectors.channels.collect") as chan,
+        patch("hermes_dash.collectors.alerts.collect") as alerts,
+        patch("hermes_dash.metrics.CostTracker") as cost,
+        patch("hermes_dash.metrics.PerformanceMetrics") as perf,
+        patch("hermes_dash.metrics.GitHubMetrics") as gh,
     ):
         gw.return_value = {"healthy": True, "uptime": "1h"}
         sess.return_value = {"active": []}
@@ -114,7 +114,7 @@ class TestExportMarkdown:
         }
         result = export_markdown(data)
         assert isinstance(result, str)
-        assert "# OpenClaw Dashboard Export" in result
+        assert "# Hermes Dashboard Export" in result
 
     def test_contains_gateway_status(self):
         data = {
@@ -248,14 +248,14 @@ class TestExportToFile:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             filepath, content = export_to_file(output_path=f.name, format="md")
             assert filepath == f.name
-            assert "# OpenClaw Dashboard Export" in content
+            assert "# Hermes Dashboard Export" in content
             Path(f.name).unlink()
 
     def test_auto_generates_filename_json(self, mock_collectors, monkeypatch):
         with tempfile.TemporaryDirectory() as tmpdir:
             monkeypatch.chdir(tmpdir)
             filepath, _ = export_to_file(format="json")
-            assert filepath.startswith("openclaw-export-")
+            assert filepath.startswith("hermes-export-")
             assert filepath.endswith(".json")
             Path(filepath).unlink()
 
@@ -263,22 +263,22 @@ class TestExportToFile:
         with tempfile.TemporaryDirectory() as tmpdir:
             monkeypatch.chdir(tmpdir)
             filepath, _ = export_to_file(format="md")
-            assert filepath.startswith("openclaw-export-")
+            assert filepath.startswith("hermes-export-")
             assert filepath.endswith(".md")
             Path(filepath).unlink()
 
 
 class TestCLIExport:
-    @patch("sys.argv", ["openclaw-dash", "export", "--help"])
+    @patch("sys.argv", ["hermes-dash", "export", "--help"])
     def test_export_help(self):
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         with pytest.raises(SystemExit) as exc:
             main()
         assert exc.value.code == 0
 
     def test_export_json_output(self, tmp_path, mock_collectors):
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         output_file = tmp_path / "test-export.json"
         mock_content = json.dumps({"gateway": {}, "timestamp": "2026-01-01"})
@@ -290,9 +290,9 @@ class TestCLIExport:
 
         with (
             patch(
-                "sys.argv", ["openclaw-dash", "export", "--format", "json", "-o", str(output_file)]
+                "sys.argv", ["hermes-dash", "export", "--format", "json", "-o", str(output_file)]
             ),
-            patch("openclaw_dash.cli.with_gateway_timeout", side_effect=mock_export),
+            patch("hermes_dash.cli.with_gateway_timeout", side_effect=mock_export),
         ):
             result = main()
             assert result == 0
@@ -302,10 +302,10 @@ class TestCLIExport:
             assert "timestamp" in content
 
     def test_export_markdown_output(self, tmp_path, mock_collectors):
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         output_file = tmp_path / "test-export.md"
-        mock_content = "# OpenClaw Dashboard Export\n\nTest content"
+        mock_content = "# Hermes Dashboard Export\n\nTest content"
 
         def mock_export(*args, **kwargs):
             # Write mock content and return expected tuple
@@ -314,12 +314,12 @@ class TestCLIExport:
 
         with (
             patch(
-                "sys.argv", ["openclaw-dash", "export", "--format", "md", "-o", str(output_file)]
+                "sys.argv", ["hermes-dash", "export", "--format", "md", "-o", str(output_file)]
             ),
-            patch("openclaw_dash.cli.with_gateway_timeout", side_effect=mock_export),
+            patch("hermes_dash.cli.with_gateway_timeout", side_effect=mock_export),
         ):
             result = main()
             assert result == 0
             assert output_file.exists()
             content = output_file.read_text()
-            assert "# OpenClaw Dashboard Export" in content
+            assert "# Hermes Dashboard Export" in content

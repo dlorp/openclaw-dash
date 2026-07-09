@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openclaw_dash.automation.backup import (
+from hermes_dash.automation.backup import (
     BackupConfig,
     BackupReport,
     BackupVerifier,
@@ -15,13 +15,13 @@ from openclaw_dash.automation.backup import (
     format_backup_report,
     format_backup_summary,
 )
-from openclaw_dash.automation.deps_auto import (
+from hermes_dash.automation.deps_auto import (
     DepsAutomation,
     DepsConfig,
     UpdateResult,
     format_deps_results,
 )
-from openclaw_dash.automation.pr_auto import (
+from hermes_dash.automation.pr_auto import (
     CleanupConfig,
     MergeConfig,
     PRAutomation,
@@ -476,16 +476,16 @@ class TestCLIIntegration:
         """Test that auto command shows help."""
         import sys
 
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
-        with patch.object(sys, "argv", ["openclaw-dash", "auto", "--help"]):
+        with patch.object(sys, "argv", ["hermes-dash", "auto", "--help"]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 0
 
     def test_cli_auto_merge_dry_run(self, tmp_path):
         """Test auto merge dry-run doesn't fail."""
-        from openclaw_dash.cli import cmd_auto_merge
+        from hermes_dash.cli import cmd_auto_merge
 
         # Create a mock args object
         args = MagicMock()
@@ -505,7 +505,7 @@ class TestCLIIntegration:
 
     def test_cli_auto_backup(self, tmp_path):
         """Test auto backup command."""
-        from openclaw_dash.cli import cmd_auto_backup
+        from hermes_dash.cli import cmd_auto_backup
 
         # Create required files
         for filename in ["AGENTS.md", "SOUL.md", "USER.md", "MEMORY.md"]:

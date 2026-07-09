@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from openclaw_dash.widgets.gateway_status import (
+from hermes_dash.widgets.gateway_status import (
     AMBER,
     AMBER_BRIGHT,
     AMBER_DIM,
@@ -191,8 +191,8 @@ class TestGatewayStatusWidget:
     def mock_collectors(self):
         """Mock the gateway and sessions collectors."""
         with (
-            patch("openclaw_dash.widgets.gateway_status.gateway") as mock_gateway,
-            patch("openclaw_dash.widgets.gateway_status.sessions") as mock_sessions,
+            patch("hermes_dash.widgets.gateway_status.gateway") as mock_gateway,
+            patch("hermes_dash.widgets.gateway_status.sessions") as mock_sessions,
         ):
             yield mock_gateway, mock_sessions
 
@@ -238,7 +238,7 @@ class TestGatewayStatusWidget:
         mock_gateway.collect.return_value = {
             "healthy": False,
             "error": "Cannot connect to gateway",
-            "_hint": "Try: openclaw gateway start",
+            "_hint": "Try: hermes gateway start",
         }
         mock_sessions.collect.return_value = {
             "sessions": [],
@@ -273,8 +273,8 @@ class TestGatewayStatusSummary:
     def mock_collectors(self):
         """Mock the gateway and sessions collectors."""
         with (
-            patch("openclaw_dash.widgets.gateway_status.gateway") as mock_gateway,
-            patch("openclaw_dash.widgets.gateway_status.sessions") as mock_sessions,
+            patch("hermes_dash.widgets.gateway_status.gateway") as mock_gateway,
+            patch("hermes_dash.widgets.gateway_status.sessions") as mock_sessions,
         ):
             yield mock_gateway, mock_sessions
 

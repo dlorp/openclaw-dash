@@ -1,1 +1,1 @@
-"""Tests for openclaw-dash."""
+"""Tests for hermes-dash."""

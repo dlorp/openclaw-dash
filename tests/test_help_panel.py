@@ -3,7 +3,7 @@
 import pytest
 from textual.binding import Binding
 
-from openclaw_dash.widgets.help_panel import (
+from hermes_dash.widgets.help_panel import (
     SHORTCUTS,
     STATIC_SHORTCUTS,
     HelpScreen,

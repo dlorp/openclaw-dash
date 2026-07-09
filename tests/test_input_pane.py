@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openclaw_dash.widgets.input_pane import (
+from hermes_dash.widgets.input_pane import (
     MAX_HISTORY,
     CommandSent,
     InputPane,
@@ -113,7 +113,7 @@ class TestCommandSent:
 class TestSendCommand:
     """Test command sending functionality."""
 
-    @patch("openclaw_dash.widgets.input_pane.subprocess.run")
+    @patch("hermes_dash.widgets.input_pane.subprocess.run")
     def test_send_command_success(self, mock_run):
         """Successful command should emit success message."""
         mock_run.return_value = MagicMock(
@@ -137,7 +137,7 @@ class TestSendCommand:
         assert messages[0].success is True
         assert messages[0].command == "test command"
 
-    @patch("openclaw_dash.widgets.input_pane.subprocess.run")
+    @patch("hermes_dash.widgets.input_pane.subprocess.run")
     def test_send_command_with_agent(self, mock_run):
         """Command with agent should include --agent flag."""
         mock_run.return_value = MagicMock(returncode=0, stdout="{}", stderr="")
@@ -156,7 +156,7 @@ class TestSendCommand:
         assert "--agent" in call_args
         assert "test-agent" in call_args
 
-    @patch("openclaw_dash.widgets.input_pane.subprocess.run")
+    @patch("hermes_dash.widgets.input_pane.subprocess.run")
     def test_send_command_with_session_id(self, mock_run):
         """Command with session_id should include --session-id flag."""
         mock_run.return_value = MagicMock(returncode=0, stdout="{}", stderr="")
@@ -175,7 +175,7 @@ class TestSendCommand:
         assert "--session-id" in call_args
         assert "test-session" in call_args
 
-    @patch("openclaw_dash.widgets.input_pane.subprocess.run")
+    @patch("hermes_dash.widgets.input_pane.subprocess.run")
     def test_send_command_failure(self, mock_run):
         """Failed command should emit failure message."""
         mock_run.return_value = MagicMock(
@@ -198,7 +198,7 @@ class TestSendCommand:
         assert messages[0].success is False
         assert "Something went wrong" in messages[0].response
 
-    @patch("openclaw_dash.widgets.input_pane.subprocess.run")
+    @patch("hermes_dash.widgets.input_pane.subprocess.run")
     def test_send_command_timeout(self, mock_run):
         """Timeout should emit failure message."""
         import subprocess
@@ -219,7 +219,7 @@ class TestSendCommand:
         assert messages[0].success is False
         assert "timed out" in messages[0].response.lower()
 
-    @patch("openclaw_dash.widgets.input_pane.subprocess.run")
+    @patch("hermes_dash.widgets.input_pane.subprocess.run")
     def test_send_command_cli_not_found(self, mock_run):
         """Missing CLI should emit failure message."""
         mock_run.side_effect = FileNotFoundError()

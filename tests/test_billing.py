@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openclaw_dash.collectors.billing import (
+from hermes_dash.collectors.billing import (
     AnthropicBilling,
     BillingCollector,
     BillingResult,
@@ -76,7 +76,7 @@ class TestOpenAIBilling:
         assert result.source == "estimated"
         assert result.error == "OPENAI_ADMIN_KEY not set"
 
-    @patch("openclaw_dash.collectors.billing.httpx.get")
+    @patch("hermes_dash.collectors.billing.httpx.get")
     def test_get_usage_success(self, mock_get):
         """Test successful usage API call."""
         mock_response = MagicMock()
@@ -104,7 +104,7 @@ class TestOpenAIBilling:
         assert result.output_tokens == 500
         assert result.error is None
 
-    @patch("openclaw_dash.collectors.billing.httpx.get")
+    @patch("hermes_dash.collectors.billing.httpx.get")
     def test_get_usage_auth_error(self, mock_get):
         """Test handling of authentication error."""
         mock_response = MagicMock()
@@ -117,7 +117,7 @@ class TestOpenAIBilling:
         assert result.source == "estimated"
         assert result.error == "Invalid OPENAI_ADMIN_KEY"
 
-    @patch("openclaw_dash.collectors.billing.httpx.get")
+    @patch("hermes_dash.collectors.billing.httpx.get")
     def test_get_usage_api_error(self, mock_get):
         """Test handling of API error."""
         mock_response = MagicMock()
@@ -130,7 +130,7 @@ class TestOpenAIBilling:
         assert result.source == "estimated"
         assert "API error: 500" in result.error
 
-    @patch("openclaw_dash.collectors.billing.httpx.get")
+    @patch("hermes_dash.collectors.billing.httpx.get")
     def test_get_costs_success(self, mock_get):
         """Test successful costs API call."""
         mock_response = MagicMock()
@@ -209,7 +209,7 @@ class TestBillingCollector:
         assert "anthropic" in result["providers"]
         assert result["providers"]["anthropic"]["source"] == "estimated"
 
-    @patch("openclaw_dash.collectors.billing.is_demo_mode", return_value=False)
+    @patch("hermes_dash.collectors.billing.is_demo_mode", return_value=False)
     @patch.object(OpenAIBilling, "is_available", return_value=True)
     @patch.object(OpenAIBilling, "get_costs")
     def test_collect_with_openai_api(self, mock_get_costs, mock_is_available, mock_demo):
@@ -245,7 +245,7 @@ class TestBillingCollector:
             assert "api_cost" in day
             assert "has_api_data" in day
 
-    @patch("openclaw_dash.collectors.billing.is_demo_mode", return_value=True)
+    @patch("hermes_dash.collectors.billing.is_demo_mode", return_value=True)
     def test_demo_mode_returns_mock_data(self, mock_demo):
         """Test that demo mode returns mock data."""
         collector = BillingCollector()
@@ -256,7 +256,7 @@ class TestBillingCollector:
         assert "openai" in result["providers"]
         assert result["providers"]["openai"]["source"] == "api"
 
-    @patch("openclaw_dash.collectors.billing.is_demo_mode", return_value=True)
+    @patch("hermes_dash.collectors.billing.is_demo_mode", return_value=True)
     def test_demo_mode_daily_costs(self, mock_demo):
         """Test that demo mode returns mock daily costs."""
         collector = BillingCollector()

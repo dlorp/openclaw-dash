@@ -2,12 +2,12 @@
 
 import pytest
 
-from openclaw_dash.screens.settings_screen import (
+from hermes_dash.screens.settings_screen import (
     PortNumber,
     PositiveInteger,
     SettingsScreen,
 )
-from openclaw_dash.services.model_discovery import (
+from hermes_dash.services.model_discovery import (
     DiscoveryResult,
     ModelInfo,
     ModelTier,
@@ -262,7 +262,7 @@ class TestCustomPaths:
         from pathlib import Path
         from tempfile import TemporaryDirectory
 
-        from openclaw_dash.settings_manager import SettingsManager
+        from hermes_dash.settings_manager import SettingsManager
 
         with TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "config.toml"

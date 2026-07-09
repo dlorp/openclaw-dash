@@ -5,7 +5,7 @@ import inspect
 from textual.containers import Container
 from textual.widgets import Static
 
-from openclaw_dash.widgets.tabbed_groups import (
+from hermes_dash.widgets.tabbed_groups import (
     CodeTabGroup,
     RuntimeTabGroup,
     next_tab,
@@ -130,14 +130,14 @@ class TestAppIntegration:
 
     def test_import_from_app(self):
         """Tab groups should be importable from app module."""
-        from openclaw_dash.app import CodeTabGroup, RuntimeTabGroup
+        from hermes_dash.app import CodeTabGroup, RuntimeTabGroup
 
         assert RuntimeTabGroup is not None
         assert CodeTabGroup is not None
 
     def test_app_has_tab_group_bindings(self):
         """DashboardApp should have tab group keybindings."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         binding_strings = [str(b) for b in DashboardApp.BINDINGS]
         binding_text = " ".join(binding_strings)
@@ -147,7 +147,7 @@ class TestAppIntegration:
 
     def test_app_has_tab_navigation_actions(self):
         """DashboardApp should have tab navigation action methods."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert hasattr(DashboardApp, "action_focus_tab_group")
         assert hasattr(DashboardApp, "action_next_tab_in_group")
@@ -155,14 +155,14 @@ class TestAppIntegration:
 
     def test_panel_order_includes_tab_groups(self):
         """PANEL_ORDER should include tab group IDs."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert "runtime-group" in DashboardApp.PANEL_ORDER
         assert "code-group" in DashboardApp.PANEL_ORDER
 
     def test_tab_groups_constant_defined(self):
         """TAB_GROUPS constant should be defined."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert hasattr(DashboardApp, "TAB_GROUPS")
         assert "runtime-group" in DashboardApp.TAB_GROUPS
@@ -174,21 +174,21 @@ class TestHelpPanelIntegration:
 
     def test_static_shortcuts_includes_tab_groups(self):
         """STATIC_SHORTCUTS should include Tab Groups section."""
-        from openclaw_dash.widgets.help_panel import STATIC_SHORTCUTS
+        from hermes_dash.widgets.help_panel import STATIC_SHORTCUTS
 
         section_names = [name for name, _ in STATIC_SHORTCUTS]
         assert "Tab Groups" in section_names
 
     def test_shortcuts_legacy_includes_tab_groups(self):
         """Legacy SHORTCUTS should include Tab Groups section."""
-        from openclaw_dash.widgets.help_panel import SHORTCUTS
+        from hermes_dash.widgets.help_panel import SHORTCUTS
 
         section_names = [name for name, _ in SHORTCUTS]
         assert "Tab Groups" in section_names
 
     def test_tab_group_shortcuts_documented(self):
         """Tab group shortcuts should be documented."""
-        from openclaw_dash.widgets.help_panel import STATIC_SHORTCUTS
+        from hermes_dash.widgets.help_panel import STATIC_SHORTCUTS
 
         tab_groups_section = None
         for name, shortcuts in STATIC_SHORTCUTS:

@@ -3,7 +3,7 @@
 import time
 from typing import Any
 
-from openclaw_dash.collectors.cache import (
+from hermes_dash.collectors.cache import (
     CIRCUIT_RESET_SECONDS,
     MAX_ERRORS,
     SLOW_THRESHOLD,

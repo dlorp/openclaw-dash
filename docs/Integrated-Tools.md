@@ -1,6 +1,6 @@
 # Integrated Tools
 
-openclaw-dash bundles standalone utilities for repository management, security auditing, and development workflows.
+hermes-dash bundles standalone utilities for repository management, security auditing, and development workflows.
 
 See [TOOLS.md](TOOLS.md) for full reference.
 
@@ -24,21 +24,21 @@ See [TOOLS.md](TOOLS.md) for full reference.
 As CLI commands:
 
 ```bash
-openclaw-dash audit /path/to/repo
-openclaw-dash changelog /path/to/repo
-openclaw-dash status /path/to/repo
+hermes-dash audit /path/to/repo
+hermes-dash changelog /path/to/repo
+hermes-dash status /path/to/repo
 ```
 
 As standalone modules:
 
 ```bash
-python -m openclaw_dash.tools.audit /path/to/repo
-python -m openclaw_dash.tools.changelog /path/to/repo
+python -m hermes_dash.tools.audit /path/to/repo
+python -m hermes_dash.tools.changelog /path/to/repo
 ```
 
 ## Plugin Architecture
 
-Tools follow the same plugin pattern as data sources. Each tool is a module in `src/openclaw_dash/tools/` that implements a standard interface.
+Tools follow the same plugin pattern as data sources. Each tool is a module in `src/hermes_dash/tools/` that implements a standard interface.
 
 This means:
 - Tools are independently testable

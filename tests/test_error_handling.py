@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 from unittest.mock import patch
 
-from openclaw_dash.collectors.base import (
+from hermes_dash.collectors.base import (
     CollectorResult,
     CollectorState,
     collect_with_fallback,
@@ -28,7 +28,7 @@ from openclaw_dash.collectors.base import (
     validate_data_shape,
     with_retry,
 )
-from openclaw_dash.widgets.states import (
+from hermes_dash.widgets.states import (
     WidgetState,
     check_and_render_state,
     format_collector_status_line,
@@ -561,17 +561,17 @@ class TestFormatCollectorStatusLine:
 class TestGatewayCollectorErrors:
     """Integration tests for gateway collector error handling."""
 
-    @patch("openclaw_dash.collectors.gateway._try_http_health")
-    @patch("openclaw_dash.collectors.gateway._try_cli_status")
-    @patch("openclaw_dash.collectors.gateway.is_demo_mode")
+    @patch("hermes_dash.collectors.gateway._try_http_health")
+    @patch("hermes_dash.collectors.gateway._try_cli_status")
+    @patch("hermes_dash.collectors.gateway.is_demo_mode")
     def test_http_unavailable_uses_cli_fallback(self, mock_demo, mock_cli, mock_http):
         """Test CLI fallback when HTTP fails (HTTP is primary, CLI is fallback)."""
         mock_demo.return_value = False
         mock_http.return_value = None  # HTTP fails
         mock_cli.return_value = {"healthy": True, "mode": "test"}  # CLI succeeds
 
-        from openclaw_dash.collectors import gateway
-        from openclaw_dash.collectors.cache import get_cache
+        from hermes_dash.collectors import gateway
+        from hermes_dash.collectors.cache import get_cache
 
         # Reset cache, circuit breaker, and connection state
         cache = get_cache()
@@ -585,17 +585,17 @@ class TestGatewayCollectorErrors:
         mock_http.assert_called_once()  # HTTP tried first
         mock_cli.assert_called_once()  # CLI used as fallback
 
-    @patch("openclaw_dash.collectors.gateway._try_http_health")
-    @patch("openclaw_dash.collectors.gateway._try_cli_status")
-    @patch("openclaw_dash.collectors.gateway.is_demo_mode")
+    @patch("hermes_dash.collectors.gateway._try_http_health")
+    @patch("hermes_dash.collectors.gateway._try_cli_status")
+    @patch("hermes_dash.collectors.gateway.is_demo_mode")
     def test_tracks_connection_failures(self, mock_demo, mock_cli, mock_http):
         """Test connection failure tracking."""
         mock_demo.return_value = False
         mock_cli.return_value = None
         mock_http.return_value = None  # Both methods fail
 
-        from openclaw_dash.collectors import gateway
-        from openclaw_dash.collectors.cache import get_cache
+        from hermes_dash.collectors import gateway
+        from hermes_dash.collectors.cache import get_cache
 
         # Reset cache, circuit breaker, and state completely
         cache = get_cache()
@@ -620,29 +620,34 @@ class TestGatewayCollectorErrors:
 class TestSessionsCollectorErrors:
     """Integration tests for sessions collector error handling."""
 
-    @patch("openclaw_dash.collectors.sessions.get_openclaw_status")
-    @patch("openclaw_dash.collectors.sessions.is_demo_mode")
+    @patch("hermes_dash.collectors.sessions.get_hermes_status")
+    @patch("hermes_dash.collectors.sessions.is_demo_mode")
     def test_handles_none_status(self, mock_demo, mock_status):
         """Test handling when CLI returns None."""
         mock_demo.return_value = False
         mock_status.return_value = None
 
-        from openclaw_dash.collectors import sessions
+        from hermes_dash.collectors import sessions
+        from hermes_dash.collectors.cache import get_cache
+
+        # Reset cache to ensure we hit the mock
+        cache = get_cache()
+        cache.invalidate("sessions")
 
         result = sessions.collect()
         assert result["sessions"] == []
         assert result["_source"] == "fallback"
         assert "_reason" in result
 
-    @patch("openclaw_dash.collectors.sessions.get_openclaw_status")
-    @patch("openclaw_dash.collectors.sessions.is_demo_mode")
+    @patch("hermes_dash.collectors.sessions.get_hermes_status")
+    @patch("hermes_dash.collectors.sessions.is_demo_mode")
     def test_handles_exception(self, mock_demo, mock_status):
         """Test handling of exceptions."""
         mock_demo.return_value = False
         mock_status.side_effect = RuntimeError("Unexpected error")
 
-        from openclaw_dash.collectors import sessions
-        from openclaw_dash.collectors.cache import get_cache
+        from hermes_dash.collectors import sessions
+        from hermes_dash.collectors.cache import get_cache
 
         # Reset cache to ensure we hit the mock
         cache = get_cache()
@@ -658,28 +663,28 @@ class TestSessionsCollectorErrors:
 class TestCronCollectorErrors:
     """Integration tests for cron collector error handling."""
 
-    @patch("openclaw_dash.collectors.cron.is_demo_mode")
-    @patch("openclaw_dash.collectors.cron.run_command")
+    @patch("hermes_dash.collectors.cron.is_demo_mode")
+    @patch("hermes_dash.collectors.cron.run_command")
     def test_command_timeout(self, mock_run, mock_demo):
         """Test handling of command timeout."""
         mock_demo.return_value = False
         mock_run.return_value = (None, "Command timed out", CollectorState.TIMEOUT)
 
-        from openclaw_dash.collectors import cron
+        from hermes_dash.collectors import cron
 
         result = cron.collect()
         assert result["jobs"] == []
         assert "error" in result
         assert "timeout" in result["_error_type"]
 
-    @patch("openclaw_dash.collectors.cron.is_demo_mode")
-    @patch("openclaw_dash.collectors.cron.run_command")
+    @patch("hermes_dash.collectors.cron.is_demo_mode")
+    @patch("hermes_dash.collectors.cron.run_command")
     def test_invalid_json_response(self, mock_run, mock_demo):
         """Test handling of invalid JSON response."""
         mock_demo.return_value = False
         mock_run.return_value = ("not valid json", None, CollectorState.OK)
 
-        from openclaw_dash.collectors import cron
+        from hermes_dash.collectors import cron
 
         result = cron.collect()
         assert result["jobs"] == []
@@ -690,21 +695,21 @@ class TestCronCollectorErrors:
 class TestReposCollectorErrors:
     """Integration tests for repos collector error handling."""
 
-    @patch("openclaw_dash.collectors.repos.is_demo_mode")
+    @patch("hermes_dash.collectors.repos.is_demo_mode")
     def test_missing_repos_directory(self, mock_demo):
         """Test handling when repo doesn't exist."""
         mock_demo.return_value = False
 
-        from openclaw_dash.collectors import repos
+        from hermes_dash.collectors import repos
 
         result = repos.collect(repos=["nonexistent-repo-xyz"])
         assert result["repos"] == []
         assert "_missing_repos" in result
         assert "nonexistent-repo-xyz" in result["_missing_repos"]
 
-    @patch("openclaw_dash.collectors.repos.is_demo_mode")
-    @patch("openclaw_dash.collectors.repos._get_open_prs")
-    @patch("openclaw_dash.collectors.repos._get_last_commit")
+    @patch("hermes_dash.collectors.repos.is_demo_mode")
+    @patch("hermes_dash.collectors.repos._get_open_prs")
+    @patch("hermes_dash.collectors.repos._get_last_commit")
     @patch("pathlib.Path.exists")
     def test_partial_failures_still_return_data(
         self, mock_exists, mock_commit, mock_prs, mock_demo
@@ -715,7 +720,7 @@ class TestReposCollectorErrors:
         mock_prs.return_value = (0, "gh not authenticated")
         mock_commit.return_value = ("2 hours ago", None)
 
-        from openclaw_dash.collectors import repos
+        from hermes_dash.collectors import repos
 
         result = repos.collect(repos=["test-repo"])
 

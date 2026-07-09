@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from openclaw_dash.widgets.activity import (
+from hermes_dash.widgets.activity import (
     ACTIVITY_COLORS,
     ACTIVITY_ICONS_ASCII,
     ActivityPanel,
@@ -97,7 +97,7 @@ class TestActivityPanel:
     @pytest.fixture
     def mock_collect(self):
         """Mock the activity.collect function."""
-        with patch("openclaw_dash.widgets.activity.activity.collect") as mock:
+        with patch("hermes_dash.widgets.activity.activity.collect") as mock:
             yield mock
 
     def test_panel_creation(self):
@@ -197,7 +197,7 @@ class TestActivitySummaryPanel:
     @pytest.fixture
     def mock_collect(self):
         """Mock the activity.collect function."""
-        with patch("openclaw_dash.widgets.activity.activity.collect") as mock:
+        with patch("hermes_dash.widgets.activity.activity.collect") as mock:
             yield mock
 
     def test_summary_panel_creation(self):

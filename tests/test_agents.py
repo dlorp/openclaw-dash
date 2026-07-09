@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from openclaw_dash.collectors import agents
-from openclaw_dash.collectors.agents import Agent, AgentStatus
+from hermes_dash.collectors import agents
+from hermes_dash.collectors.agents import Agent, AgentStatus
 
 
 class TestAgentDataclass:
@@ -89,8 +89,8 @@ class TestAgentsCollector:
         assert isinstance(result["total"], int)
         assert isinstance(result["active"], int)
 
-    @patch("openclaw_dash.collectors.agents.is_demo_mode")
-    @patch("openclaw_dash.collectors.agents.mock_sessions")
+    @patch("hermes_dash.collectors.agents.is_demo_mode")
+    @patch("hermes_dash.collectors.agents.mock_sessions")
     def test_demo_mode_returns_mock_data(self, mock_sessions, mock_demo):
         """Test that demo mode returns mock session data."""
         mock_demo.return_value = True
@@ -131,7 +131,7 @@ class TestAgentsPanelWidget:
     @pytest.fixture
     def mock_collect(self):
         """Mock the agents.collect function."""
-        with patch("openclaw_dash.widgets.agents.agents.collect") as mock:
+        with patch("hermes_dash.widgets.agents.agents.collect") as mock:
             yield mock
 
     def test_panel_handles_empty_agents(self, mock_collect):
@@ -143,7 +143,7 @@ class TestAgentsPanelWidget:
             "collected_at": datetime.now().isoformat(),
         }
 
-        from openclaw_dash.widgets.agents import AgentsPanel
+        from hermes_dash.widgets.agents import AgentsPanel
 
         # Create widget (won't be mounted but can test basic creation)
         panel = AgentsPanel()
@@ -167,7 +167,7 @@ class TestAgentsPanelWidget:
             "collected_at": datetime.now().isoformat(),
         }
 
-        from openclaw_dash.widgets.agents import AgentsPanel
+        from hermes_dash.widgets.agents import AgentsPanel
 
         panel = AgentsPanel()
         assert panel is not None

@@ -6,7 +6,7 @@ from textual.containers import Container
 from textual.message import Message
 from textual.widgets import Static
 
-from openclaw_dash.widgets.collapsible_panel import CollapsiblePanel
+from hermes_dash.widgets.collapsible_panel import CollapsiblePanel
 
 
 class TestCollapsiblePanelBasics:

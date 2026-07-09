@@ -1,6 +1,6 @@
 # Installation
 
-openclaw-dash installs from source. PyPI publication is planned but not yet available.
+hermes-dash installs from source. PyPI publication is planned but not yet available.
 
 ## Requirements
 
@@ -15,8 +15,8 @@ Optional:
 ## From Source
 
 ```bash
-git clone https://github.com/dlorp/openclaw-dash.git
-cd openclaw-dash
+git clone https://github.com/dlorp/hermes-dash.git
+cd hermes-dash
 pip install -e .
 ```
 
@@ -25,8 +25,8 @@ Editable mode means code changes take effect immediately.
 ## With pipx
 
 ```bash
-git clone https://github.com/dlorp/openclaw-dash.git
-cd openclaw-dash
+git clone https://github.com/dlorp/hermes-dash.git
+cd hermes-dash
 pipx install -e .
 ```
 
@@ -35,8 +35,8 @@ pipx isolates the installation in its own environment. No dependency conflicts w
 ## With Docker
 
 ```bash
-git clone https://github.com/dlorp/openclaw-dash.git
-cd openclaw-dash
+git clone https://github.com/dlorp/hermes-dash.git
+cd hermes-dash
 docker compose up -d
 ```
 
@@ -48,7 +48,7 @@ services:
   dashboard:
     build: .
     volumes:
-      - ~/.config/openclaw-dash:/config
+      - ~/.config/hermes-dash:/config
     environment:
       - CONFIG_PATH=/config/config.yaml
 ```
@@ -58,8 +58,8 @@ services:
 Create a minimal config:
 
 ```bash
-mkdir -p ~/.config/openclaw-dash
-cat > ~/.config/openclaw-dash/config.yaml << 'EOF'
+mkdir -p ~/.config/hermes-dash
+cat > ~/.config/hermes-dash/config.yaml << 'EOF'
 plugins:
   - name: localhost
     type: ssh-agent
@@ -78,59 +78,59 @@ EOF
 Run:
 
 ```bash
-openclaw-dash
+hermes-dash
 ```
 
 Or try the demo without config:
 
 ```bash
-openclaw-dash --demo
+hermes-dash --demo
 ```
 
 ## Commands
 
 ```bash
 # Launch TUI
-openclaw-dash
+hermes-dash
 
 # Quick status (text output)
-openclaw-dash --status
+hermes-dash --status
 
 # JSON output (for scripts)
-openclaw-dash --json
+hermes-dash --json
 
 # Demo mode (mock data)
-openclaw-dash --demo
+hermes-dash --demo
 
 # Custom config
-openclaw-dash --config /path/to/config.yaml
+hermes-dash --config /path/to/config.yaml
 
 # List installed plugins
-openclaw-dash --list-plugins
+hermes-dash --list-plugins
 
 # Check version
-openclaw-dash --version
+hermes-dash --version
 ```
 
 ## Verification
 
 ```bash
 # Check install
-which openclaw-dash
-openclaw-dash --version
+which hermes-dash
+hermes-dash --version
 
 # Test with demo
-openclaw-dash --demo
+hermes-dash --demo
 
 # Validate config
-openclaw-dash --config-check
+hermes-dash --config-check
 ```
 
 ## Troubleshooting
 
 **"No plugins configured"**
 
-Create config at `~/.config/openclaw-dash/config.yaml`. See [Configuration](CONFIGURATION.md).
+Create config at `~/.config/hermes-dash/config.yaml`. See [Configuration](CONFIGURATION.md).
 
 **"Connection refused" (SSH plugins)**
 
@@ -167,11 +167,11 @@ Your font may not support box-drawing characters. Try:
 ## Uninstall
 
 ```bash
-pip uninstall openclaw-dash
+pip uninstall hermes-dash
 ```
 
 Or if installed with pipx:
 
 ```bash
-pipx uninstall openclaw-dash
+pipx uninstall hermes-dash
 ```

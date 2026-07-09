@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 # namespace via sys.modules during class creation.
 _spec = importlib.util.spec_from_file_location(
     "pr_describe",
-    Path(__file__).parent.parent / "src" / "openclaw_dash" / "tools" / "pr-describe.py",
+    Path(__file__).parent.parent / "src" / "hermes_dash" / "tools" / "pr-describe.py",
 )
 pr_describe = importlib.util.module_from_spec(_spec)
 sys.modules["pr_describe"] = pr_describe

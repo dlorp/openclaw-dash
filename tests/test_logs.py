@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 from textual.widgets import Static
 
-from openclaw_dash import demo
-from openclaw_dash.collectors import logs
-from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
+from hermes_dash import demo
+from hermes_dash.collectors import logs
+from hermes_dash.widgets.logs import LogsPanel, LogsSummaryPanel
 
 
 class TestLogsCollector:
@@ -213,7 +213,7 @@ class TestLogsPanelIntegration:
 
     def test_import_from_app(self):
         """LogsPanel should be importable from app module."""
-        from openclaw_dash.app import LogsPanel as AppLogsPanel
+        from hermes_dash.app import LogsPanel as AppLogsPanel
 
         assert AppLogsPanel is not None
 
@@ -221,14 +221,14 @@ class TestLogsPanelIntegration:
         """DashboardApp should refresh LogsPanel."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp.action_refresh)
         assert "LogsPanel" in source
 
     def test_app_has_logs_keybinding(self):
         """DashboardApp should have 'l' keybinding for logs."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         binding_keys = [b[0] for b in DashboardApp.BINDINGS]
         assert "l" in binding_keys
@@ -237,7 +237,7 @@ class TestLogsPanelIntegration:
         """DashboardApp compose should include logs-panel."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp.compose)
         assert "logs-panel" in source

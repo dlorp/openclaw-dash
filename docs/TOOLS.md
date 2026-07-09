@@ -1,30 +1,30 @@
 # Tools
 
-Standalone utilities bundled with openclaw-dash. These work independently of the dashboard TUI.
+Standalone utilities bundled with hermes-dash. These work independently of the dashboard TUI.
 
 ## Quick Reference
 
 | Command | Purpose |
 |---------|---------|
-| `openclaw-dash audit` | Security vulnerability scanning |
-| `openclaw-dash changelog` | Generate changelog from git |
-| `openclaw-dash dep-shepherd` | Dependency management |
-| `openclaw-dash pr-create` | Create structured pull requests |
-| `openclaw-dash pr-describe` | Analyze existing pull requests |
-| `openclaw-dash pr-tracker` | Track PRs across repos |
-| `openclaw-dash repo-scanner` | Scan for TODOs and patterns |
-| `openclaw-dash smart-todo` | Intelligent TODO detection |
-| `openclaw-dash status` | Quick repo status |
-| `openclaw-dash version-bump` | Semantic version management |
+| `hermes-dash audit` | Security vulnerability scanning |
+| `hermes-dash changelog` | Generate changelog from git |
+| `hermes-dash dep-shepherd` | Dependency management |
+| `hermes-dash pr-create` | Create structured pull requests |
+| `hermes-dash pr-describe` | Analyze existing pull requests |
+| `hermes-dash pr-tracker` | Track PRs across repos |
+| `hermes-dash repo-scanner` | Scan for TODOs and patterns |
+| `hermes-dash smart-todo` | Intelligent TODO detection |
+| `hermes-dash status` | Quick repo status |
+| `hermes-dash version-bump` | Semantic version management |
 
 ## audit
 
 Security scanning for Python projects.
 
 ```bash
-openclaw-dash audit /path/to/repo
-openclaw-dash audit /path/to/repo --json
-openclaw-dash audit /path/to/repo --fix
+hermes-dash audit /path/to/repo
+hermes-dash audit /path/to/repo --json
+hermes-dash audit /path/to/repo --fix
 ```
 
 Checks:
@@ -38,9 +38,9 @@ Checks:
 Generate CHANGELOG.md from git history.
 
 ```bash
-openclaw-dash changelog /path/to/repo
-openclaw-dash changelog /path/to/repo --since v1.0.0
-openclaw-dash changelog /path/to/repo --format conventional
+hermes-dash changelog /path/to/repo
+hermes-dash changelog /path/to/repo --since v1.0.0
+hermes-dash changelog /path/to/repo --format conventional
 ```
 
 Parses conventional commits:
@@ -56,9 +56,9 @@ Parses conventional commits:
 Dependency management.
 
 ```bash
-openclaw-dash dep-shepherd check /path/to/repo
-openclaw-dash dep-shepherd update /path/to/repo
-openclaw-dash dep-shepherd audit /path/to/repo
+hermes-dash dep-shepherd check /path/to/repo
+hermes-dash dep-shepherd update /path/to/repo
+hermes-dash dep-shepherd audit /path/to/repo
 ```
 
 Features:
@@ -72,9 +72,9 @@ Features:
 Create pull requests with structured descriptions.
 
 ```bash
-openclaw-dash pr-create --title "feat: add plugin"
-openclaw-dash pr-create --from feature-branch --to main
-openclaw-dash pr-create --reviewers user1,user2
+hermes-dash pr-create --title "feat: add plugin"
+hermes-dash pr-create --from feature-branch --to main
+hermes-dash pr-create --reviewers user1,user2
 ```
 
 Auto-generates description from commits when `--body` is omitted.
@@ -84,9 +84,9 @@ Auto-generates description from commits when `--body` is omitted.
 Analyze existing pull requests.
 
 ```bash
-openclaw-dash pr-describe 42
-openclaw-dash pr-describe 42 --format markdown
-openclaw-dash pr-describe 42 --summary-only
+hermes-dash pr-describe 42
+hermes-dash pr-describe 42 --format markdown
+hermes-dash pr-describe 42 --summary-only
 ```
 
 Outputs:
@@ -100,9 +100,9 @@ Outputs:
 Track PR status across multiple repositories.
 
 ```bash
-openclaw-dash pr-tracker --repos owner/repo1,owner/repo2
-openclaw-dash pr-tracker --status open
-openclaw-dash pr-tracker --assigned me
+hermes-dash pr-tracker --repos owner/repo1,owner/repo2
+hermes-dash pr-tracker --status open
+hermes-dash pr-tracker --assigned me
 ```
 
 Aggregates status into a single view. Requires gh CLI.
@@ -112,9 +112,9 @@ Aggregates status into a single view. Requires gh CLI.
 Scan repositories for patterns.
 
 ```bash
-openclaw-dash repo-scanner /path/to/repo
-openclaw-dash repo-scanner /path/to/repo --pattern "FIXME|HACK"
-openclaw-dash repo-scanner /path/to/repo --json
+hermes-dash repo-scanner /path/to/repo
+hermes-dash repo-scanner /path/to/repo --pattern "FIXME|HACK"
+hermes-dash repo-scanner /path/to/repo --json
 ```
 
 Finds:
@@ -127,8 +127,8 @@ Finds:
 Intelligent TODO detection with context.
 
 ```bash
-openclaw-dash smart-todo /path/to/repo
-openclaw-dash smart-todo /path/to/repo --priority high
+hermes-dash smart-todo /path/to/repo
+hermes-dash smart-todo /path/to/repo --priority high
 ```
 
 Goes beyond pattern matching:
@@ -142,9 +142,9 @@ Goes beyond pattern matching:
 Quick repository status.
 
 ```bash
-openclaw-dash status /path/to/repo
-openclaw-dash status /path/to/repo --json
-openclaw-dash status /path/to/repo --brief
+hermes-dash status /path/to/repo
+hermes-dash status /path/to/repo --json
+hermes-dash status /path/to/repo --brief
 ```
 
 Shows:
@@ -158,10 +158,10 @@ Shows:
 Semantic version management.
 
 ```bash
-openclaw-dash version-bump patch    # 1.0.0 -> 1.0.1
-openclaw-dash version-bump minor    # 1.0.0 -> 1.1.0
-openclaw-dash version-bump major    # 1.0.0 -> 2.0.0
-openclaw-dash version-bump 1.2.3    # Explicit version
+hermes-dash version-bump patch    # 1.0.0 -> 1.0.1
+hermes-dash version-bump minor    # 1.0.0 -> 1.1.0
+hermes-dash version-bump major    # 1.0.0 -> 2.0.0
+hermes-dash version-bump 1.2.3    # Explicit version
 ```
 
 Updates version in:
@@ -174,15 +174,15 @@ Updates version in:
 All tools can run as standalone modules:
 
 ```bash
-python -m openclaw_dash.tools.audit /path/to/repo
-python -m openclaw_dash.tools.changelog /path/to/repo
+python -m hermes_dash.tools.audit /path/to/repo
+python -m hermes_dash.tools.changelog /path/to/repo
 ```
 
 This is useful for CI/CD pipelines or when you want specific tool functionality without the full dashboard.
 
 ## Configuration
 
-Tools read optional config from `~/.config/openclaw-dash/tools.yaml`:
+Tools read optional config from `~/.config/hermes-dash/tools.yaml`:
 
 ```yaml
 tools:

@@ -3,8 +3,8 @@
 import json
 from unittest.mock import patch
 
-from openclaw_dash import demo
-from openclaw_dash.metrics import MAX_TOKENS, CostTracker, _validate_token_count
+from hermes_dash import demo
+from hermes_dash.metrics import MAX_TOKENS, CostTracker, _validate_token_count
 
 
 class TestCostTracker:
@@ -85,7 +85,7 @@ class TestCostTracker:
         assert isinstance(history, list)
 
     def test_sessions_data_from_collector(self, tmp_path):
-        with patch("openclaw_dash.collectors.sessions.collect") as mock_collect:
+        with patch("hermes_dash.collectors.sessions.collect") as mock_collect:
             mock_collect.return_value = {
                 "sessions": [
                     {
@@ -139,7 +139,7 @@ class TestSecurityValidation:
 
     def test_collect_with_malformed_token_data(self, tmp_path):
         """Collector should handle malformed token data gracefully."""
-        with patch("openclaw_dash.collectors.sessions.collect") as mock_collect:
+        with patch("hermes_dash.collectors.sessions.collect") as mock_collect:
             mock_collect.return_value = {
                 "sessions": [
                     {

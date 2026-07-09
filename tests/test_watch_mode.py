@@ -2,7 +2,7 @@
 
 import pytest
 
-from openclaw_dash.app import DashboardApp
+from hermes_dash.app import DashboardApp
 
 
 class TestDashboardAppRefreshInterval:
@@ -49,10 +49,10 @@ class TestWatchModeHelp:
         """Test that --watch flag is available in argument parser."""
         from unittest.mock import patch
 
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         # Capture help output to verify --watch is documented
-        with patch("sys.argv", ["openclaw-dash", "--help"]):
+        with patch("sys.argv", ["hermes-dash", "--help"]):
             with pytest.raises(SystemExit) as exc:
                 main()
             assert exc.value.code == 0

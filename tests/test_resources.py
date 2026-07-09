@@ -2,7 +2,7 @@
 
 import pytest
 
-from openclaw_dash.collectors import resources
+from hermes_dash.collectors import resources
 
 
 class TestResourcesCollector:
@@ -131,7 +131,7 @@ class TestResourcesConfig:
 
     def test_config_has_show_resources(self):
         try:
-            from openclaw_dash.config import Config
+            from hermes_dash.config import Config
         except ImportError:
             pytest.skip("Config module not importable (missing dependencies)")
 
@@ -141,7 +141,7 @@ class TestResourcesConfig:
 
     def test_config_to_dict_includes_show_resources(self):
         try:
-            from openclaw_dash.config import Config
+            from hermes_dash.config import Config
         except ImportError:
             pytest.skip("Config module not importable (missing dependencies)")
 
@@ -152,7 +152,7 @@ class TestResourcesConfig:
 
     def test_config_from_dict_with_show_resources(self):
         try:
-            from openclaw_dash.config import Config
+            from hermes_dash.config import Config
         except ImportError:
             pytest.skip("Config module not importable (missing dependencies)")
 
@@ -162,7 +162,7 @@ class TestResourcesConfig:
 
     def test_config_from_dict_default(self):
         try:
-            from openclaw_dash.config import Config
+            from hermes_dash.config import Config
         except ImportError:
             pytest.skip("Config module not importable (missing dependencies)")
 

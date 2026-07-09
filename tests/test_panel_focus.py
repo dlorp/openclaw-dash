@@ -6,7 +6,7 @@ class TestPanelFocusBindings:
 
     def test_tab_binding_exists(self):
         """Tab key should be bound for next panel."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         bindings = {b[0]: b[1] for b in DashboardApp.BINDINGS}
         assert "tab" in bindings
@@ -14,7 +14,7 @@ class TestPanelFocusBindings:
 
     def test_shift_tab_binding_exists(self):
         """Shift+Tab should be bound for previous panel."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         bindings = {b[0]: b[1] for b in DashboardApp.BINDINGS}
         assert "shift+tab" in bindings
@@ -26,21 +26,21 @@ class TestPanelFocusActions:
 
     def test_focus_next_panel_action_exists(self):
         """action_focus_next_panel method should exist."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert hasattr(DashboardApp, "action_focus_next_panel")
         assert callable(getattr(DashboardApp, "action_focus_next_panel"))
 
     def test_focus_prev_panel_action_exists(self):
         """action_focus_prev_panel method should exist."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert hasattr(DashboardApp, "action_focus_prev_panel")
         assert callable(getattr(DashboardApp, "action_focus_prev_panel"))
 
     def test_focus_panel_action_exists(self):
         """action_focus_panel method should exist."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert hasattr(DashboardApp, "action_focus_panel")
         assert callable(getattr(DashboardApp, "action_focus_panel"))
@@ -51,20 +51,20 @@ class TestPanelOrder:
 
     def test_panel_order_exists(self):
         """PANEL_ORDER should be defined."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert hasattr(DashboardApp, "PANEL_ORDER")
         assert isinstance(DashboardApp.PANEL_ORDER, list)
 
     def test_panel_order_not_empty(self):
         """PANEL_ORDER should contain panel IDs."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert len(DashboardApp.PANEL_ORDER) > 0
 
     def test_panel_ids_end_with_panel_or_group(self):
         """All PANEL_ORDER entries should end with '-panel' or '-group'."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         for panel_id in DashboardApp.PANEL_ORDER:
             assert panel_id.endswith("-panel") or panel_id.endswith("-group"), (
@@ -77,7 +77,7 @@ class TestHelpPanelFocusDocs:
 
     def test_help_shortcuts_exist(self):
         """Help shortcuts should be defined."""
-        from openclaw_dash.widgets.help_panel import STATIC_SHORTCUTS
+        from hermes_dash.widgets.help_panel import STATIC_SHORTCUTS
 
         assert STATIC_SHORTCUTS is not None
         assert isinstance(STATIC_SHORTCUTS, list)
@@ -90,7 +90,7 @@ class TestPanelFocusIntegration:
     def test_action_focus_next_panel_implementation(self):
         """Test action_focus_next_panel method exists and has proper logic."""
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_next_panel")
@@ -106,7 +106,7 @@ class TestPanelFocusIntegration:
     def test_action_focus_prev_panel_implementation(self):
         """Test action_focus_prev_panel method exists and has proper logic."""
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_prev_panel")
@@ -123,7 +123,7 @@ class TestPanelFocusIntegration:
         """Test action_focus_panel method exists and validates panel IDs."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         # Verify method exists
         assert hasattr(DashboardApp, "action_focus_panel")
@@ -145,7 +145,7 @@ class TestPanelFocusIntegration:
 
     def test_tab_binding_maps_to_focus_next(self):
         """Test that Tab key is bound to focus_next_panel action."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         bindings_dict = {b[0]: b[1] for b in DashboardApp.BINDINGS}
         assert "tab" in bindings_dict
@@ -159,7 +159,7 @@ class TestPanelFocusIntegration:
 
     def test_shift_tab_binding_maps_to_focus_prev(self):
         """Test that Shift+Tab key is bound to focus_prev_panel action."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         bindings_dict = {b[0]: b[1] for b in DashboardApp.BINDINGS}
         assert "shift+tab" in bindings_dict
@@ -173,7 +173,7 @@ class TestPanelFocusIntegration:
 
     def test_panel_order_valid_for_cycling(self):
         """Test that PANEL_ORDER contains valid panel IDs for cycling."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         panel_order = DashboardApp.PANEL_ORDER
         assert len(panel_order) > 0
@@ -184,7 +184,7 @@ class TestPanelFocusIntegration:
 
     def test_panel_focus_wrapping_logic(self):
         """Test that panel focus wrapping logic would work correctly."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         panel_order = DashboardApp.PANEL_ORDER
 
@@ -200,7 +200,7 @@ class TestPanelFocusIntegration:
 
     def test_help_shortcuts_include_tab_navigation(self):
         """Test that help panel documents Tab navigation."""
-        from openclaw_dash.widgets.help_panel import STATIC_SHORTCUTS
+        from hermes_dash.widgets.help_panel import STATIC_SHORTCUTS
 
         # Check that shortcuts list exists
         assert STATIC_SHORTCUTS is not None
@@ -217,7 +217,7 @@ class TestPanelFocusSecurity:
         """Test that action_focus_panel validates panel_id against PANEL_ORDER whitelist."""
         from unittest.mock import MagicMock
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         # Create a mock app instance
         app = DashboardApp()
@@ -265,7 +265,7 @@ class TestPanelFocusSecurity:
 
     def test_panel_order_is_complete_whitelist(self):
         """Test that PANEL_ORDER serves as a complete whitelist for panel IDs."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         # PANEL_ORDER should exist and be a list
         assert hasattr(DashboardApp, "PANEL_ORDER")
@@ -281,7 +281,7 @@ class TestPanelFocusSecurity:
         """Test that action_focus_panel returns early for invalid IDs without side effects."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         # Verify the method implementation returns early on invalid panel_id
         source = inspect.getsource(DashboardApp.action_focus_panel)

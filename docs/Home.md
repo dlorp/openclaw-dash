@@ -1,12 +1,12 @@
-# openclaw-dash
+# hermes-dash
 
 A terminal-native monitoring cockpit. Plugin-based data sources, real-time updates, no browser required.
 
 ## The Plugin Model
 
-openclaw-dash is built on one idea: any data source that can provide structured metrics becomes a dashboard panel.
+hermes-dash is built on one idea: any data source that can provide structured metrics becomes a dashboard panel.
 
-Your services speak different protocols. SSH for system metrics. HTTP for API status. Database connections for query performance. Custom APIs for business KPIs. openclaw-dash plugins normalize them all into one live view.
+Your services speak different protocols. SSH for system metrics. HTTP for API status. Database connections for query performance. Custom APIs for business KPIs. hermes-dash plugins normalize them all into one live view.
 
 ```
     Your Services
@@ -34,8 +34,8 @@ Your services speak different protocols. SSH for system metrics. HTTP for API st
 ### Installation
 
 ```bash
-git clone https://github.com/dlorp/openclaw-dash.git
-cd openclaw-dash
+git clone https://github.com/dlorp/hermes-dash.git
+cd hermes-dash
 pip install -e .
 ```
 
@@ -49,11 +49,11 @@ docker compose up -d
 
 ```bash
 # Run demo with mock data
-openclaw-dash --demo
+hermes-dash --demo
 
 # Create config and run
-mkdir -p ~/.config/openclaw-dash
-cat > ~/.config/openclaw-dash/config.yaml << 'EOF'
+mkdir -p ~/.config/hermes-dash
+cat > ~/.config/hermes-dash/config.yaml << 'EOF'
 plugins:
   - name: localhost
     type: ssh-agent
@@ -68,7 +68,7 @@ layout:
           chart: sparkline
 EOF
 
-openclaw-dash
+hermes-dash
 ```
 
 ## Documentation

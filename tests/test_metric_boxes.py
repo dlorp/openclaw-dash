@@ -3,7 +3,7 @@
 import pytest
 from textual.widgets import Static
 
-from openclaw_dash.widgets.metric_boxes import (
+from hermes_dash.widgets.metric_boxes import (
     COLORS,
     MetricBox,
     MetricBoxesBar,
@@ -172,13 +172,13 @@ class TestMetricBoxesIntegration:
 
     def test_import_from_app(self):
         """MetricBoxesBar should be importable from app module."""
-        from openclaw_dash.app import MetricBoxesBar
+        from hermes_dash.app import MetricBoxesBar
 
         assert MetricBoxesBar is not None
 
     def test_import_from_widgets(self):
         """MetricBoxesBar should be importable from widgets module."""
-        from openclaw_dash.widgets import MetricBox, MetricBoxesBar
+        from hermes_dash.widgets import MetricBox, MetricBoxesBar
 
         assert MetricBox is not None
         assert MetricBoxesBar is not None
@@ -187,7 +187,7 @@ class TestMetricBoxesIntegration:
         """DashboardApp should refresh MetricBoxesBar."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp._do_auto_refresh)
         assert "MetricBoxesBar" in source

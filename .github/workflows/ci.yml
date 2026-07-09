@@ -30,4 +30,4 @@ jobs:
         run: ruff check src/ tests/
 
       - name: Test
-        run: pytest tests/ -v --cov=openclaw_dash
+        run: pytest tests/ -v --cov=hermes_dash

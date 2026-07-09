@@ -1,4 +1,4 @@
-# Contributing to openclaw-dash
+# Contributing to hermes-dash
 
 Thanks for your interest in contributing! 🎉 This guide will help you get started.
 
@@ -17,8 +17,8 @@ Thanks for your interest in contributing! 🎉 This guide will help you get star
 
 ```bash
 # 1. Fork and clone
-git clone https://github.com/YOUR_USERNAME/openclaw-dash.git
-cd openclaw-dash
+git clone https://github.com/YOUR_USERNAME/hermes-dash.git
+cd hermes-dash
 
 # 2. Create virtual environment
 python -m venv .venv
@@ -29,7 +29,7 @@ pip install -e ".[dev]"
 
 # 4. Verify setup
 pytest tests/ -v
-openclaw-dash --help
+hermes-dash --help
 ```
 
 ## Development Setup
@@ -61,22 +61,22 @@ The `[dev]` extras include:
 
 ```bash
 # Launch TUI
-openclaw-dash
+hermes-dash
 
 # Demo mode (mock data, no gateway needed)
-openclaw-dash --demo
+hermes-dash --demo
 
 # Quick status check
-openclaw-dash --status
+hermes-dash --status
 ```
 
 ## Project Architecture
 
 ```
-src/openclaw_dash/
+src/hermes_dash/
 ├── app.py              # Main TUI application (Textual)
 ├── cli.py              # CLI entry point
-├── config.py           # User preferences (~/.config/openclaw-dash/)
+├── config.py           # User preferences (~/.config/hermes-dash/)
 ├── themes.py           # Color themes (dark, light, hacker)
 ├── version.py          # Version info with git metadata
 ├── commands.py         # Command palette (Ctrl+P)
@@ -84,7 +84,7 @@ src/openclaw_dash/
 ├── exporter.py         # Export dashboard state
 │
 ├── collectors/         # Data fetching modules
-│   ├── gateway.py      # OpenClaw gateway status
+│   ├── gateway.py      # Hermes Agent gateway status
 │   ├── sessions.py     # Active sessions
 │   ├── repos.py        # Repository health (PRs, TODOs)
 │   ├── alerts.py       # Alert aggregation
@@ -164,7 +164,7 @@ pytest tests/ -v
 pytest tests/test_widgets.py -v
 
 # Run with coverage
-pytest tests/ --cov=openclaw_dash --cov-report=html
+pytest tests/ --cov=hermes_dash --cov-report=html
 ```
 
 ### 4. Check Code Quality

@@ -1,6 +1,6 @@
 """Tests for responsive layout features."""
 
-from openclaw_dash.app import (
+from hermes_dash.app import (
     COMPACT_WIDTH,
     MINIMUM_WIDTH,
     DashboardApp,

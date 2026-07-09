@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openclaw_dash.services.model_discovery import (
+from hermes_dash.services.model_discovery import (
     CONFIG_SCHEMA,
     DiscoveryResult,
     ModelDiscoveryService,
@@ -308,7 +308,7 @@ class TestGatewayDiscovery:
 
     @pytest.fixture
     def mock_client(self):
-        from openclaw_dash.services import GatewayClient
+        from hermes_dash.services import GatewayClient
 
         return MagicMock(spec=GatewayClient)
 

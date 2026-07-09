@@ -1,12 +1,12 @@
 # Development
 
-How to write plugins, run tests, and contribute to openclaw-dash.
+How to write plugins, run tests, and contribute to hermes-dash.
 
 ## Setup
 
 ```bash
-git clone https://github.com/dlorp/openclaw-dash.git
-cd openclaw-dash
+git clone https://github.com/dlorp/hermes-dash.git
+cd hermes-dash
 pip install -e ".[dev]"
 pytest
 ```
@@ -20,7 +20,7 @@ Plugins are the extension mechanism. Any class implementing the plugin interface
 ### The Interface
 
 ```python
-from openclaw_dash.plugins import DataSourcePlugin, Metric
+from hermes_dash.plugins import DataSourcePlugin, Metric
 
 class MyPlugin(DataSourcePlugin):
     """Example plugin collecting custom metrics."""
@@ -61,7 +61,7 @@ class MyPlugin(DataSourcePlugin):
 Add your plugin to the registry:
 
 ```python
-# src/openclaw_dash/plugins/__init__.py
+# src/hermes_dash/plugins/__init__.py
 from .my_plugin import MyPlugin
 
 PLUGIN_REGISTRY = {
@@ -122,7 +122,7 @@ def acquire(self) -> dict:
 pytest
 
 # With coverage
-pytest --cov=openclaw_dash
+pytest --cov=hermes_dash
 
 # Specific file
 pytest tests/test_collectors.py
@@ -146,14 +146,14 @@ Run checks:
 ```bash
 ruff check src/
 ruff format --check src/
-mypy src/openclaw_dash
+mypy src/hermes_dash
 ```
 
 ## Adding a Widget
 
-1. Create `src/openclaw_dash/widgets/my_widget.py`
+1. Create `src/hermes_dash/widgets/my_widget.py`
 2. Implement the widget interface (see existing widgets)
-3. Register in `src/openclaw_dash/widgets/__init__.py`
+3. Register in `src/hermes_dash/widgets/__init__.py`
 4. Add chart type to layout parser
 5. Write tests
 
@@ -186,7 +186,7 @@ class MyWidget(Static):
 ## Directory Structure
 
 ```
-src/openclaw_dash/
+src/hermes_dash/
 ├── plugins/           # Data source plugins
 ├── collectors/        # Metric collectors
 ├── widgets/           # UI widgets

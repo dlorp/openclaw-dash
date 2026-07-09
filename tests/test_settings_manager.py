@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from openclaw_dash.settings_manager import (
+from hermes_dash.settings_manager import (
     SettingsManager,
     _coerce_value,
     _expand_paths,

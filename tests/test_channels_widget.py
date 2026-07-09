@@ -6,8 +6,8 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.widgets import Static
 
-from openclaw_dash.collectors import channels
-from openclaw_dash.widgets.channels import ChannelsPanel
+from hermes_dash.collectors import channels
+from hermes_dash.widgets.channels import ChannelsPanel
 
 
 class TestChannelHelpers:
@@ -91,7 +91,7 @@ class TestChannelsCollector:
         result = channels.collect()
         assert isinstance(result["total"], int)
 
-    @patch("openclaw_dash.collectors.channels.Path")
+    @patch("hermes_dash.collectors.channels.Path")
     def test_collect_with_config_file(self, mock_path):
         """Test collection with a config file."""
         mock_config = """
@@ -191,7 +191,7 @@ class TestChannelsPanelIntegration:
         app = ChannelsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.channels.channels.collect",
+                "hermes_dash.widgets.channels.channels.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(ChannelsPanel)
@@ -214,7 +214,7 @@ class TestChannelsPanelIntegration:
         app = ChannelsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.channels.channels.collect",
+                "hermes_dash.widgets.channels.channels.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(ChannelsPanel)
@@ -238,7 +238,7 @@ class TestChannelsPanelIntegration:
         app = ChannelsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.channels.channels.collect",
+                "hermes_dash.widgets.channels.channels.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(ChannelsPanel)
@@ -260,7 +260,7 @@ class TestChannelsPanelIntegration:
         app = ChannelsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.channels.channels.collect",
+                "hermes_dash.widgets.channels.channels.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(ChannelsPanel)
@@ -287,7 +287,7 @@ class TestChannelsPanelIntegration:
         app = ChannelsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.channels.channels.collect",
+                "hermes_dash.widgets.channels.channels.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(ChannelsPanel)
@@ -301,7 +301,7 @@ class TestChannelsPanelAppIntegration:
 
     def test_import_from_app(self):
         """ChannelsPanel should be importable from app module."""
-        from openclaw_dash.app import ChannelsPanel as AppChannelsPanel
+        from hermes_dash.app import ChannelsPanel as AppChannelsPanel
 
         assert AppChannelsPanel is not None
         assert AppChannelsPanel is ChannelsPanel
@@ -310,7 +310,7 @@ class TestChannelsPanelAppIntegration:
         """DashboardApp should refresh ChannelsPanel."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp.action_refresh)
         assert "ChannelsPanel" in source
@@ -319,7 +319,7 @@ class TestChannelsPanelAppIntegration:
         """DashboardApp should auto-refresh ChannelsPanel."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp._do_auto_refresh)
         assert "ChannelsPanel" in source
@@ -328,7 +328,7 @@ class TestChannelsPanelAppIntegration:
         """DashboardApp compose should include channels-panel."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp.compose)
         assert "channels-panel" in source

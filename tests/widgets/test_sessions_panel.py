@@ -1,6 +1,6 @@
 """Tests for the SessionsPanel widget (token-based highlighting)."""
 
-from openclaw_dash.widgets.sessions_panel import (
+from hermes_dash.widgets.sessions_panel import (
     CRITICAL_TOKEN_THRESHOLD,
     WARN_TOKEN_THRESHOLD,
     format_tokens,

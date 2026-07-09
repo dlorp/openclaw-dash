@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from openclaw_dash.widgets.notifications import (
+from hermes_dash.widgets.notifications import (
     ICONS,
     TIMEOUTS,
     NotificationLevel,

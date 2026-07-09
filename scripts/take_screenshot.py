@@ -27,7 +27,7 @@ async def take_screenshot(theme: str | None = None) -> Path:
     Returns:
         Path to the saved screenshot.
     """
-    from openclaw_dash.app import DashboardApp
+    from hermes_dash.app import DashboardApp
 
     output_dir = Path(__file__).parent.parent / "docs" / "images"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -59,7 +59,7 @@ async def take_screenshot(theme: str | None = None) -> Path:
 async def main():
     """Generate all dashboard screenshots."""
     # Enable demo mode BEFORE importing app
-    from openclaw_dash.demo import enable_demo_mode
+    from hermes_dash.demo import enable_demo_mode
 
     enable_demo_mode()
 

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from openclaw_dash.pr_workflow import PRWorkflow
+from hermes_dash.pr_workflow import PRWorkflow
 
 
 def load_pr_auto_module():
@@ -16,7 +16,7 @@ def load_pr_auto_module():
     if module_name in sys.modules:
         return sys.modules[module_name]
 
-    module_path = Path(__file__).resolve().parents[1] / "src" / "openclaw_dash" / "automation" / "pr_auto.py"
+    module_path = Path(__file__).resolve().parents[1] / "src" / "hermes_dash" / "automation" / "pr_auto.py"
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)

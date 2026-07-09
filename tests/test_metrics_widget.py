@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from textual.widgets import Static
 
-from openclaw_dash.widgets.metrics import (
+from hermes_dash.widgets.metrics import (
     CostsPanel,
     GitHubPanel,
     MetricsPanel,
@@ -63,13 +63,13 @@ class TestCostsPanel:
             ],
         }
 
-        with patch("openclaw_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
+        with patch("hermes_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
             mock_tracker = MagicMock()
             mock_tracker.collect.return_value = mock_data
             mock_tracker_cls.return_value = mock_tracker
 
             # Verify the module uses CostTracker
-            from openclaw_dash.widgets import metrics as m
+            from hermes_dash.widgets import metrics as m
 
             assert hasattr(m, "CostsPanel")
 
@@ -123,12 +123,12 @@ class TestPerformancePanel:
             ],
         }
 
-        with patch("openclaw_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls:
+        with patch("hermes_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls:
             mock_perf = MagicMock()
             mock_perf.collect.return_value = mock_data
             mock_perf_cls.return_value = mock_perf
 
-            from openclaw_dash.widgets import metrics as m
+            from hermes_dash.widgets import metrics as m
 
             assert hasattr(m, "PerformancePanel")
 
@@ -182,12 +182,12 @@ class TestGitHubPanel:
             },
         }
 
-        with patch("openclaw_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls:
+        with patch("hermes_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls:
             mock_gh = MagicMock()
             mock_gh.collect.return_value = mock_data
             mock_gh_cls.return_value = mock_gh
 
-            from openclaw_dash.widgets import metrics as m
+            from hermes_dash.widgets import metrics as m
 
             assert hasattr(m, "GitHubPanel")
 
@@ -223,25 +223,25 @@ class TestMetricsPanelIntegration:
 
     def test_costs_panel_import(self):
         """CostsPanel should be importable."""
-        from openclaw_dash.widgets.metrics import CostsPanel
+        from hermes_dash.widgets.metrics import CostsPanel
 
         assert CostsPanel is not None
 
     def test_performance_panel_import(self):
         """PerformancePanel should be importable."""
-        from openclaw_dash.widgets.metrics import PerformancePanel
+        from hermes_dash.widgets.metrics import PerformancePanel
 
         assert PerformancePanel is not None
 
     def test_github_panel_import(self):
         """GitHubPanel should be importable."""
-        from openclaw_dash.widgets.metrics import GitHubPanel
+        from hermes_dash.widgets.metrics import GitHubPanel
 
         assert GitHubPanel is not None
 
     def test_metrics_panel_import(self):
         """MetricsPanel should be importable."""
-        from openclaw_dash.widgets.metrics import MetricsPanel
+        from hermes_dash.widgets.metrics import MetricsPanel
 
         assert MetricsPanel is not None
 
@@ -266,7 +266,7 @@ class TestCostsPanelRendering:
             "daily_costs": [],
         }
 
-        with patch("openclaw_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
+        with patch("hermes_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
             mock_tracker = MagicMock()
             mock_tracker.collect.return_value = mock_data
             mock_tracker_cls.return_value = mock_tracker
@@ -290,7 +290,7 @@ class TestCostsPanelRendering:
             "daily_costs": [],
         }
 
-        with patch("openclaw_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
+        with patch("hermes_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
             mock_tracker = MagicMock()
             mock_tracker.collect.return_value = mock_data
             mock_tracker_cls.return_value = mock_tracker
@@ -317,7 +317,7 @@ class TestPerformancePanelRendering:
             "latency_history": [],
         }
 
-        with patch("openclaw_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls:
+        with patch("hermes_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls:
             mock_perf = MagicMock()
             mock_perf.collect.return_value = mock_data
             mock_perf_cls.return_value = mock_perf
@@ -340,7 +340,7 @@ class TestPerformancePanelRendering:
             "latency_history": [],
         }
 
-        with patch("openclaw_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls:
+        with patch("hermes_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls:
             mock_perf = MagicMock()
             mock_perf.collect.return_value = mock_data
             mock_perf_cls.return_value = mock_perf
@@ -369,7 +369,7 @@ class TestGitHubPanelRendering:
             "todo_trends": {"repos": {}},
         }
 
-        with patch("openclaw_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls:
+        with patch("hermes_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls:
             mock_gh = MagicMock()
             mock_gh.collect.return_value = mock_data
             mock_gh_cls.return_value = mock_gh
@@ -394,7 +394,7 @@ class TestGitHubPanelRendering:
             "todo_trends": {"repos": {}},
         }
 
-        with patch("openclaw_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls:
+        with patch("hermes_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls:
             mock_gh = MagicMock()
             mock_gh.collect.return_value = mock_data
             mock_gh_cls.return_value = mock_gh
@@ -424,7 +424,7 @@ class TestGitHubPanelRendering:
             },
         }
 
-        with patch("openclaw_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls:
+        with patch("hermes_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls:
             mock_gh = MagicMock()
             mock_gh.collect.return_value = mock_data
             mock_gh_cls.return_value = mock_gh
@@ -440,9 +440,9 @@ class TestMetricsPanelRendering:
     def test_metrics_panel_handles_exceptions(self):
         """Test that MetricsPanel handles collector exceptions gracefully."""
         with (
-            patch("openclaw_dash.widgets.metrics.CostTracker") as mock_cost_cls,
-            patch("openclaw_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls,
-            patch("openclaw_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls,
+            patch("hermes_dash.widgets.metrics.CostTracker") as mock_cost_cls,
+            patch("hermes_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls,
+            patch("hermes_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls,
         ):
             # All collectors raise exceptions
             mock_cost = MagicMock()
@@ -465,9 +465,9 @@ class TestMetricsPanelRendering:
     def test_metrics_panel_renders_combined_data(self):
         """Test that MetricsPanel combines all metrics sources."""
         with (
-            patch("openclaw_dash.widgets.metrics.CostTracker") as mock_cost_cls,
-            patch("openclaw_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls,
-            patch("openclaw_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls,
+            patch("hermes_dash.widgets.metrics.CostTracker") as mock_cost_cls,
+            patch("hermes_dash.widgets.metrics.PerformanceMetrics") as mock_perf_cls,
+            patch("hermes_dash.widgets.metrics.GitHubMetrics") as mock_gh_cls,
         ):
             # Set up all mocks with valid data
             mock_cost = MagicMock()
@@ -661,7 +661,7 @@ class TestCostsPanelWithForecast:
             ],
         }
 
-        with patch("openclaw_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
+        with patch("hermes_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
             mock_tracker = MagicMock()
             mock_tracker.collect.return_value = mock_data
             mock_tracker.get_history.return_value = mock_data["daily_costs"]
@@ -684,7 +684,7 @@ class TestCostsPanelWithForecast:
             {"date": "2026-01-30", "total_cost": 0.45},
         ]
 
-        with patch("openclaw_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
+        with patch("hermes_dash.widgets.metrics.CostTracker") as mock_tracker_cls:
             mock_tracker = MagicMock()
             mock_tracker.collect.return_value = mock_data
             mock_tracker.get_history.return_value = mock_history

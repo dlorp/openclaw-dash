@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from openclaw_dash.config import Config, load_config, save_config
+from hermes_dash.config import Config, load_config, save_config
 
 
 @pytest.fixture
@@ -33,6 +33,7 @@ class TestConfig:
             "show_notifications": False,
             "show_resources": True,
             "collapsed_panels": [],
+            "bare_mode": False,
             "models": {
                 "custom_paths": [],
             },

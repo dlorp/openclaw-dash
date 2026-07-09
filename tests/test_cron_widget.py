@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from textual.widgets import Static
 
-from openclaw_dash.widgets.cron import (
+from hermes_dash.widgets.cron import (
     CronPanel,
     CronSummaryPanel,
     format_relative_time,
@@ -180,7 +180,7 @@ class TestCronPanel:
 
     def test_module_imports(self):
         """Test that the module imports correctly."""
-        from openclaw_dash.widgets import cron
+        from hermes_dash.widgets import cron
 
         assert hasattr(cron, "CronPanel")
         assert hasattr(cron, "CronSummaryPanel")
@@ -236,8 +236,8 @@ class TestCronPanelIntegration:
             "collected_at": datetime.now().isoformat(),
         }
 
-        with patch("openclaw_dash.widgets.cron.cron.collect", return_value=mock_data):
-            from openclaw_dash.widgets.cron import CronPanel
+        with patch("hermes_dash.widgets.cron.cron.collect", return_value=mock_data):
+            from hermes_dash.widgets.cron import CronPanel
 
             assert CronPanel is not None
 
@@ -257,8 +257,8 @@ class TestCronPanelIntegration:
             "collected_at": datetime.now().isoformat(),
         }
 
-        with patch("openclaw_dash.widgets.cron.cron.collect", return_value=mock_data):
-            from openclaw_dash.widgets.cron import CronPanel
+        with patch("hermes_dash.widgets.cron.cron.collect", return_value=mock_data):
+            from hermes_dash.widgets.cron import CronPanel
 
             assert CronPanel is not None
 
@@ -271,8 +271,8 @@ class TestCronPanelIntegration:
             "collected_at": datetime.now().isoformat(),
         }
 
-        with patch("openclaw_dash.widgets.cron.cron.collect", return_value=mock_data):
-            from openclaw_dash.widgets.cron import CronPanel
+        with patch("hermes_dash.widgets.cron.cron.collect", return_value=mock_data):
+            from hermes_dash.widgets.cron import CronPanel
 
             panel = CronPanel()
             # Verify panel can be created with empty data
@@ -294,8 +294,8 @@ class TestCronSummaryPanelIntegration:
             "collected_at": datetime.now().isoformat(),
         }
 
-        with patch("openclaw_dash.widgets.cron.cron.collect", return_value=mock_data):
-            from openclaw_dash.widgets.cron import CronSummaryPanel
+        with patch("hermes_dash.widgets.cron.cron.collect", return_value=mock_data):
+            from hermes_dash.widgets.cron import CronSummaryPanel
 
             panel = CronSummaryPanel()
             assert panel is not None
@@ -307,8 +307,8 @@ class TestCronSummaryPanelIntegration:
             "collected_at": datetime.now().isoformat(),
         }
 
-        with patch("openclaw_dash.widgets.cron.cron.collect", return_value=mock_data):
-            from openclaw_dash.widgets.cron import CronSummaryPanel
+        with patch("hermes_dash.widgets.cron.cron.collect", return_value=mock_data):
+            from hermes_dash.widgets.cron import CronSummaryPanel
 
             panel = CronSummaryPanel()
             assert panel is not None

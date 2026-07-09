@@ -1,18 +1,18 @@
 # Usage
 
-Command reference and keyboard shortcuts for openclaw-dash.
+Command reference and keyboard shortcuts for hermes-dash.
 
 ## Commands
 
 ```bash
-openclaw-dash                      # Launch TUI
-openclaw-dash --status             # Text status report
-openclaw-dash --json               # JSON output
-openclaw-dash --demo               # Demo mode with mock data
-openclaw-dash --config /path       # Custom config file
-openclaw-dash --list-plugins       # Show installed plugins
-openclaw-dash --version            # Version info
-openclaw-dash --config-check       # Validate config without running
+hermes-dash                      # Launch TUI
+hermes-dash --status             # Text status report
+hermes-dash --json               # JSON output
+hermes-dash --demo               # Demo mode with mock data
+hermes-dash --config /path       # Custom config file
+hermes-dash --list-plugins       # Show installed plugins
+hermes-dash --version            # Version info
+hermes-dash --config-check       # Validate config without running
 ```
 
 ## Keyboard Shortcuts
@@ -100,13 +100,13 @@ For scripting and automation:
 
 ```bash
 # Quick status
-openclaw-dash --status
+hermes-dash --status
 
 # JSON for processing
-openclaw-dash --json | jq '.plugins[] | select(.status == "error")'
+hermes-dash --json | jq '.plugins[] | select(.status == "error")'
 
 # Specific plugin only
-openclaw-dash --status --plugin web-server
+hermes-dash --status --plugin web-server
 ```
 
 JSON output schema:
@@ -131,7 +131,7 @@ JSON output schema:
 Run without any configuration:
 
 ```bash
-openclaw-dash --demo
+hermes-dash --demo
 ```
 
 Uses mock data to demonstrate widgets and layout. Useful for:

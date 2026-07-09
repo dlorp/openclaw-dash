@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openclaw_dash.cli import get_status, main, run_tui
+from hermes_dash.cli import get_status, main, run_tui
 
 
 class TestCLI:
@@ -16,15 +16,15 @@ class TestCLI:
         assert "repos" in result
         assert "activity" in result
 
-    @patch("sys.argv", ["openclaw-dash", "--version"])
+    @patch("sys.argv", ["hermes-dash", "--version"])
     def test_version_flag(self):
         with pytest.raises(SystemExit) as exc:
             main()
         assert exc.value.code == 0
 
-    @patch("openclaw_dash.cli.quick_gateway_check", return_value=True)
-    @patch("openclaw_dash.cli.with_gateway_timeout")
-    @patch("sys.argv", ["openclaw-dash", "--status", "--json"])
+    @patch("hermes_dash.cli.quick_gateway_check", return_value=True)
+    @patch("hermes_dash.cli.with_gateway_timeout")
+    @patch("sys.argv", ["hermes-dash", "--status", "--json"])
     def test_json_output(self, mock_timeout, mock_check, capsys):
         mock_timeout.return_value = {
             "gateway": {"status": "connected"},
@@ -40,22 +40,22 @@ class TestCLI:
         data = json.loads(captured.out)
         assert "gateway" in data
 
-    @patch("openclaw_dash.cli.run_tui")
-    @patch("sys.argv", ["openclaw-dash", "--watch"])
+    @patch("hermes_dash.cli.run_tui")
+    @patch("sys.argv", ["hermes-dash", "--watch"])
     def test_watch_flag_long(self, mock_run_tui):
         """Test that --watch sets 5s refresh interval."""
         main()
         mock_run_tui.assert_called_once_with(refresh_interval=5)
 
-    @patch("openclaw_dash.cli.run_tui")
-    @patch("sys.argv", ["openclaw-dash", "-w"])
+    @patch("hermes_dash.cli.run_tui")
+    @patch("sys.argv", ["hermes-dash", "-w"])
     def test_watch_flag_short(self, mock_run_tui):
         """Test that -w flag also works."""
         main()
         mock_run_tui.assert_called_once_with(refresh_interval=5)
 
-    @patch("openclaw_dash.cli.run_tui")
-    @patch("sys.argv", ["openclaw-dash"])
+    @patch("hermes_dash.cli.run_tui")
+    @patch("sys.argv", ["hermes-dash"])
     def test_default_refresh_interval(self, mock_run_tui):
         """Test that default refresh interval is None (uses config)."""
         main()
@@ -63,7 +63,7 @@ class TestCLI:
 
 
 class TestRunTui:
-    @patch("openclaw_dash.app.DashboardApp")
+    @patch("hermes_dash.app.DashboardApp")
     def test_run_tui_default_interval(self, mock_app_class):
         """Test run_tui passes None by default."""
         mock_app = MagicMock()
@@ -72,7 +72,7 @@ class TestRunTui:
         mock_app_class.assert_called_once_with(refresh_interval=None)
         mock_app.run.assert_called_once()
 
-    @patch("openclaw_dash.app.DashboardApp")
+    @patch("hermes_dash.app.DashboardApp")
     def test_run_tui_watch_mode_interval(self, mock_app_class):
         """Test run_tui passes 5s for watch mode."""
         mock_app = MagicMock()

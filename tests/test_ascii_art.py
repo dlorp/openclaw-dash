@@ -1,6 +1,6 @@
 """Tests for ASCII art utilities."""
 
-from openclaw_dash.widgets.ascii_art import (
+from hermes_dash.widgets.ascii_art import (
     BRAND_COLORS,
     DOUBLE,
     ROUNDED,

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from openclaw_dash.widgets.sessions import (
+from hermes_dash.widgets.sessions import (
     SessionsPanel,
     SessionsSummaryPanel,
     SessionStatus,
@@ -182,7 +182,7 @@ class TestSessionsPanel:
     @pytest.fixture
     def mock_collect(self):
         """Mock the sessions.collect function."""
-        with patch("openclaw_dash.widgets.sessions.sessions.collect") as mock:
+        with patch("hermes_dash.widgets.sessions.sessions.collect") as mock:
             yield mock
 
     def test_panel_creation(self):
@@ -266,7 +266,7 @@ class TestSessionsSummaryPanel:
     @pytest.fixture
     def mock_collect(self):
         """Mock the sessions.collect function."""
-        with patch("openclaw_dash.widgets.sessions.sessions.collect") as mock:
+        with patch("hermes_dash.widgets.sessions.sessions.collect") as mock:
             yield mock
 
     def test_summary_panel_creation(self):

@@ -1,6 +1,6 @@
 # Architecture
 
-openclaw-dash separates data acquisition (plugins), collection (buffers), and presentation (widgets). The TUI layer never talks directly to data sources.
+hermes-dash separates data acquisition (plugins), collection (buffers), and presentation (widgets). The TUI layer never talks directly to data sources.
 
 ## Overview
 
@@ -27,10 +27,10 @@ openclaw-dash separates data acquisition (plugins), collection (buffers), and pr
 Entry point. Handles arguments, config loading, dispatches to TUI or command modes.
 
 ```bash
-openclaw-dash              # Launch TUI
-openclaw-dash --status     # Text output
-openclaw-dash --json       # JSON for piping
-openclaw-dash --demo       # Mock data mode
+hermes-dash              # Launch TUI
+hermes-dash --status     # Text output
+hermes-dash --json       # JSON for piping
+hermes-dash --demo       # Mock data mode
 ```
 
 ### Main App (`app.py`)
@@ -138,8 +138,8 @@ No code changes for common customizations. Plugin definitions, layout, and theme
 ## Directory Structure
 
 ```
-openclaw-dash/
-├── src/openclaw_dash/
+hermes-dash/
+├── src/hermes_dash/
 │   ├── app.py              # Main TUI application
 │   ├── cli.py              # CLI entry point
 │   ├── commands.py         # Keyboard commands

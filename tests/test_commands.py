@@ -2,8 +2,8 @@
 
 import pytest
 
-from openclaw_dash.commands import DashboardCommands
-from openclaw_dash.themes import THEME_NAMES
+from hermes_dash.commands import DashboardCommands
+from hermes_dash.themes import THEME_NAMES
 
 
 class TestDashboardCommandsClass:
@@ -35,21 +35,21 @@ class TestAppIntegration:
 
     def test_app_has_commands(self):
         """DashboardApp should have COMMANDS set."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert hasattr(DashboardApp, "COMMANDS")
         assert DashboardCommands in DashboardApp.COMMANDS
 
     def test_command_palette_enabled(self):
         """Command palette should be enabled by default."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         # ENABLE_COMMAND_PALETTE defaults to True in Textual
         assert DashboardApp.ENABLE_COMMAND_PALETTE is True
 
     def test_command_palette_binding(self):
         """Command palette should be accessible via Ctrl+P."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         assert DashboardApp.COMMAND_PALETTE_BINDING == "ctrl+p"
 

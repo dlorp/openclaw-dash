@@ -1,6 +1,6 @@
 """Tests for the Tool Harness panel widget."""
 
-from openclaw_dash.widgets.tool_harness import (
+from hermes_dash.widgets.tool_harness import (
     STATE_COLORS,
     STATE_SYMBOLS,
     CompactToolHarnessPanel,

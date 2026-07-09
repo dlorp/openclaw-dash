@@ -1,6 +1,6 @@
 """Tests for the tamagotchi-style sprite widget."""
 
-from openclaw_dash.widgets.sprite import (
+from hermes_dash.widgets.sprite import (
     DEFAULT_STATUS_TEXT,
     SPRITES,
     STATE_COLORS,

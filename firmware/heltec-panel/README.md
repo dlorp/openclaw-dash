@@ -1,6 +1,6 @@
 # OCD Panel — Heltec V3 OLED Firmware
 
-MQTT-driven status display for openclaw-dash.
+MQTT-driven status display for hermes-dash.
 
 ## What it does
 
@@ -64,7 +64,7 @@ The panel expects JSON on `ocd/panel`:
 }
 ```
 
-The openclaw-dash MQTT sink produces this format automatically.
+The hermes-dash MQTT sink produces this format automatically.
 
 ## Auto-reconnect
 

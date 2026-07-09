@@ -3,7 +3,7 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from openclaw_dash.collectors import activity, channels, cron, gateway, repos, sessions
+from hermes_dash.collectors import activity, channels, cron, gateway, repos, sessions
 
 
 class TestGatewayCollector:
@@ -23,9 +23,9 @@ class TestGatewayCollector:
 
     def test_collect_with_demo_mode(self) -> None:
         """Gateway collector returns mock data in demo mode."""
-        with patch("openclaw_dash.collectors.gateway.is_demo_mode", return_value=True):
+        with patch("hermes_dash.collectors.gateway.is_demo_mode", return_value=True):
             with patch(
-                "openclaw_dash.collectors.gateway.mock_gateway_status",
+                "hermes_dash.collectors.gateway.mock_gateway_status",
                 return_value={"healthy": True, "mode": "demo"},
             ):
                 result = gateway.collect()
@@ -35,12 +35,12 @@ class TestGatewayCollector:
     def test_collect_fallback_to_http_health(self) -> None:
         """Gateway falls back to HTTP health check when CLI unavailable."""
         # Reset cache to avoid stale data from previous tests
-        from openclaw_dash.collectors.cache import reset_cache
+        from hermes_dash.collectors.cache import reset_cache
 
         reset_cache()
 
-        with patch("openclaw_dash.collectors.gateway.is_demo_mode", return_value=False):
-            with patch("openclaw_dash.collectors.gateway.get_openclaw_status", return_value=None):
+        with patch("hermes_dash.collectors.gateway.is_demo_mode", return_value=False):
+            with patch("hermes_dash.collectors.gateway.get_hermes_status", return_value=None):
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 with patch("httpx.get", return_value=mock_response):
@@ -50,12 +50,12 @@ class TestGatewayCollector:
     def test_collect_returns_unhealthy_on_failure(self) -> None:
         """Gateway returns unhealthy when all methods fail."""
         # Reset cache to avoid stale data from previous tests
-        from openclaw_dash.collectors.cache import reset_cache
+        from hermes_dash.collectors.cache import reset_cache
 
         reset_cache()
 
-        with patch("openclaw_dash.collectors.gateway.is_demo_mode", return_value=False):
-            with patch("openclaw_dash.collectors.gateway.get_openclaw_status", return_value=None):
+        with patch("hermes_dash.collectors.gateway.is_demo_mode", return_value=False):
+            with patch("hermes_dash.collectors.gateway.get_hermes_status", return_value=None):
                 with patch("httpx.get", side_effect=Exception("Connection refused")):
                     result = gateway.collect()
                     assert result["healthy"] is False
@@ -175,7 +175,7 @@ class TestActivityCollectorFunctions:
     def test_set_current_task(self, tmp_path, monkeypatch) -> None:
         """Test setting current task writes to activity log."""
         # Point to temp directory
-        mock_workspace = tmp_path / ".openclaw" / "workspace"
+        mock_workspace = tmp_path / ".hermes" / "workspace"
         mock_workspace.mkdir(parents=True)
         monkeypatch.setattr(activity, "WORKSPACE", mock_workspace)
         monkeypatch.setattr(activity, "ACTIVITY_LOG", mock_workspace / "memory" / "activity.json")
@@ -192,7 +192,7 @@ class TestActivityCollectorFunctions:
 
     def test_log_activity(self, tmp_path, monkeypatch) -> None:
         """Test logging activity appends to recent list."""
-        mock_workspace = tmp_path / ".openclaw" / "workspace"
+        mock_workspace = tmp_path / ".hermes" / "workspace"
         mock_workspace.mkdir(parents=True)
         monkeypatch.setattr(activity, "WORKSPACE", mock_workspace)
         monkeypatch.setattr(activity, "ACTIVITY_LOG", mock_workspace / "memory" / "activity.json")

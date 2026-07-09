@@ -4,7 +4,7 @@ Note: The gateway runs locally, so "offline mode" is a misnomer.
 These tests verify the skip-gateway functionality for testing/development.
 """
 
-from openclaw_dash.offline import (
+from hermes_dash.offline import (
     GATEWAY_FEATURES,
     GATEWAY_INDEPENDENT_FEATURES,
     GATEWAY_REQUIRED_FEATURES,
@@ -126,7 +126,7 @@ class TestFormatGatewayError:
         """Test basic error formatting."""
         msg = format_gateway_error()
         assert "Gateway" in msg
-        assert "gateway start" in msg
+        assert "not responding" in msg.lower() or "setup" in msg.lower()
 
     def test_with_error(self):
         """Test formatting with error message."""
@@ -153,7 +153,7 @@ class TestFormatGatewayErrorShort:
         """Test short format is concise."""
         msg = format_gateway_error_short()
         assert "Gateway" in msg
-        assert "gateway start" in msg
+        assert "not responding" in msg.lower() or "setup" in msg.lower()
         assert len(msg) < 100
 
     def test_timeout_shows_bug_message(self):

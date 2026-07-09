@@ -3,9 +3,9 @@
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from openclaw_dash import demo
-from openclaw_dash.collectors import alerts
-from openclaw_dash.collectors.alerts import (
+from hermes_dash import demo
+from hermes_dash.collectors import alerts
+from hermes_dash.collectors.alerts import (
     Alert,
     Severity,
     collect,
@@ -120,7 +120,7 @@ class TestCollect:
         )
         assert isinstance(result["alerts"], list)
 
-    @patch("openclaw_dash.collectors.alerts.collect_ci_failures")
+    @patch("hermes_dash.collectors.alerts.collect_ci_failures")
     def test_collect_includes_ci_when_enabled(self, mock_ci):
         demo.disable_demo_mode()  # Disable demo mode to test real code path
         mock_ci.return_value = [
@@ -130,7 +130,7 @@ class TestCollect:
         mock_ci.assert_called_once()
         assert result["total"] >= 1
 
-    @patch("openclaw_dash.collectors.alerts.collect_ci_failures")
+    @patch("hermes_dash.collectors.alerts.collect_ci_failures")
     def test_collect_excludes_ci_when_disabled(self, mock_ci):
         collect(include_ci=False, include_security=False, include_context=False)
         mock_ci.assert_not_called()
@@ -139,9 +139,9 @@ class TestCollect:
         """Verify that alerts are sorted by severity (critical first)."""
         demo.disable_demo_mode()  # Disable demo mode to test real code path
         with (
-            patch("openclaw_dash.collectors.alerts.collect_ci_failures") as mock_ci,
-            patch("openclaw_dash.collectors.alerts.collect_security_vulnerabilities") as mock_sec,
-            patch("openclaw_dash.collectors.alerts.collect_context_warnings") as mock_ctx,
+            patch("hermes_dash.collectors.alerts.collect_ci_failures") as mock_ci,
+            patch("hermes_dash.collectors.alerts.collect_security_vulnerabilities") as mock_sec,
+            patch("hermes_dash.collectors.alerts.collect_context_warnings") as mock_ctx,
         ):
             # Return alerts in wrong order
             mock_ci.return_value = [Alert(severity=Severity.LOW, title="Low priority", source="ci")]
@@ -238,7 +238,7 @@ class TestAlertsWidget:
     """Tests for the AlertsPanel widget."""
 
     def test_format_time_just_now(self):
-        from openclaw_dash.widgets.alerts import AlertsPanel
+        from hermes_dash.widgets.alerts import AlertsPanel
 
         panel = AlertsPanel()
         now = datetime.now().isoformat()
@@ -246,7 +246,7 @@ class TestAlertsWidget:
         assert result == "just now"
 
     def test_format_time_minutes_ago(self):
-        from openclaw_dash.widgets.alerts import AlertsPanel
+        from hermes_dash.widgets.alerts import AlertsPanel
 
         panel = AlertsPanel()
         past = (datetime.now() - timedelta(minutes=15)).isoformat()
@@ -254,7 +254,7 @@ class TestAlertsWidget:
         assert "m ago" in result
 
     def test_format_time_hours_ago(self):
-        from openclaw_dash.widgets.alerts import AlertsPanel
+        from hermes_dash.widgets.alerts import AlertsPanel
 
         panel = AlertsPanel()
         past = (datetime.now() - timedelta(hours=3)).isoformat()
@@ -262,7 +262,7 @@ class TestAlertsWidget:
         assert "h ago" in result
 
     def test_format_time_days_ago(self):
-        from openclaw_dash.widgets.alerts import AlertsPanel
+        from hermes_dash.widgets.alerts import AlertsPanel
 
         panel = AlertsPanel()
         past = (datetime.now() - timedelta(days=2)).isoformat()
@@ -270,7 +270,7 @@ class TestAlertsWidget:
         assert "d ago" in result
 
     def test_format_time_empty(self):
-        from openclaw_dash.widgets.alerts import AlertsPanel
+        from hermes_dash.widgets.alerts import AlertsPanel
 
         panel = AlertsPanel()
         result = panel._format_time("")

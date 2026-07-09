@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from textual.widgets import Static
 
-from openclaw_dash.widgets.security import (
+from hermes_dash.widgets.security import (
     SecurityPanel,
     SecuritySummaryPanel,
     get_severity_color,
@@ -121,13 +121,13 @@ class TestSecurityPanelIntegration:
 
     def test_import_from_widgets(self):
         """SecurityPanel should be importable from widgets module."""
-        from openclaw_dash.widgets.security import SecurityPanel
+        from hermes_dash.widgets.security import SecurityPanel
 
         assert SecurityPanel is not None
 
     def test_summary_import_from_widgets(self):
         """SecuritySummaryPanel should be importable from widgets module."""
-        from openclaw_dash.widgets.security import SecuritySummaryPanel
+        from hermes_dash.widgets.security import SecuritySummaryPanel
 
         assert SecuritySummaryPanel is not None
 
@@ -143,9 +143,9 @@ class TestSecurityPanelRefreshData:
         mock_result.scanned_files = 100
         mock_result.scanned_dirs = 10
 
-        with patch("openclaw_dash.widgets.security.run_audit", return_value=mock_result):
+        with patch("hermes_dash.widgets.security.run_audit", return_value=mock_result):
             # Verify module references run_audit
-            from openclaw_dash.widgets import security as sec_module
+            from hermes_dash.widgets import security as sec_module
 
             assert hasattr(sec_module, "run_audit")
 
@@ -162,8 +162,8 @@ class TestSecurityPanelRefreshData:
         mock_result.scanned_files = 50
         mock_result.scanned_dirs = 5
 
-        with patch("openclaw_dash.widgets.security.run_audit", return_value=mock_result):
-            from openclaw_dash.widgets import security as sec_module
+        with patch("hermes_dash.widgets.security.run_audit", return_value=mock_result):
+            from hermes_dash.widgets import security as sec_module
 
             assert hasattr(sec_module, "SecurityPanel")
 
@@ -183,18 +183,18 @@ class TestSecurityPanelRefreshData:
         mock_result.scanned_files = 200
         mock_result.scanned_dirs = 20
 
-        with patch("openclaw_dash.widgets.security.run_audit", return_value=mock_result):
-            from openclaw_dash.widgets import security as sec_module
+        with patch("hermes_dash.widgets.security.run_audit", return_value=mock_result):
+            from hermes_dash.widgets import security as sec_module
 
             assert hasattr(sec_module, "SecurityPanel")
 
     def test_refresh_handles_audit_exception(self):
         """Test refresh_data handles audit exceptions gracefully."""
         with patch(
-            "openclaw_dash.widgets.security.run_audit",
+            "hermes_dash.widgets.security.run_audit",
             side_effect=Exception("Audit failed"),
         ):
-            from openclaw_dash.widgets import security as sec_module
+            from hermes_dash.widgets import security as sec_module
 
             # Module should still be importable even if audit would fail
             assert hasattr(sec_module, "SecurityPanel")
@@ -209,8 +209,8 @@ class TestSecuritySummaryPanelRefreshData:
         mock_result.findings = []
         mock_result.summary = {}
 
-        with patch("openclaw_dash.widgets.security.run_audit", return_value=mock_result):
-            from openclaw_dash.widgets import security as sec_module
+        with patch("hermes_dash.widgets.security.run_audit", return_value=mock_result):
+            from hermes_dash.widgets import security as sec_module
 
             assert hasattr(sec_module, "SecuritySummaryPanel")
 
@@ -219,18 +219,18 @@ class TestSecuritySummaryPanelRefreshData:
         mock_result = MagicMock()
         mock_result.summary = {"critical": 3, "high": 2, "medium": 1, "low": 0, "info": 0}
 
-        with patch("openclaw_dash.widgets.security.run_audit", return_value=mock_result):
-            from openclaw_dash.widgets import security as sec_module
+        with patch("hermes_dash.widgets.security.run_audit", return_value=mock_result):
+            from hermes_dash.widgets import security as sec_module
 
             assert hasattr(sec_module, "SecuritySummaryPanel")
 
     def test_summary_refresh_handles_exception(self):
         """Test summary handles audit exceptions."""
         with patch(
-            "openclaw_dash.widgets.security.run_audit",
+            "hermes_dash.widgets.security.run_audit",
             side_effect=Exception("Audit failed"),
         ):
-            from openclaw_dash.widgets import security as sec_module
+            from hermes_dash.widgets import security as sec_module
 
             assert hasattr(sec_module, "SecuritySummaryPanel")
 

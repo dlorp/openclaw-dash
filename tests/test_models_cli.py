@@ -3,20 +3,20 @@
 import json
 from unittest.mock import patch
 
-from openclaw_dash.services.model_discovery import ModelInfo, ModelTier
+from hermes_dash.services.model_discovery import ModelInfo, ModelTier
 
 
 class TestModelsCLI:
     """Tests for the models CLI subcommand."""
 
-    @patch("openclaw_dash.services.discover_local_models")
+    @patch("hermes_dash.services.discover_local_models")
     def test_models_command_empty(self, mock_discover, capsys):
         """Test models command with no models found."""
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         mock_discover.return_value = []
 
-        with patch("sys.argv", ["openclaw-dash", "models"]):
+        with patch("sys.argv", ["hermes-dash", "models"]):
             result = main()
 
         assert result == 0
@@ -24,14 +24,14 @@ class TestModelsCLI:
         assert "Total models: 0" in captured.out
         assert "No models found" in captured.out
 
-    @patch("openclaw_dash.services.discover_local_models")
+    @patch("hermes_dash.services.discover_local_models")
     def test_models_command_json_empty(self, mock_discover, capsys):
         """Test models command JSON output with no models."""
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         mock_discover.return_value = []
 
-        with patch("sys.argv", ["openclaw-dash", "models", "--json"]):
+        with patch("sys.argv", ["hermes-dash", "models", "--json"]):
             result = main()
 
         assert result == 0
@@ -40,10 +40,10 @@ class TestModelsCLI:
         assert data["models"] == []
         assert data["total"] == 0
 
-    @patch("openclaw_dash.services.discover_local_models")
+    @patch("hermes_dash.services.discover_local_models")
     def test_models_command_with_models(self, mock_discover, capsys):
         """Test models command with discovered models."""
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         mock_discover.return_value = [
             ModelInfo(
@@ -62,7 +62,7 @@ class TestModelsCLI:
             ),
         ]
 
-        with patch("sys.argv", ["openclaw-dash", "models"]):
+        with patch("sys.argv", ["hermes-dash", "models"]):
             result = main()
 
         assert result == 0
@@ -71,10 +71,10 @@ class TestModelsCLI:
         assert "Running: 1" in captured.out
         assert "llama3.2:3b" in captured.out
 
-    @patch("openclaw_dash.services.discover_local_models")
+    @patch("hermes_dash.services.discover_local_models")
     def test_models_command_json_with_models(self, mock_discover, capsys):
         """Test models command JSON output with models."""
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         mock_discover.return_value = [
             ModelInfo(
@@ -85,7 +85,7 @@ class TestModelsCLI:
             ),
         ]
 
-        with patch("sys.argv", ["openclaw-dash", "models", "--json"]):
+        with patch("sys.argv", ["hermes-dash", "models", "--json"]):
             result = main()
 
         assert result == 0
@@ -96,14 +96,14 @@ class TestModelsCLI:
         assert data["models"][0]["tier"] == "balanced"
         assert data["running"] == 1
 
-    @patch("openclaw_dash.services.discover_local_models")
+    @patch("hermes_dash.services.discover_local_models")
     def test_models_command_running_filter(self, mock_discover, capsys):
         """Test models command with --running filter."""
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         mock_discover.return_value = []
 
-        with patch("sys.argv", ["openclaw-dash", "models", "--running"]):
+        with patch("sys.argv", ["hermes-dash", "models", "--running"]):
             result = main()
 
         assert result == 0
@@ -114,14 +114,14 @@ class TestModelsCLI:
             provider=None,
         )
 
-    @patch("openclaw_dash.services.discover_local_models")
+    @patch("hermes_dash.services.discover_local_models")
     def test_models_command_tier_filter(self, mock_discover, capsys):
         """Test models command with --tier filter."""
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         mock_discover.return_value = []
 
-        with patch("sys.argv", ["openclaw-dash", "models", "--tier", "fast"]):
+        with patch("sys.argv", ["hermes-dash", "models", "--tier", "fast"]):
             result = main()
 
         assert result == 0
@@ -131,14 +131,14 @@ class TestModelsCLI:
             provider=None,
         )
 
-    @patch("openclaw_dash.services.discover_local_models")
+    @patch("hermes_dash.services.discover_local_models")
     def test_models_command_provider_filter(self, mock_discover, capsys):
         """Test models command with --provider filter."""
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         mock_discover.return_value = []
 
-        with patch("sys.argv", ["openclaw-dash", "models", "--provider", "ollama"]):
+        with patch("sys.argv", ["hermes-dash", "models", "--provider", "ollama"]):
             result = main()
 
         assert result == 0
@@ -148,16 +148,16 @@ class TestModelsCLI:
             provider="ollama",
         )
 
-    @patch("openclaw_dash.services.discover_local_models")
+    @patch("hermes_dash.services.discover_local_models")
     def test_models_command_combined_filters_json(self, mock_discover, capsys):
         """Test models command with multiple filters and JSON output."""
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         mock_discover.return_value = []
 
         with patch(
             "sys.argv",
-            ["openclaw-dash", "models", "--running", "--tier", "balanced", "--json"],
+            ["hermes-dash", "models", "--running", "--tier", "balanced", "--json"],
         ):
             result = main()
 

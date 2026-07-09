@@ -1,8 +1,8 @@
-"""Pytest configuration for openclaw-dash tests."""
+"""Pytest configuration for hermes-dash tests."""
 
 import pytest
 
-from openclaw_dash import demo
+from hermes_dash import demo
 
 
 @pytest.fixture(autouse=True)

@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pr-describe**: Implement structured commit format extraction for cleaner output (#77)
 - **pr-describe**: Add `--squash` format for compact commit messages
 - **pr-tracker**: Add `--ci` flag to show actual CI/GitHub Actions status (#80)
-- **status**: New combined status command (`openclaw-dash status`) for quick overview (#83)
+- **status**: New combined status command (`hermes-dash status`) for quick overview (#83)
 - **Structured output**: JSON output support for programmatic consumption (#78)
 - **version-bump**: Add `--path` flag for monorepo support (#65)
 - **smart-todo-scanner**: Add `--skip-docstrings` flag to exclude docstring TODOs (#86)
@@ -71,11 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `version-bump` — Semantic version management
   - `changelog` — Changelog generation helper
 - **CLI Modes**
-  - `openclaw-dash` — Launch TUI
-  - `openclaw-dash --status` — Quick text status
-  - `openclaw-dash --json` — JSON output for scripting
-  - `openclaw-dash security` — Run security audits
-  - `openclaw-dash auto merge/cleanup` — Automation commands
+  - `hermes-dash` — Launch TUI
+  - `hermes-dash --status` — Quick text status
+  - `hermes-dash --json` — JSON output for scripting
+  - `hermes-dash security` — Run security audits
+  - `hermes-dash auto merge/cleanup` — Automation commands
 - **Documentation**
   - Comprehensive README with ASCII preview
   - Installation, configuration, widgets, and development guides
@@ -96,6 +96,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added collector caching, timing metrics, and error tracking (#55)
 - Enhanced code quality with docstrings and type hints throughout (#54)
 
-[0.3.0]: https://github.com/dlorp/openclaw-dash/releases/tag/v0.3.0
-[0.2.0]: https://github.com/dlorp/openclaw-dash/releases/tag/v0.2.0
-[0.1.0]: https://github.com/dlorp/openclaw-dash/releases/tag/v0.1.0
+[0.3.0]: https://github.com/dlorp/hermes-dash/releases/tag/v0.3.0
+[0.2.0]: https://github.com/dlorp/hermes-dash/releases/tag/v0.2.0
+[0.1.0]: https://github.com/dlorp/hermes-dash/releases/tag/v0.1.0

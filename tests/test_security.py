@@ -7,19 +7,19 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from openclaw_dash.security.audit import (
+from hermes_dash.security.audit import (
     SECRET_PATTERNS,
     AuditResult,
     Finding,
     SecurityAudit,
     run_audit,
 )
-from openclaw_dash.security.deps import (
+from hermes_dash.security.deps import (
     DependencyScanner,
     DependencyScanResult,
     Vulnerability,
 )
-from openclaw_dash.security.fixes import (
+from hermes_dash.security.fixes import (
     FixAction,
     FixResult,
     SecurityFixer,
@@ -91,7 +91,7 @@ class TestSecurityAudit:
 
     def test_run_audit_returns_result(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = run_audit(openclaw_dir=Path(tmpdir))
+            result = run_audit(hermes_dir=Path(tmpdir))
             assert isinstance(result, AuditResult)
 
     def test_scan_secrets_finds_exposed_token(self):
@@ -99,7 +99,7 @@ class TestSecurityAudit:
             config_file = Path(tmpdir) / "config.json"
             config_file.write_text('{"api_key": "sk-1234567890abcdefghijklmnopqrstuvwxyz12345678"}')
 
-            audit = SecurityAudit(openclaw_dir=Path(tmpdir))
+            audit = SecurityAudit(hermes_dir=Path(tmpdir))
             audit.scan_secrets()
 
             assert any(f.category == "secrets" for f in audit.result.findings)
@@ -109,7 +109,7 @@ class TestSecurityAudit:
             config_file = Path(tmpdir) / "config.json"
             config_file.write_text('{"api_key": "your_api_key_here_changeme"}')
 
-            audit = SecurityAudit(openclaw_dir=Path(tmpdir))
+            audit = SecurityAudit(hermes_dir=Path(tmpdir))
             audit.scan_secrets()
 
             # Should not flag placeholder
@@ -121,7 +121,7 @@ class TestSecurityAudit:
             tmppath = Path(tmpdir)
             os.chmod(tmppath, 0o755)  # Too permissive
 
-            audit = SecurityAudit(openclaw_dir=tmppath)
+            audit = SecurityAudit(hermes_dir=tmppath)
             audit.check_permissions()
 
             perm_findings = [f for f in audit.result.findings if f.category == "permissions"]
@@ -132,7 +132,7 @@ class TestSecurityAudit:
             config_file = Path(tmpdir) / "config.json"
             config_file.write_text(json.dumps({"auth": {"enabled": False}}))
 
-            audit = SecurityAudit(openclaw_dir=Path(tmpdir))
+            audit = SecurityAudit(hermes_dir=Path(tmpdir))
             audit.check_config()
 
             assert any("auth" in f.title.lower() for f in audit.result.findings)
@@ -149,7 +149,7 @@ class TestSecurityAudit:
                 )
             )
 
-            audit = SecurityAudit(openclaw_dir=Path(tmpdir))
+            audit = SecurityAudit(hermes_dir=Path(tmpdir))
             audit.check_config()
 
             critical = [f for f in audit.result.findings if f.severity == "critical"]
@@ -335,18 +335,18 @@ class TestSecurityFixer:
 class TestCLIIntegration:
     """Test CLI security command integration."""
 
-    @patch("sys.argv", ["openclaw-dash", "security", "--json"])
+    @patch("sys.argv", ["hermes-dash", "security", "--json"])
     def test_security_command_json_output(self, capsys):
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch.object(
                 __import__(
-                    "openclaw_dash.security.audit", fromlist=["SecurityAudit"]
+                    "hermes_dash.security.audit", fromlist=["SecurityAudit"]
                 ).SecurityAudit,
                 "__init__",
                 lambda self, **kwargs: (
-                    setattr(self, "openclaw_dir", Path(tmpdir))
+                    setattr(self, "hermes_dir", Path(tmpdir))
                     or setattr(self, "result", AuditResult())
                 ),
             ):
@@ -361,9 +361,9 @@ class TestCLIIntegration:
             # Empty or error output is acceptable in test environment
             pass
 
-    @patch("sys.argv", ["openclaw-dash", "security", "--deep"])
+    @patch("sys.argv", ["hermes-dash", "security", "--deep"])
     def test_security_command_deep_flag(self):
-        from openclaw_dash.cli import main
+        from hermes_dash.cli import main
 
         # Just verify it doesn't crash
         result = main()

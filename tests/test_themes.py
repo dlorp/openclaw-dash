@@ -1,6 +1,6 @@
 """Tests for the themes module."""
 
-from openclaw_dash.themes import (
+from hermes_dash.themes import (
     DARK_ORANGE,
     DARK_THEME,
     GRANITE_GRAY,

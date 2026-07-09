@@ -5,7 +5,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from openclaw_dash.services.gateway_client import GatewayClient, GatewayConfig, GatewayError
+from hermes_dash.services.gateway_client import GatewayClient, GatewayConfig, GatewayError
 
 
 def make_client(handler) -> GatewayClient:
@@ -66,7 +66,7 @@ def test_wait_for_agent_polls_until_completed(monkeypatch: pytest.MonkeyPatch):
 
     client = GatewayClient(GatewayConfig(url="http://testserver", timeout=1.0))
     monkeypatch.setattr(client, "get_session_status", lambda session_key: next(statuses))
-    monkeypatch.setattr("openclaw_dash.services.gateway_client.time.sleep", lambda _: None)
+    monkeypatch.setattr("hermes_dash.services.gateway_client.time.sleep", lambda _: None)
 
     status = client.wait_for_agent("sess-123", timeout=5)
 
@@ -82,7 +82,7 @@ def test_wait_for_agent_raises_on_terminal_failure(monkeypatch: pytest.MonkeyPat
         "get_session_status",
         lambda session_key: {"state": "failed", "completed": True, "error": "review crashed"},
     )
-    monkeypatch.setattr("openclaw_dash.services.gateway_client.time.sleep", lambda _: None)
+    monkeypatch.setattr("hermes_dash.services.gateway_client.time.sleep", lambda _: None)
 
     with pytest.raises(GatewayError, match="failed"):
         client.wait_for_agent("sess-123", timeout=5)
@@ -98,11 +98,11 @@ def test_wait_for_agent_times_out(monkeypatch: pytest.MonkeyPatch):
         "get_session_status",
         lambda session_key: {"state": "running", "completed": False},
     )
-    monkeypatch.setattr("openclaw_dash.services.gateway_client.time.sleep", lambda _: None)
+    monkeypatch.setattr("hermes_dash.services.gateway_client.time.sleep", lambda _: None)
 
     monotonic_values = iter([0.0, 0.1, 5.1])
     monkeypatch.setattr(
-        "openclaw_dash.services.gateway_client.time.monotonic",
+        "hermes_dash.services.gateway_client.time.monotonic",
         lambda: next(monotonic_values),
     )
 

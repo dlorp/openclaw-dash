@@ -1,6 +1,6 @@
-# openclaw-dash example config with MQTT sink
+# hermes-dash example config with MQTT sink
 #
-# Copy to: ~/.config/openclaw-dash/config.toml
+# Copy to: ~/.config/hermes-dash/config.toml
 # Or merge the [sinks] section into your existing config.
 
 # === Existing settings ===

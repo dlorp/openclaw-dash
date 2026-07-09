@@ -1,59 +1,108 @@
-# openclaw-dash
+# hermes-dash
 
-[![Version](https://img.shields.io/badge/version-0.4.0-ff9500)](https://github.com/dlorp/openclaw-dash/releases)
+[![Version](https://img.shields.io/badge/version-0.5.0-ff9500)](https://github.com/dlorp/hermes-dash/releases)
 [![License](https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-ff9500)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-ff9500)](https://www.python.org/)
-[![CI](https://img.shields.io/github/actions/workflow/status/dlorp/openclaw-dash/ci.yml?label=CI&color=ff9500)](https://github.com/dlorp/openclaw-dash/actions)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-ff9500)](https://github.com/dlorp/openclaw-dash)
+[![CI](https://img.shields.io/github/actions/workflow/status/dlorp/hermes-dash/ci.yml?label=CI&color=ff9500)](https://github.com/dlorp/hermes-dash/actions)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-ff9500)](https://github.com/dlorp/hermes-dash)
 
-openclaw-dash is a terminal-based monitoring dashboard. It collects metrics from multiple data sources (servers, APIs, databases, custom endpoints) and displays them in a single real-time TUI panel. Think Grafana, but lightweight and terminal-native.
+TUI dashboard for [Hermes Agent](https://github.com/dlorp/hermes-dash) monitoring. Real-time visibility into your agent pipeline, knowledge vault, sessions, cron jobs, and system health — all from the terminal.
 
 ## What It Does
 
-You have multiple services running across different hosts and protocols. openclaw-dash unifies them into one dashboard:
+hermes-dash monitors the full Hermes Agent stack:
 
-- **Server health** via SSH (CPU, memory, disk, network)
-- **API status** via HTTP polling (latency, uptime, error rates)
-- **Database health** via direct connections (pool usage, slow queries)
-- **Custom metrics** via any HTTP endpoint (business data, internal APIs)
+- **Gateway** — connection status, context usage, uptime
+- **Sessions** — active sessions, token usage, model per session
+- **Agents** — agent status, pipeline health, running tasks
+- **Knowledge Vault** — 3700+ entries, domain count, research queue depth, pipeline status
+- **Cron Jobs** — scheduled tasks, last run, success/failure
+- **Repositories** — git status, branch info, CI state across HDLS projects
+- **Activity** — recent commits, PRs, releases across monitored repos
+- **System** — CPU, memory, disk, network (when not in bare mode)
 
-Each data source is a plugin. Write one Python class, get a dashboard panel. Three methods: acquire data, parse it, push it to the display.
+## The Vault Differentiator
+
+Nobody else has a 3700+ entry knowledge graph with 9 autonomous agents feeding it. hermes-dash surfaces that:
+
+- **Entry count** — total markdown entries in the knowledge vault
+- **Domain count** — active knowledge domains
+- **Research queue depth** — pending vs resolved research items
+- **Pipeline status** — ready / running / blocked tasks across the agent fleet
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/dlorp/openclaw-dash.git
-cd openclaw-dash
+git clone https://github.com/dlorp/hermes-dash.git
+cd hermes-dash
 pip install -e .
-openclaw-dash
+hermes-dash
 ```
 
 No config needed for the demo:
 
 ```bash
-openclaw-dash --demo
+hermes-dash --demo
 ```
+
+## Bare Mode
+
+For new HDLS deployments or minimal installs, use `--bare`:
+
+```bash
+hermes-dash --bare
+```
+
+Bare mode strips the dashboard to core HDLS panels only:
+
+- Gateway, Sessions, Agents, Repos, Activity, Cron, Knowledge Vault
+
+Disabled in bare mode: Alerts, Metrics, Security, Logs, Resources, Channels, Metric Boxes, MQTT sinks.
 
 ## Configuration
 
-Create `~/.config/openclaw-dash/config.yaml`:
+Config lives at `~/.config/hermes-dash/config.toml`:
 
-```yaml
-plugins:
-  - name: web-server
-    type: ssh-agent
-    host: 192.168.1.100
-    metrics: [cpu, memory, disk]
+```toml
+[theme]
+name = "phosphor"
 
-  - name: api
-    type: http-api
-    url: https://api.example.com/health
-    interval: 15s
+[display]
+show_resources = true
+show_notifications = true
 
-  - name: database
-    type: db-health
-    connection: postgresql://localhost:5432/mydb
+[models]
+custom_paths = ["/opt/models"]
 ```
+
+## CLI Commands
+
+```bash
+hermes-dash                    # Launch TUI
+hermes-dash --demo             # Demo mode (no gateway needed)
+hermes-dash --bare             # Minimal HDLS-only panels
+hermes-dash --skip-gateway     # Skip gateway checks
+hermes-dash --status           # Quick text status
+hermes-dash --json             # JSON output
+hermes-dash security           # Security audit
+hermes-dash models             # List available models
+hermes-dash collectors         # Collector health stats
+hermes-dash export             # Export dashboard data
+```
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `r` | Refresh all panels |
+| `t` | Cycle theme |
+| `f` | Jump to any panel |
+| `s` | Settings |
+| `Ctrl+P` | Command palette |
+| `/` or `i` | Focus input pane |
+
+See [Usage](docs/Usage.md) for the full list.
 
 ## Documentation
 
@@ -66,19 +115,6 @@ plugins:
 | [Widgets](docs/WIDGETS.md) | Panel types and options |
 | [Development](docs/DEVELOPMENT.md) | Writing new plugins |
 | [Tools](docs/TOOLS.md) | Standalone CLI utilities |
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `q` | Quit |
-| `r` | Refresh all panels |
-| `t` | Cycle theme |
-| `f` | Jump to any panel |
-| `s` | Settings |
-| `Ctrl+P` | Command palette |
-
-See [Usage](docs/Usage.md) for the full list.
 
 ## Tech Stack
 

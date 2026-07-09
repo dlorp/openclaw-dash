@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from textual.widgets import Static
 
-from openclaw_dash.widgets.channels import ChannelsPanel
+from hermes_dash.widgets.channels import ChannelsPanel
 
 
 class TestChannelsPanel:
@@ -48,10 +48,10 @@ class TestChannelsPanel:
             "total": 3,
         }
 
-        with patch("openclaw_dash.widgets.channels.channels.collect", return_value=mock_data):
+        with patch("hermes_dash.widgets.channels.channels.collect", return_value=mock_data):
             # We can't easily test refresh_data without mounting in an app
             # but we can verify the module imports and function exists
-            from openclaw_dash.widgets import channels as ch_module
+            from hermes_dash.widgets import channels as ch_module
 
             assert hasattr(ch_module, "ChannelsPanel")
 
@@ -61,7 +61,7 @@ class TestChannelsPanelIntegration:
 
     def test_import_from_app(self):
         """ChannelsPanel should be importable from app module."""
-        from openclaw_dash.app import ChannelsPanel
+        from hermes_dash.app import ChannelsPanel
 
         assert ChannelsPanel is not None
 
@@ -70,7 +70,7 @@ class TestChannelsPanelIntegration:
         # Check that action_refresh references ChannelsPanel
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp.action_refresh)
         assert "ChannelsPanel" in source

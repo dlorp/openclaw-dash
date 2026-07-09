@@ -6,7 +6,7 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.widgets import Static
 
-from openclaw_dash.widgets.logs import LogsPanel, LogsSummaryPanel
+from hermes_dash.widgets.logs import LogsPanel, LogsSummaryPanel
 
 
 class LogsPanelTestApp(App):
@@ -128,7 +128,7 @@ class TestLogsPanelIntegration:
         app = LogsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsPanel)
@@ -148,7 +148,7 @@ class TestLogsPanelIntegration:
         app = LogsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsPanel)
@@ -181,7 +181,7 @@ class TestLogsPanelIntegration:
         app = LogsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsPanel)
@@ -214,7 +214,7 @@ class TestLogsPanelIntegration:
         app = LogsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsPanel)
@@ -243,7 +243,7 @@ class TestLogsPanelIntegration:
         app = LogsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsPanel)
@@ -289,7 +289,7 @@ class TestLogsPanelIntegration:
         app = LogsPanelTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsPanel)
@@ -351,7 +351,7 @@ class TestLogsSummaryPanelIntegration:
         app = LogsSummaryTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsSummaryPanel)
@@ -371,7 +371,7 @@ class TestLogsSummaryPanelIntegration:
         app = LogsSummaryTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsSummaryPanel)
@@ -398,7 +398,7 @@ class TestLogsSummaryPanelIntegration:
         app = LogsSummaryTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsSummaryPanel)
@@ -425,7 +425,7 @@ class TestLogsSummaryPanelIntegration:
         app = LogsSummaryTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsSummaryPanel)
@@ -458,7 +458,7 @@ class TestLogsSummaryPanelIntegration:
         app = LogsSummaryTestApp()
         async with app.run_test():
             with patch(
-                "openclaw_dash.widgets.logs.logs.collect",
+                "hermes_dash.widgets.logs.logs.collect",
                 return_value=mock_data,
             ) as mock_collect:
                 panel = app.query_one(LogsSummaryPanel)
@@ -471,14 +471,14 @@ class TestLogsPanelAppIntegration:
 
     def test_import_from_app(self):
         """LogsPanel should be importable from app module."""
-        from openclaw_dash.app import LogsPanel as AppLogsPanel
+        from hermes_dash.app import LogsPanel as AppLogsPanel
 
         assert AppLogsPanel is not None
         assert AppLogsPanel is LogsPanel
 
     def test_app_has_logs_keybinding(self):
         """DashboardApp should have 'l' keybinding for logs."""
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         binding_keys = [b[0] for b in DashboardApp.BINDINGS]
         assert "l" in binding_keys
@@ -487,7 +487,7 @@ class TestLogsPanelAppIntegration:
         """DashboardApp should refresh LogsPanel."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp.action_refresh)
         assert "LogsPanel" in source
@@ -496,7 +496,7 @@ class TestLogsPanelAppIntegration:
         """DashboardApp should auto-refresh LogsPanel."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp._do_auto_refresh)
         assert "LogsPanel" in source
@@ -505,7 +505,7 @@ class TestLogsPanelAppIntegration:
         """DashboardApp compose should include logs-panel."""
         import inspect
 
-        from openclaw_dash.app import DashboardApp
+        from hermes_dash.app import DashboardApp
 
         source = inspect.getsource(DashboardApp.compose)
         assert "logs-panel" in source

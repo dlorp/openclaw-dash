@@ -1,12 +1,12 @@
 # Configuration
 
-openclaw-dash uses one YAML file for everything: plugins, layout, themes, intervals.
+hermes-dash uses one YAML file for everything: plugins, layout, themes, intervals.
 
 ## Config Location
 
-Default: `~/.config/openclaw-dash/config.yaml`
+Default: `~/.config/hermes-dash/config.yaml`
 
-Override: `openclaw-dash --config /path/to/config.yaml`
+Override: `hermes-dash --config /path/to/config.yaml`
 
 ## Minimal Example
 
@@ -295,5 +295,5 @@ Config is validated on startup. Errors are printed to stderr with line numbers. 
 Check config without running:
 
 ```bash
-openclaw-dash --config-check
+hermes-dash --config-check
 ```

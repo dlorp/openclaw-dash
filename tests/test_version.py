@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from openclaw_dash.version import VERSION, VersionInfo, get_version_info
+from hermes_dash.version import VERSION, VersionInfo, get_version_info
 
 
 class TestVersionInfo:
@@ -56,7 +56,7 @@ class TestVersionInfo:
             git_branch="main",
             build_date=None,
         )
-        assert info.format_full() == "openclaw-dash v1.0.0 (abc1234)"
+        assert info.format_full() == "hermes-dash v1.0.0 (abc1234)"
 
     def test_format_full_feature_branch(self):
         """Test full format shows branch name when not main."""
@@ -66,7 +66,7 @@ class TestVersionInfo:
             git_branch="feature/test",
             build_date=None,
         )
-        assert info.format_full() == "openclaw-dash v1.0.0 (abc1234) [feature/test]"
+        assert info.format_full() == "hermes-dash v1.0.0 (abc1234) [feature/test]"
 
     def test_format_full_no_git(self):
         """Test full format without git info."""
@@ -76,7 +76,7 @@ class TestVersionInfo:
             git_branch=None,
             build_date=None,
         )
-        assert info.format_full() == "openclaw-dash v1.0.0"
+        assert info.format_full() == "hermes-dash v1.0.0"
 
 
 class TestGetVersionInfo:
@@ -91,9 +91,9 @@ class TestGetVersionInfo:
     def test_version_matches_constant(self):
         """Test version matches the VERSION constant."""
         info = get_version_info()
-        assert info.version == "0.1.0"
+        assert info.version == "0.5.0"
 
-    @patch("openclaw_dash.version._run_git")
+    @patch("hermes_dash.version._run_git")
     def test_handles_git_failure(self, mock_run_git):
         """Test graceful handling of git command failures."""
         mock_run_git.return_value = None
@@ -122,6 +122,6 @@ class TestVersionConstant:
 
     def test_version_matches_init(self):
         """Test VERSION matches __init__.__version__."""
-        import openclaw_dash
+        import hermes_dash
 
-        assert openclaw_dash.__version__ == VERSION
+        assert hermes_dash.__version__ == VERSION
