@@ -1,0 +1,475 @@
+/* =========================================================================
+   HDLS Typography Module
+   -------------------------------------------------------------------------
+   Shared typographic foundation for all HDLS surfaces.
+   Monospace-first, character-grid-aligned, CSS-only.
+
+   Usage:
+     <link rel="stylesheet" href="/static/hdls-typography.css">
+     or
+     @import url("hdls-typography.css");
+
+   Sections:
+     1. Custom Properties (tokens)
+     2. Debug Grid Overlay
+     3. Auto-Detecting Grid
+     4. Tree Visualization
+     5. Density Utilities
+     6. Responsive Character Grid
+     7. Dignity Tier Stubs
+     8. Form Elements (grid-aligned)
+   ========================================================================= */
+
+
+/* =========================================================================
+   1. CUSTOM PROPERTIES — Typographic Tokens
+   ========================================================================= */
+
+:root {
+  /* Font stacks — system monospace only, no network requests */
+  --hdls-font-mono: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono",
+    "Menlo", "Consolas", "Liberation Mono", "Courier New", monospace;
+  --hdls-font-body: var(--hdls-font-mono);
+
+  /* Type scale — fractional rem system (3/4, 7/8, 1, 9/8, 5/4, 11/8, 3/2, 2) */
+  --hdls-font-size-xs: calc(3rem / 4);    /* 0.75rem  = 12px */
+  --hdls-font-size-sm: calc(7rem / 8);    /* 0.875rem = 14px */
+  --hdls-font-size-base: 1rem;            /* 1rem     = 16px */
+  --hdls-font-size-lg: calc(9rem / 8);    /* 1.125rem = 18px */
+  --hdls-font-size-xl: calc(5rem / 4);    /* 1.25rem  = 20px */
+  --hdls-font-size-2xl: calc(11rem / 8);  /* 1.375rem = 22px */
+  --hdls-font-size-3xl: calc(3rem / 2);   /* 1.5rem   = 24px */
+  --hdls-font-size-4xl: 2rem;             /* 2rem     = 32px */
+
+  /* Line height — the fundamental vertical rhythm unit */
+  --hdls-line-height: 1.5;
+  --hdls-line-height-tight: 1.35;
+  --hdls-line-height-compact: 1.2;
+
+  /* Character cell unit — the fundamental horizontal rhythm unit */
+  --hdls-ch: 1ch;
+
+  /* Amber phosphor palette */
+  --hdls-text-color: #ffb000;
+  --hdls-text-muted: #b07800;
+  --hdls-text-dim: #785200;
+  --hdls-bg-color: #0a0a0a;
+  --hdls-bg-surface: #141414;
+  --hdls-bg-elevated: #1e1e1e;
+
+  /* Accent colors */
+  --hdls-accent-green: #50d8d7;
+  --hdls-accent-blue: #3b60e4;
+  --hdls-accent-red: #e44040;
+  --hdls-accent-yellow: #f4e409;
+
+  /* Grid and borders */
+  --hdls-grid-color: color-mix(in srgb, var(--hdls-text-color) 10%, transparent);
+  --hdls-border-color: color-mix(in srgb, var(--hdls-text-color) 25%, transparent);
+  --hdls-border: 1px solid var(--hdls-border-color);
+  --hdls-border-thickness: 1px;
+
+  /* Base typography */
+  font-family: var(--hdls-font-mono);
+  font-size: var(--hdls-font-size-base);
+  line-height: var(--hdls-line-height);
+  color: var(--hdls-text-color);
+  background-color: var(--hdls-bg-color);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* =========================================================================
+   2. DEBUG GRID OVERLAY
+   -------------------------------------------------------------------------
+   Add .debug to any container to render character-cell grid lines.
+   Add .debug-grid as a direct child for the overlay element.
+
+   Usage:
+     <div class="debug">
+       <div class="debug-grid"></div>
+       <!-- content -->
+     </div>
+
+   Or on :root for full-page grid:
+     <html class="debug">
+       <div class="debug-grid"></div>
+   ========================================================================= */
+
+.debug {
+  position: relative;
+}
+
+.debug .debug-grid {
+  --_grid-color: var(--hdls-grid-color);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      var(--_grid-color) 0 1px,
+      transparent 1px 100%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      var(--_grid-color) 0 1px,
+      transparent 1px 100%
+    );
+  background-size: 1ch calc(var(--hdls-line-height) * 1em);
+}
+
+.debug .off-grid {
+  background: rgba(228, 64, 64, 0.12);
+}
+
+
+/* =========================================================================
+   3. AUTO-DETECTING GRID
+   -------------------------------------------------------------------------
+   CSS-only grid using :has() that auto-detects column count from children.
+   No classes needed on children — just .hdls-grid on the container.
+
+   Usage:
+     <div class="hdls-grid">
+       <div>Column 1</div>
+       <div>Column 2</div>
+       <div>Column 3</div>
+     </div>
+
+   Supports 1-9 columns automatically. Each column snaps to character-width
+   multiples via round().
+   ========================================================================= */
+
+.hdls-grid {
+  --_grid-cells: 0;
+  display: flex;
+  gap: 1ch;
+  width: calc(
+    round(down, 100%, 1ch * var(--_grid-cells) - 1ch * (var(--_grid-cells) - 1))
+  );
+}
+
+.hdls-grid > * {
+  flex: 0 0 calc(
+    round(down, (100% - 1ch * (var(--_grid-cells) - 1)) / var(--_grid-cells), 1ch)
+  );
+  min-width: 0;
+}
+
+/* Auto-detect column count via :has() */
+.hdls-grid:has(> :last-child:nth-child(1)) { --_grid-cells: 1; }
+.hdls-grid:has(> :last-child:nth-child(2)) { --_grid-cells: 2; }
+.hdls-grid:has(> :last-child:nth-child(3)) { --_grid-cells: 3; }
+.hdls-grid:has(> :last-child:nth-child(4)) { --_grid-cells: 4; }
+.hdls-grid:has(> :last-child:nth-child(5)) { --_grid-cells: 5; }
+.hdls-grid:has(> :last-child:nth-child(6)) { --_grid-cells: 6; }
+.hdls-grid:has(> :last-child:nth-child(7)) { --_grid-cells: 7; }
+.hdls-grid:has(> :last-child:nth-child(8)) { --_grid-cells: 8; }
+.hdls-grid:has(> :last-child:nth-child(9)) { --_grid-cells: 9; }
+
+/* Grid variant: equal-height rows */
+.hdls-grid.hdls-grid-equal > * {
+  align-self: stretch;
+}
+
+
+/* =========================================================================
+   4. TREE VISUALIZATION
+   -------------------------------------------------------------------------
+   Pure CSS tree diagrams using border-left and pseudo-elements for
+   box-drawing connectors. No JS, no SVG.
+
+   Usage:
+     <ul class="hdls-tree">
+       <li>Root
+         <ul>
+           <li>Branch A
+             <ul>
+               <li>Leaf A1</li>
+               <li>Leaf A2</li>
+             </ul>
+           </li>
+           <li>Branch B</li>
+         </ul>
+       </li>
+     </ul>
+   ========================================================================= */
+
+.hdls-tree,
+.hdls-tree ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.hdls-tree ul {
+  padding-left: 1.5ch;
+  margin-left: 1.5ch;
+}
+
+.hdls-tree li {
+  position: relative;
+  padding-left: 1.5ch;
+  margin-left: 0;
+}
+
+/* Vertical connector line */
+.hdls-tree li {
+  border-left: var(--hdls-border-thickness) solid var(--hdls-border-color);
+}
+
+/* Horizontal connector arm */
+.hdls-tree li::before {
+  position: absolute;
+  top: calc(var(--hdls-line-height) * 0.5em);
+  left: 0;
+  content: "";
+  width: 1ch;
+  border-bottom: var(--hdls-border-thickness) solid var(--hdls-border-color);
+}
+
+/* Last child: no vertical line extending down, just the arm */
+.hdls-tree li:last-child {
+  border-left: none;
+}
+
+.hdls-tree li:last-child::after {
+  position: absolute;
+  top: 0;
+  left: 0;
+  content: "";
+  height: calc(var(--hdls-line-height) * 0.5em);
+  border-left: var(--hdls-border-thickness) solid var(--hdls-border-color);
+}
+
+/* Root level: no left border */
+.hdls-tree > li {
+  border-left: none;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.hdls-tree > li::before {
+  display: none;
+}
+
+.hdls-tree > li::after {
+  display: none;
+}
+
+/* Nested ul inside root li: restore connectors */
+.hdls-tree > li > ul {
+  padding-left: 1.5ch;
+  margin-left: 0;
+}
+
+
+/* =========================================================================
+   5. DENSITY UTILITIES
+   -------------------------------------------------------------------------
+   Control vertical density of content blocks. Apply to containers.
+   ========================================================================= */
+
+.hdls-density-high {
+  font-size: var(--hdls-font-size-sm);
+  line-height: var(--hdls-line-height-compact);
+}
+
+.hdls-density-normal {
+  font-size: var(--hdls-font-size-base);
+  line-height: var(--hdls-line-height);
+}
+
+.hdls-density-low {
+  font-size: var(--hdls-font-size-lg);
+  line-height: 1.8;
+}
+
+/* Text overflow with ellipsis — apply to block-level elements */
+.hdls-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Monospace truncation — width-constrained with ellipsis */
+.hdls-mono-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  font-family: var(--hdls-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* =========================================================================
+   6. RESPONSIVE CHARACTER GRID
+   -------------------------------------------------------------------------
+   Media queries that snap breakpoints to character-width multiples.
+   At 1ch = ~0.6em (monospace), 80ch ≈ terminal width.
+
+   Breakpoints (at 16px base):
+     48ch  = ~768px  (tablet portrait)
+     64ch  = ~1024px (tablet landscape)
+     80ch  = ~1280px (standard terminal width)
+     100ch = ~1600px (wide terminal)
+     120ch = ~1920px (full HD)
+   ========================================================================= */
+
+/* Narrow: single column, compact density */
+@media screen and (max-width: 48ch) {
+  :root {
+    font-size: var(--hdls-font-size-sm);
+    line-height: var(--hdls-line-height-compact);
+  }
+
+  .hdls-grid {
+    flex-direction: column;
+  }
+
+  .hdls-grid > * {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+}
+
+/* Medium: two-column capable */
+@media screen and (min-width: 48ch) and (max-width: 80ch) {
+  :root {
+    font-size: var(--hdls-font-size-base);
+    line-height: var(--hdls-line-height);
+  }
+}
+
+/* Wide: full grid, generous spacing */
+@media screen and (min-width: 80ch) {
+  :root {
+    font-size: var(--hdls-font-size-base);
+    line-height: var(--hdls-line-height);
+  }
+
+  body {
+    max-width: calc(min(100ch, round(down, 100%, 1ch)));
+    margin-inline: auto;
+    padding-inline: 2ch;
+  }
+}
+
+/* Extra wide: cap at 120ch for readability */
+@media screen and (min-width: 120ch) {
+  body {
+    max-width: 120ch;
+  }
+}
+
+/* Print: reset constraints */
+@media print {
+  :root {
+    --hdls-text-color: #000;
+    --hdls-bg-color: #fff;
+    --hdls-text-muted: #555;
+    --hdls-text-dim: #999;
+    --hdls-border-color: #ccc;
+  }
+
+  body {
+    max-width: initial;
+    padding-inline: 0;
+  }
+
+  .debug .debug-grid {
+    display: none;
+  }
+}
+
+
+/* =========================================================================
+   7. DIGNITY TIER STUBS
+   -------------------------------------------------------------------------
+   Placeholder classes for future book-like outputs (Phase 4).
+   Minimal now, expanded when we build long-form / print-ready surfaces.
+   ========================================================================= */
+
+/* Serif/proportional toggle — swap to serif for body text */
+.hdls-dignity {
+  /* Placeholder: will set --hdls-font-body to a serif stack */
+}
+
+/* Anchor-positioned side notes — collapses inline on narrow screens */
+.hdls-marginalia {
+  /* Placeholder: will use CSS anchor positioning for side notes */
+}
+
+/* Decorative horizontal rule with centered ornament */
+.hdls-ornamented-rule {
+  position: relative;
+  border: none;
+  border-top: var(--hdls-border);
+  margin: calc(var(--hdls-line-height) * 1em) 0;
+}
+
+.hdls-ornamented-rule::after {
+  content: "\2767"; /* U+2767 Rotated Floral Heart Bullet */
+  position: absolute;
+  top: 0;
+  left: calc(50% - 1ch);
+  width: 2ch;
+  text-align: center;
+  font-size: var(--hdls-font-size-4xl);
+  background: var(--hdls-bg-color);
+  line-height: 1;
+}
+
+
+/* =========================================================================
+   8. FORM ELEMENTS — Grid-Aligned
+   -------------------------------------------------------------------------
+   Checkboxes and radios that snap to the character grid.
+   ========================================================================= */
+
+input[type="checkbox"],
+input[type="radio"] {
+  display: inline-grid;
+  place-content: center;
+  width: 2ch;
+  height: calc(var(--hdls-line-height) * 1em);
+  cursor: pointer;
+  accent-color: var(--hdls-text-color);
+  vertical-align: middle;
+}
+
+input[type="checkbox"]:checked::before,
+input[type="radio"]:checked::before {
+  content: "";
+  width: 1ch;
+  height: calc(var(--hdls-line-height) * 0.5em);
+  background: var(--hdls-text-color);
+}
+
+
+/* =========================================================================
+   9. SUBSCRIPT / SUPERSCRIPT — Character-Width Aligned
+   -------------------------------------------------------------------------
+   Force sub/sup to occupy exact character width for grid alignment.
+   ========================================================================= */
+
+sub,
+sup {
+  display: inline-block;
+  width: calc(1ch / 0.75);
+  font-size: 0.75rem;
+  line-height: 0;
+  text-align: center;
+}
+
+sub {
+  vertical-align: sub;
+}
+
+sup {
+  vertical-align: super;
+}
