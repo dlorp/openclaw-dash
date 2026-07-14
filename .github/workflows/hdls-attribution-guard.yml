@@ -1,0 +1,171 @@
+# HDLS Attribution Guard — runs on every PR to dlorp repos
+# Blocks PRs with agent attribution, disclosure patterns, or direct vault domain writes.
+# Server-side enforcement: agents cannot bypass with --no-verify.
+name: HDLS Attribution Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  attribution-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan commits for agent attribution
+        run: |
+          BLOCKED=()
+
+          AGENT_NAMES=(
+            "hyph4" "pr0b3" "3tch" "s3ntry" "dr3dg3" "g0blin" "0r4cl3"
+            "r3nd3r" "spl1c3" "lorpBot" "lorpbot"
+          )
+
+          DISCLOSURE_PATTERNS=(
+            "hdls agent" "hdls pipeline" "agent pipeline" "multi-agent"
+            "agent workflow" "llm agent" "claude code" "ai-generated" "ai assisted"
+            "co-authored-by" "generated with" "robot emoji" "bot-generated"
+          )
+
+          # Get all commits in the PR
+          COMMITS=$(git rev-list ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+
+          for SHA in $COMMITS; do
+            MSG=$(git log --format='%B' -1 "$SHA")
+            AUTHOR=$(git log --format='%an <%ae>' -1 "$SHA")
+
+            # Check agent names in commit message
+            for name in "${AGENT_NAMES[@]}"; do
+              if echo "$MSG" | grep -iq "$name"; then
+                BLOCKED+=("commit $SHA: agent name '$name' in message")
+              fi
+            done
+
+            # Check disclosure patterns
+            for pattern in "${DISCLOSURE_PATTERNS[@]}"; do
+              if echo "$MSG" | grep -iq "$pattern"; then
+                BLOCKED+=("commit $SHA: disclosure pattern '$pattern' in message")
+              fi
+            done
+
+            # Check for non-dlorp author (allow bots)
+            if echo "$AUTHOR" | grep -qv 'dlorp'; then
+              if echo "$AUTHOR" | grep -qvE 'dependabot|github-actions|renovate'; then
+                BLOCKED+=("commit $SHA: non-dlorp author '$AUTHOR'")
+              fi
+            fi
+          done
+
+          if [ ${#BLOCKED[@]} -gt 0 ]; then
+            echo "::error::Attribution violations found in PR commits"
+            for item in "${BLOCKED[@]}"; do
+              echo "::error::$item"
+            done
+            exit 1
+          fi
+
+          echo "✅ No attribution violations found"
+
+      - name: Check for agent names in PR description
+        run: |
+          PR_BODY=$(cat <<'PRBODY'
+          ${{ github.event.pull_request.body }}
+          PRBODY
+          )
+
+          AGENT_NAMES=(
+            "hyph4" "pr0b3" "3tch" "s3ntry" "dr3dg3" "g0blin" "0r4cl3"
+            "r3nd3r" "spl1c3" "lorpBot" "lorpbot"
+          )
+
+          for name in "${AGENT_NAMES[@]}"; do
+            if echo "$PR_BODY" | grep -iq "$name"; then
+              echo "::error::Agent name '$name' found in PR description"
+              exit 1
+            fi
+          done
+
+          echo "✅ No agent names in PR description"
+
+      - name: Validate vault write paths
+        if: github.event.pull_request.base.repo.name == 'knowledge-vault'
+        run: |
+          # Get list of changed files in the PR
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+
+          # Allowed paths for direct writes in knowledge-vault
+          ALLOWED_PREFIXES=(
+            "_incoming/"
+            "_meta/"
+            "_axioms/"
+            "_brand/"
+            "_templates/"
+            "pulse/"
+            "security/"
+            ".github/"
+          )
+
+          BLOCKED_PATHS=()
+
+          for file in $CHANGED_FILES; do
+            ALLOWED=false
+            for prefix in "${ALLOWED_PREFIXES[@]}"; do
+              if [[ "$file" == "$prefix"* ]]; then
+                ALLOWED=true
+                break
+              fi
+            done
+
+            if [ "$ALLOWED" = false ]; then
+              # Check if it's a direct domain directory write (not through _incoming)
+              # Domain directories are top-level dirs that aren't in the allowed list
+              TOP_DIR=$(echo "$file" | cut -d'/' -f1)
+              if [[ "$TOP_DIR" != "_"* ]] && [[ "$TOP_DIR" != "."* ]] && [[ "$TOP_DIR" != "pulse" ]] && [[ "$TOP_DIR" != "security" ]]; then
+                BLOCKED_PATHS+=("$file")
+              fi
+            fi
+          done
+
+          if [ ${#BLOCKED_PATHS[@]} -gt 0 ]; then
+            echo "::error::Direct vault domain writes detected — use _incoming/ pipeline"
+            for path in "${BLOCKED_PATHS[@]}"; do
+              echo "::error::  $path"
+            done
+            exit 1
+          fi
+
+          echo "✅ Vault write paths are valid"
+
+      - name: Scan for blocked proxy URLs
+        run: |
+          BLOCKED_PROXIES=(
+            "hnrss.org"
+            "embed.ly"
+            "embedder.artistry"
+            "hackster.io/embed"
+            "proxy.service"
+          )
+
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+
+          for file in $CHANGED_FILES; do
+            if [ -f "$file" ]; then
+              for proxy in "${BLOCKED_PROXIES[@]}"; do
+                if grep -q "$proxy" "$file" 2>/dev/null; then
+                  echo "::error::Blocked proxy URL '$proxy' found in $file"
+                  exit 1
+                fi
+              done
+            fi
+          done
+
+          echo "✅ No blocked proxy URLs found"
